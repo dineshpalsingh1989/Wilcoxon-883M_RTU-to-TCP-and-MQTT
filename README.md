@@ -17,7 +17,7 @@ Firmware for Industrial IoT Vibration Monitoring using ESP32 and Wilcoxon 883M s
 
 This firmware transforms a standard Modbus RTU vibration sensor into a modern **Industrial IoT Node**. It provides real-time monitoring of critical machinery health metrics (Velocity, Acceleration, Displacement) via a web dashboard, MQTT, and Modbus TCP.
 
-### ✨ Key Features (v3.11.0)
+### ✨ Key Features (v4.8.0)
 * **📊 Real-Time Web Dashboard:** Hosted directly on the ESP32. Visualizes live metrics and high-frequency waveform/spectrum graphs using Chart.js.
 * **☁️ MQTT Integration:** Publishes health status, metrics, and raw data chunks to any MQTT broker (TLS supported).
 * **🔗 Modbus TCP Gateway:** Acts as a bridge, allowing SCADA systems (Ignition, Node-RED) to query the sensor over Wi-Fi.
@@ -27,7 +27,7 @@ This firmware transforms a standard Modbus RTU vibration sensor into a modern **
 * **💾 CSV Export:** Download internal metric logs directly from the browser.
 
 
-### 🆕 Latest Update
+### 🆕 Latest Update (v4.8.0)
 
 **Code restructure** – `src/main.cpp` was split into one folder per module:
 

@@ -25,7 +25,7 @@ String sensor_serial = "Unknown";
 String sensor_vendor_url = "Unknown";
 String sensor_part_number = "Unknown";
 String sensor_fw_version = "Unknown";
-const char* FIRMWARE_VERSION = "4.7.0 - S3-DevKitC-1";
+const char* FIRMWARE_VERSION = "4.8.0 - S3-DevKitC-1";
 
 // --- NTP & Time Config ---
 const char* ntpServer = "pool.ntp.org";
