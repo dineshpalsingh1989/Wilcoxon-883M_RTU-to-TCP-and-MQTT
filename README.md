@@ -26,6 +26,40 @@ This firmware transforms a standard Modbus RTU vibration sensor into a modern **
 * **🚨 Smart Alerts:** Local buzzer alarms and LED indicators for Wi-Fi loss or sensor errors.
 * **💾 CSV Export:** Download internal metric logs directly from the browser.
 
+
+### 🆕 Latest Update
+
+**Code restructure** – `src/main.cpp` was split into one folder per module:
+
+| Folder | Purpose |
+|---|---|
+| `config/` | pins, Modbus register addresses, constants |
+| `core/` | shared types and global state, `modules.h` umbrella include |
+| `utils/` | timestamp, logging, spectrum peak finder |
+| `hardware/` | LED status, RS485 direction control |
+| `modbus/` | RTU sensor reads (`modbus_rtu`) and PLC register map (`modbus_tcp`) |
+| `capture/` | waveform/spectrum download state machine, metrics log |
+| `mqtt/` | publishers and command handler |
+| `ota/` | OTA and firmware upload |
+| `tasks/` | FreeRTOS web and background tasks |
+| `web/` | dashboard, settings, system, Modbus pages and routes |
+
+**Fixes**
+* MQTT waveform/spectrum chunks now carry **200 points** (was 600, which overflowed the JSON buffer and silently dropped data). Chunk counts are now 67 (waveform) and 31 (spectrum).
+* Spectrum peaks are now true local maxima (previously the top 5 bins were neighbours of one peak).
+* Capture triggers (web and MQTT) are refused while a download is in progress, preventing mixed-axis waveform/spectrum data.
+* Timestamps no longer end in `Z`, because they are local time, not UTC.
+* Failed sensor triggers/timeouts back off until the next interval instead of retrying every loop.
+* MQTT client ID is unique per device (`esp32-ila-<MAC>`), so several gateways can share a broker.
+* `/update` now reports failure when the flash update fails.
+* Input validation on `/set_intervals` (>= 10 s) and `/save_rs485` (slave ID 1-247, valid baud).
+* Displacement RMS temporaries are initialised (the register is still not read - see TODO in `capture` metrics block).
+
+**New**
+* `demo/mock_server.js` - run `node demo/mock_server.js` and open http://localhost:8080 to try the dashboard in a browser with simulated data (no hardware needed).
+* `.claude/agents/` - debugging subagents for firmware, Modbus and MQTT.
+
+**Known issues / TODO:** no authentication on web/OTA endpoints, displacement RMS register not read, `platformio.ini` board/platform pinning.
 ---
 
 ## 🛠️ Hardware Requirements
@@ -232,8 +266,8 @@ type: "waveform_chunk"
 axis: "Z"          
 capture_id: "666179"
 chunk_index: 0
-total_chunks: 23
-data: array[600]
+total_chunks: 67
+data: array[200]
 [0 … 9]
 0: 0
 1: 0.013
@@ -356,7 +390,7 @@ type: "spectrum_chunk"
 axis: "Y"
 capture_id: "659112"
 chunk_index: 10
-total_chunks: 11
+total_chunks: 31
 data: array[145]
 [0 … 9]
 0: 0
