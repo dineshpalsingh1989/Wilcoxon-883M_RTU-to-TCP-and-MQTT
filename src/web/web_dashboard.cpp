@@ -9,7 +9,7 @@ void handleRoot() {
     // The browser fills in the data via Javascript fetching /data.
     String html = R"rawliteral(
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <title>Sensor Dashboard | )rawliteral" + sensor_model + R"rawliteral(</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -83,6 +83,43 @@ void handleRoot() {
         
         #toast-notification { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 10; left: 50%; transform: translateX(-50%); bottom: 30px; font-size: 16px; opacity: 0; transition: opacity 0.5s; }
         #toast-notification.show { visibility: visible; opacity: 1; }
+        /* Compact, self-contained monitoring interface for the device web server. */
+        :root{--primary-color:#147d78;--text-color:#192f3d;--medium-gray:#e2e9ed;--light-gray:#f6f9fa;--success-green:#14826d}
+        *{box-sizing:border-box}
+        body{background:#f2f5f7;font-size:14px;line-height:1.5}
+        .header{background:#122c3a;padding:20px max(24px,calc((100vw - 1200px)/2));box-shadow:none;gap:20px}
+        .title{font-size:20px;letter-spacing:-.5px}.subtitle{color:#adc3ce}
+        .header .menu a{border-radius:8px;border-color:#48616e;margin:0;font-size:13px}
+        .header .menu a:hover{background:#284653}.header .time{font-variant-numeric:tabular-nums;color:#d7e6ec}
+        .main-content{padding:30px 24px 24px;max-width:1248px}
+        .overview-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:22px}
+        .eyebrow{font-size:11px;font-weight:700;letter-spacing:1.7px;text-transform:uppercase;color:#64808f;margin-bottom:5px}
+        h1{font-size:28px;letter-spacing:-1px;line-height:1.2;margin:0 0 6px}.overview-heading p{margin:0;color:#667e8c}
+        .connection{display:inline-flex;align-items:center;gap:8px;background:#e6eef2;color:#506774;padding:7px 12px;border-radius:30px;font-size:12px;font-weight:600;white-space:nowrap}
+        .connection:before{content:'';height:7px;width:7px;border-radius:50%;background:currentColor}.connection.live{color:#11745f;background:#e1f2eb}.connection.offline{color:#a34536;background:#fce9e4}
+        .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:26px}
+        .summary-card{background:white;border:1px solid var(--medium-gray);border-radius:12px;padding:20px;border-top:3px solid #299b93}
+        .summary-card:nth-child(2){border-top-color:#5688c3}.summary-card:nth-child(3){border-top-color:#9680c5}.summary-card:nth-child(4){border-top-color:#d8a45d}
+        .summary-label{color:#637c8b;font-size:12px;font-weight:600;display:flex;justify-content:space-between}.summary-label span{font-size:10px;letter-spacing:1px}
+        .summary-value{font-size:32px;font-weight:650;letter-spacing:-1px;margin:10px 0 3px;font-variant-numeric:tabular-nums;line-height:1.2}.summary-value small{font-size:13px;font-weight:400;color:#718591;letter-spacing:0}
+        .summary-note{font-size:11px;color:#7b8e99}
+        .tabs{gap:24px;border-bottom:1px solid #d8e3e9}.tab-button{font-size:14px;padding:12px 0;min-height:44px}.tab-content{padding-top:22px}
+        .actions-panel,.trans-card{border:1px solid var(--medium-gray);border-radius:12px;box-shadow:0 2px 4px #18344203}
+        .actions-panel{padding:22px}.actions-panel h3{font-size:16px}.actions-panel button,.actions-panel select{min-height:40px;border:1px solid #d3dfe5;border-radius:7px;margin:0;background:white;color:#284653;font:inherit}
+        .actions-panel button{display:inline-flex;align-items:center;gap:7px;font-weight:600}.actions-panel button:hover{background:#edf5f5;border-color:#8fbab6}button.btn-special{background:#147d78;color:white;border-color:#147d78}button.btn-special:hover{background:#0d655f}
+        svg{width:18px;height:18px;vertical-align:middle}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+        .table-wrap{overflow-x:auto;border:1px solid var(--medium-gray);border-radius:12px;background:white}
+        #metrics-table{box-shadow:none;border-radius:0;min-width:480px}#metrics-table th,#metrics-table td{padding:12px 18px}#metrics-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.8px;background:#fff;padding-top:17px;padding-bottom:17px}
+        #metrics-table tbody td:not(:first-child){font-size:14px;font-variant-numeric:tabular-nums;color:#245367}#metrics-table .group-header th{background:#eaf1f4;color:#5b7483;font-size:10px;letter-spacing:1px;padding:9px 18px}#metrics-table tbody tr:hover{background:#edf6f5}
+        .status-box{opacity:1;border-width:1px;box-shadow:none;background:#f8fafb}.status-box.active{transform:none;box-shadow:none;border-color:#83c4b2;background:#eef9f4}
+        .trans-header{background:#edf3f6;color:#234253;padding:16px 20px}.trans-header>span:first-child{display:flex;align-items:center;gap:8px}.badge{font-size:10px;letter-spacing:.5px;border-radius:5px}
+        .status-val{max-width:60%;overflow-wrap:anywhere;text-align:right}.json-preview{background:#132f3d;color:#9cdbcc;line-height:1.7}.reg-table{display:block;overflow-x:auto}
+        .footer{display:flex;justify-content:space-between;gap:12px;text-align:left;padding:16px 0;color:#6b8290}.footer p{margin:0}
+        #toast-notification{font-size:13px;max-width:calc(100vw - 32px);min-width:0;background:#173c49;box-shadow:0 8px 32px #122c3a30}
+        #progressBarContainer{background:#dcece8}#progressBar{font-size:12px;min-width:fit-content;padding:0 8px}
+        @media(max-width:760px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.trans-grid{grid-template-columns:1fr}.header{padding:16px 20px}.time-container{display:none}.main-content{padding:22px 16px}.overview-heading{align-items:flex-start;flex-direction:column}h1{font-size:25px}.actions-panel[style]{flex-wrap:wrap;gap:14px}.footer{flex-direction:column}.summary-card{padding:16px}.summary-value{font-size:28px}.status-grid{gap:8px}.status-box{padding:12px 6px}.status-box .box-label{font-size:13px}.status-box .box-value{font-size:10px}}
+        @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+        .monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}.monitor-card{background:white;border:1px solid var(--medium-gray);border-radius:12px;padding:20px;min-width:0}.monitor-card h2{font-size:16px;margin:0 0 12px}.monitor-card p{color:#637c8b}.monitor-card canvas{width:100%;height:200px;display:block}.monitor-card label{display:block;margin:10px 0 4px}.monitor-card input{max-width:100%;padding:8px;border:1px solid #cbd8df;border-radius:6px}.monitor-card button{padding:9px 14px;background:#147d78;color:white;border:0;border-radius:6px;cursor:pointer}.monitor-card .legend{font-size:12px;color:#637c8b}.monitor-card table{width:100%;border-collapse:collapse;font-size:12px}.monitor-card td,.monitor-card th{padding:10px 6px;text-align:left;border-bottom:1px solid #e2e9ed}.full-width{grid-column:1/-1}#alarm-state{font-weight:600}.alarm-active{color:#b03f32!important}.health-details{font-variant-numeric:tabular-nums}.monitor-card .history-wrap{overflow:auto}@media(max-width:760px){.monitor-grid{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -96,17 +133,34 @@ void handleRoot() {
     </div>
     
     <div class="main-content">
+        <div class="overview-heading">
+            <div><div class="eyebrow">Condition monitoring / Live overview</div><h1>Vibration dashboard</h1><p>Monitor vibration across three axes and manage sensor captures.</p></div>
+            <div id="connection-state" class="connection" role="status">Connecting</div>
+        </div>
+        <div class="summary-grid">
+            <div class="summary-card"><div class="summary-label">X-axis velocity <span>X</span></div><div class="summary-value"><span id="summary-x">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
+            <div class="summary-card"><div class="summary-label">Y-axis velocity <span>Y</span></div><div class="summary-value"><span id="summary-y">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
+            <div class="summary-card"><div class="summary-label">Z-axis velocity <span>Z</span></div><div class="summary-value"><span id="summary-z">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
+            <div class="summary-card"><div class="summary-label">Sensor temperature <span>TEMP</span></div><div class="summary-value"><span id="summary-temp">--</span> <small>&deg;C</small></div><div class="summary-note">Internal sensor reading</div></div>
+        </div>
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'Metrics')">Overall Metrics</button>
             <button class="tab-button" onclick="openTab(event, 'Transmission')">Control & Transmission</button>
         </div>
 
         <div id="Metrics" class="tab-content active">
+             <div class="monitor-grid">
+                <section class="monitor-card"><h2>Sensor communication</h2><strong id="sensor-health" role="status">Waiting for sensor health...</strong><p id="health-details" class="health-details">Reading RS485 diagnostics.</p><small>Metric read attempts and errors since gateway startup.</small></section>
+                <section class="monitor-card"><h2>Machine alarms</h2><p id="alarm-state" role="status">Loading alarm status...</p><details><summary>Configure thresholds</summary><form id="alarm-form"><label><input type="checkbox" id="alarm-enabled"> Enable dashboard alarms</label><label for="alarm-velocity">Velocity RMS limit, any axis (mm/s)</label><input id="alarm-velocity" type="number" min="0.001" max="1000" step="0.001" required><label for="alarm-temperature">Temperature limit (&deg;C)</label><input id="alarm-temperature" type="number" min="-40" max="200" step="0.1" required><label for="alarm-delay">Sustained exceedance (seconds)</label><input id="alarm-delay" type="number" min="0" max="3600" step="1" required><p><button type="submit">Save alarm settings</button></p><small>Choose limits for your machine. These alarms do not control equipment or the buzzer.</small></form></details></section>
+                <section class="monitor-card"><h2>Velocity RMS trend</h2><canvas id="velocity-chart" role="img" aria-label="Recent X, Y and Z velocity RMS in millimeters per second"></canvas><div class="legend">X: teal &nbsp; Y: blue &nbsp; Z: purple &middot; mm/s</div></section>
+                <section class="monitor-card"><h2>Temperature trend</h2><canvas id="temperature-chart" role="img" aria-label="Recent sensor temperature in degrees Celsius"></canvas><div class="legend">Sensor temperature &middot; &deg;C</div></section>
+                <section class="monitor-card full-width"><span id="trend-summary">Waiting for readings.</span> <button onclick="downloadTrends()">Export trend CSV</button><p>Last 120 successful metric snapshots. Gaps indicate interrupted readings; history resets on gateway reboot.</p></section>
+             </div>
              <div id="progressBarContainer"><div id="progressBar">0%</div></div>
              
              <div class="actions-panel" style="display:flex; justify-content:space-between; align-items:center; padding:15px;">
                 <div>
-                    <strong>Live Update Rate:</strong>
+                    <label for="metrics_interval"><strong>Refresh every</strong></label>
                     <select id="metrics_interval" onchange="setMetricsInterval()">
                         <option value="1000">1 Second</option>
                         <option value="2000">2 Seconds (Default)</option>
@@ -118,7 +172,7 @@ void handleRoot() {
                 </div>
              </div>
 
-             <table id="metrics-table">
+             <div class="table-wrap" role="region" aria-label="Detailed axis measurements" tabindex="0"><table id="metrics-table">
                 <thead><tr><th>Measurement</th><th>X-Axis</th><th>Y-Axis</th><th>Z-Axis</th></tr></thead>
                 
                 <tbody class="group-header"><tr><th colspan="4">Velocity (ISO 10-1k Hz)</th></tr></tbody>
@@ -164,10 +218,11 @@ void handleRoot() {
                     <tr><td>Std Deviation</td><td id="stdDeviationX">--</td><td id="stdDeviationY">--</td><td id="stdDeviationZ">--</td></tr>
                     <tr><td>Temperature (&deg;C)</td><td colspan="3" id="temperature-cell" style="text-align:right">--</td></tr>
                 </tbody>
-            </table>
+            </table></div>
         </div>
 
         <div id="Transmission" class="tab-content">
+            <section class="monitor-card" style="margin-bottom:20px"><h2>Capture history</h2><p>Latest 20 completed or failed captures since startup. MQTT publish attempts do not confirm broker delivery.</p><button onclick="downloadCaptureHistory()">Export history CSV</button><div class="history-wrap"><table><thead><tr><th>Time (device local)</th><th>Axis</th><th>Result</th><th>Transmission</th></tr></thead><tbody id="capture-history"><tr><td colspan="4">No captures yet.</td></tr></tbody></table></div></section>
             
             <div class="actions-panel">
                 <h3><i data-lucide="hard-drive"></i> Data Buffer Status</h3>
@@ -301,7 +356,8 @@ void handleRoot() {
 
         function trigger(axis, isCycle = false) {
             fetch('/trigger_capture?axis=' + axis + '&cycle=' + isCycle)
-                .then(() => console.log('Capture triggered for ' + axis + '-Axis'));
+                .then(async response => { if(!response.ok) throw Error(await response.text()); showToast('Capture accepted for ' + axis + '-axis'); updateDashboardData(); })
+                .catch(error => { isFullCycle = false; showToast(error.message); });
         }
         
         function triggerManualCapture() {
@@ -335,11 +391,24 @@ void handleRoot() {
         }
         
         function updateDashboardData() {
-            fetch("/data")
-            .then(r => r.json())
+            if (updateDashboardData.pending) return;
+            updateDashboardData.pending = true;
+            return fetch("/data")
+            .then(r => { if (!r.ok) throw new Error('Device unavailable'); return r.json(); })
             .then(data => {
+                if (!data.accelRms) throw new Error(data.status || 'Waiting for sensor data');
+                const connection = document.getElementById('connection-state');
+                connection.textContent = 'Live · ' + new Date().toLocaleTimeString();
+                connection.className = 'connection live';
+                ['x', 'y', 'z'].forEach(axis => {
+                    const value = data.veloRms && data.veloRms[axis];
+                    document.getElementById('summary-' + axis).textContent = Number.isFinite(value) ? value.toFixed(2) : '--';
+                });
+                document.getElementById('summary-temp').textContent = Number.isFinite(data.temperature) ? data.temperature.toFixed(1) : '--';
                 const statusText = data.status || "Monitoring";
-                const isCapturing = statusText.toLowerCase().includes('collecting') || statusText.toLowerCase().includes('waiting') || statusText.toLowerCase().includes('requesting') || statusText.toLowerCase().includes('downloading');
+                const isCapturing = typeof data.capture_busy === 'boolean' ? data.capture_busy : /collecting|waiting|requesting|downloading|calculating/i.test(statusText);
+                document.getElementById('collectSingleBtn').disabled = isCapturing;
+                document.getElementById('collectAllBtn').disabled = isCapturing;
                 
                 document.getElementById('status').textContent = 'Status: ' + statusText;
                 
@@ -430,31 +499,39 @@ void handleRoot() {
 
                 // Cycle Logic
                 if (wasCapturing && !isCapturing && isFullCycle && data.capturedAxis) {
-                   if (data.capturedAxis === 'X') { setTimeout(() => trigger('Y', true), 1000); }
-                   else if (data.capturedAxis === 'Y') { setTimeout(() => trigger('Z', true), 1000); }
-                   else if (data.capturedAxis === 'Z') { isFullCycle = false; showToast("XYZ Cycle Complete"); }
+                   if (!data.cycle_active) { isFullCycle = false; showToast(data.capturedAxis === 'Z' ? "XYZ Cycle Complete" : "Capture cycle stopped"); }
                 }
                 
                 wasCapturing = isCapturing;
             })
-            .catch(err => console.log("Fetch error (normal if booting):", err));
+            .catch(err => {
+                const connection = document.getElementById('connection-state');
+                connection.textContent = 'Updates unavailable · retrying';
+                connection.className = 'connection offline';
+                document.getElementById('status').textContent = 'Status: ' + err.message + '. Displayed readings may be stale.';
+            })
+            .finally(() => { updateDashboardData.pending = false; });
         }
 
         window.onload = function() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             
             // Get initial interval settings
-            fetch('/get_intervals').then(r => r.json()).then(d => {
+            dashboardUpdateInterval = setInterval(updateDashboardData, 2000);
+            document.getElementById('metrics_interval').value = '2000';
+            fetch('/get_intervals').then(r => { if (!r.ok) throw new Error('Settings unavailable'); return r.json(); }).then(d => {
                 document.getElementById('metrics_interval').value = d.metrics_interval;
                 document.getElementById('data_interval').value = d.interval;
+                clearInterval(dashboardUpdateInterval);
                 dashboardUpdateInterval = setInterval(updateDashboardData, d.metrics_interval);
-            });
+            }).catch(() => showToast('Using default refresh rate. Interval settings unavailable.'));
 
             updateClock();
             setInterval(updateClock, 1000);
             updateDashboardData();
         };
     </script>
+<script src="/monitoring_ui.js"></script>
 </body>
 </html>)rawliteral";
     server.send(200, "text/html", html);
@@ -512,6 +589,8 @@ void handleMetrics() {
         
         doc["temperature"] = temperature;
         doc["status"] = systemStatus;
+        doc["capture_busy"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
+        doc["cycle_active"] = isAutoCaptureCycleActive;
         doc["traffic_light"] = trafficLightStatus; 
         
         // --- 2. Add Configuration Details for the Transmission Tab ---
@@ -549,7 +628,7 @@ void handleTriggerCapture() {
     String axis_str = server.arg("axis");
     bool isCycleStart = (server.arg("cycle") == "true"); 
 
-    bool isBusy = false;
+    bool isBusy = true;
     Axis selectedAxis = AXIS_NONE;
     if (axis_str == "X") selectedAxis = AXIS_X;
     else if (axis_str == "Y") selectedAxis = AXIS_Y;
@@ -561,7 +640,7 @@ void handleTriggerCapture() {
     }
 
     if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-        isBusy = (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
+        isBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
         if (!isBusy) {
             requestedAxis = selectedAxis;
             requestedCapture = CAPTURE_BOTH; // Still captures buffer for MQTT/Modbus
@@ -575,6 +654,6 @@ void handleTriggerCapture() {
         }
         xSemaphoreGive(dataMutex);
     }
-    server.send(200, "text/plain", isBusy ? "Device is busy." : "Capture trigger accepted.");
+    server.send(isBusy ? 409 : 200, "text/plain", isBusy ? "Device is busy." : "Capture trigger accepted.");
 }
 

@@ -43,6 +43,7 @@ void handleSettings() {
     server.sendContent(R"rawliteral(
 <a href="/time_settings" class="settings-item"><div class="icon"><i data-lucide="clock"></i></div><div class="content"><h3>Time & Date</h3><p>Timezone & Manual Set</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
 <a href="/device_info" class="settings-item"><div class="icon" style="color:#6c757d"><i data-lucide="info"></i></div><div class="content"><h3>Device Info</h3><p>View model, serial, and firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/github_updates" class="settings-item"><div class="icon"><i data-lucide="download-cloud"></i></div><div class="content"><h3>GitHub Firmware Updates</h3><p>Check releases and download gateway firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
 </div><div class="actions"><button class="btn btn-danger" onclick="rebootDevice()">Reboot Device</button><a href="/" class="btn btn-secondary">Back to Dashboard</a></div></div>
 <script>
     if (typeof lucide !== 'undefined') { lucide.createIcons(); }

@@ -1,6 +1,7 @@
 #pragma once
 // Umbrella header: globals plus every module's public functions.
 #include "core/globals.h"
+#include "core/monitoring.h"
 #include "utils/utils.h"
 #include "hardware/hardware.h"
 #include "modbus/modbus_rtu.h"

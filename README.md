@@ -1,6 +1,14 @@
 # Esp32-Wilcoxon-883M
 Firmware for Industrial IoT Vibration Monitoring using ESP32 and Wilcoxon 883M sensors.
 
+The dashboard now includes RS485 sensor health, velocity and temperature trends,
+configurable delayed alarms, capture history with CSV export, and verified GitHub
+firmware installation. All settings pages and simulated update progress are
+available in the [hardware-free demo](demo/README.md). Run
+`node demo/mock_server.js` to preview locally. Alarm settings persist on the real
+gateway; trend and capture history reset at reboot. GitHub updates apply to the
+ESP32 gateway, not the Wilcoxon sensor firmware.
+
 # 🏭 Industrial IoT Vibration Monitor (ESP32 + Wilcoxon 883M)
 
 ![License](https://img.shields.io/badge/license-MIT-green)

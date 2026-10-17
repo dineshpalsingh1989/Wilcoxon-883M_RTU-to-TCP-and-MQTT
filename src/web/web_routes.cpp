@@ -12,6 +12,13 @@ void registerWebRoutes() {
     server.on("/fullwaveform", HTTP_GET, handleFullWaveform);
     server.on("/fullspectrum", HTTP_GET, handleFullSpectrum);
     server.on("/settings", HTTP_GET, handleSettings);
+    server.on("/github_updates", HTTP_GET, handleGithubUpdates);
+    server.on("/firmware_info", HTTP_GET, handleFirmwareInfo);
+    server.on("/github_install", HTTP_POST, handleGithubInstall);
+    server.on("/github_update_status", HTTP_GET, handleGithubUpdateStatus);
+    server.on("/monitoring", HTTP_GET, handleMonitoring);
+    server.on("/monitoring_ui.js", HTTP_GET, handleMonitoringScript);
+    server.on("/alarm_settings", HTTP_POST, handleAlarmSettings);
     server.on("/wifi_settings", HTTP_GET, handleWifiSettings);
     server.on("/savewifi", HTTP_GET, handleSaveWifi);
     server.on("/mqtt_settings", HTTP_GET, handleMqttSettings);

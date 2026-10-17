@@ -4,3 +4,5 @@
 void setupOTA();
 void handleUpdateResult();
 void handleUpdateUpload();
+void handleGithubInstall();
+void handleGithubUpdateStatus();

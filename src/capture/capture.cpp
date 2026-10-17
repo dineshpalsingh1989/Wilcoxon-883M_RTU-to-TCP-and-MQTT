@@ -79,6 +79,7 @@ void handleLongReads() {
                 snprintf(systemStatus, sizeof(systemStatus), "Waveform (%c) Done. Reading Spectrum...", axisChar);
             } else {
                 snprintf(systemStatus, sizeof(systemStatus), "Waveform Download Failed");
+                recordCaptureResult(local_requestedAxis, "Waveform failed", "Not sent");
                 strcpy(trafficLightStatus, "ERROR");
                 currentDataState = DD_IDLE; 
                 isAutoCaptureCycleActive = false;
@@ -151,6 +152,7 @@ void handleLongReads() {
                 
             } else {
                 snprintf(systemStatus, sizeof(systemStatus), "Spectrum Download Failed");
+                recordCaptureResult(local_requestedAxis, "Spectrum failed", "Waveform may have been sent");
                 strcpy(trafficLightStatus, "ERROR");
                 currentDataState = DD_IDLE;
                 isAutoCaptureCycleActive = false;
@@ -181,8 +183,15 @@ void handleLongReads() {
                     if(autoCaptureAxisIndex == 0 && xyzPeakDataCache.size() > 0) { 
                         publishCombinedSpectrumPeaks(); 
                     }
+                    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                        recordCaptureResult(local_requestedAxis, "Complete", "MQTT publish attempted");
+                        xSemaphoreGive(dataMutex);
+                    }
                 } else {
-                    logMessage("Failed to allocate for peak finding.");
+                    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                        recordCaptureResult(local_requestedAxis, "Complete", "MQTT offline - not sent");
+                        xSemaphoreGive(dataMutex);
+                    }
                 }
             }
         }

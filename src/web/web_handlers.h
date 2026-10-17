@@ -1,4 +1,7 @@
 #pragma once
+void handleGithubUpdates();
+void handleFirmwareInfo();
+void handleMonitoringScript();
 #include "core/globals.h"
 
 void registerWebRoutes();

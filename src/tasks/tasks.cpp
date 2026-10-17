@@ -1,4 +1,5 @@
 #include "core/modules.h"
+#include <esp_idf_version.h>
 
 // =================================================================
 // --- RTOS TASKS ---
@@ -6,23 +7,38 @@
 void webServerLoop(void * pvParameters) {
     for(;;) { 
         server.handleClient(); 
-        ArduinoOTA.handle(); // Check for OTA updates
+        bool updating = true;
+        if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(20)) == pdTRUE) {
+            updating = firmwareUpdateActive;
+            xSemaphoreGive(dataMutex);
+        }
+        if (!updating) ArduinoOTA.handle();
         vTaskDelay(2); 
     }
 }
 
 void backgroundLoop(void * pvParameters) {
+#if ESP_IDF_VERSION_MAJOR >= 5
     esp_task_wdt_config_t twdt_config = {
         .timeout_ms = 60000,
         .idle_core_mask = (1 << 1), 
         .trigger_panic = true
     };
     esp_task_wdt_init(&twdt_config);
+#else
+    esp_task_wdt_init(60, true);
+#endif
     esp_task_wdt_add(NULL); 
     
     for(;;) {
         // --- FIX: Feed watchdog every loop iteration ---
         esp_task_wdt_reset(); 
+        bool updating = false;
+        if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) != pdTRUE) { vTaskDelay(10); continue; }
+        updating = firmwareUpdateActive;
+        backgroundPausedForUpdate = updating;
+        xSemaphoreGive(dataMutex);
+        if (updating) { vTaskDelay(pdMS_TO_TICKS(50)); continue; }
 
         // --- NEW: Safe Reboot Handler ---
         if (shouldReboot) {
@@ -139,7 +155,7 @@ void backgroundLoop(void * pvParameters) {
                 // Temporary buffers
                 float t_dx = 0, t_dy = 0, t_dz = 0; // TODO: displacement RMS is never read from the sensor (register address unknown)
                 float t_ax, t_ay, t_az, t_apx, t_apy, t_apz, t_ax2, t_ay2, t_az2, t_apx2, t_apy2, t_apz2;
-                float t_vx, t_vy, t_vz, t_vpx, t_vpy, t_vpz, t_dx, t_dy, t_dz, t_dpx, t_dpy, t_dpz;
+                float t_vx, t_vy, t_vz, t_vpx, t_vpy, t_vpz, t_dpx, t_dpy, t_dpz;
                 float t_tpx, t_tpy, t_tpz, t_cfx, t_cfy, t_cfz, t_sdx, t_sdy, t_sdz, t_t;
                 float t_mamx, t_mamy, t_mamz, t_mapx, t_mapy, t_mapz, t_mam2x, t_mam2y, t_mam2z, t_map2x, t_map2y, t_map2z;
                 float t_vwx, t_vwy, t_vwz, t_vwpx, t_vwpy, t_vwpz;
@@ -175,7 +191,7 @@ void backgroundLoop(void * pvParameters) {
                     if(read_ok) { result = node.readInputRegisters(0x0040, 3); if(result == node.ku8MBSuccess) { t_tpx=(int16_t)node.getResponseBuffer(0)/100.0; t_tpy=(int16_t)node.getResponseBuffer(1)/100.0; t_tpz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
                     if(read_ok) { result = node.readInputRegisters(0x0044, 3); if(result == node.ku8MBSuccess) { t_cfx=(int16_t)node.getResponseBuffer(0)/100.0; t_cfy=(int16_t)node.getResponseBuffer(1)/100.0; t_cfz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
                     if(read_ok) { result = node.readInputRegisters(0x0048, 3); if(result == node.ku8MBSuccess) { t_sdx=(int16_t)node.getResponseBuffer(0)/100.0; t_sdy=(int16_t)node.getResponseBuffer(1)/100.0; t_sdz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { read_ok &= readSensorValue("Temperature", 0x0050, 10.0, t_t); }
+                    if(read_ok) { result = node.readInputRegisters(0x0050, 1); if(result == node.ku8MBSuccess) t_t = (int16_t)node.getResponseBuffer(0)/10.0; else read_ok = false; }
                 }
 
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
@@ -207,6 +223,7 @@ void backgroundLoop(void * pvParameters) {
                         crestFactorX = t_cfx; crestFactorY = t_cfy; crestFactorZ = t_cfz;
                         stdDeviationX = t_sdx; stdDeviationY = t_sdy; stdDeviationZ = t_sdz;
                         temperature = t_t;
+                        recordMetricsHealth(true, 0);
                         
                         if (!wifiDisconnectAlarmActive) {
                             snprintf(systemStatus, sizeof(systemStatus), "Monitoring");
@@ -219,6 +236,7 @@ void backgroundLoop(void * pvParameters) {
                         if (modbusTcpEnabled) { updateModbusTCPCache(); syncModbusRegisters(); } // Use syncModbusRegisters
                     } else {
                         // --- FAULT HANDLING ---
+                        recordMetricsHealth(false, result);
                         snprintf(systemStatus, sizeof(systemStatus), "Sensor Disconnected");
                         logMessage("Error reading metrics: Sensor likely disconnected.");
                         strcpy(trafficLightStatus, "ERROR"); 
@@ -242,6 +260,7 @@ void backgroundLoop(void * pvParameters) {
                 case DD_IDLE:
                     if (local_dataCaptureInterval < INTERVAL_NEVER && (millis() - local_lastAutoCaptureMillis >= local_dataCaptureInterval)) {
                         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+                            if (firmwareUpdateActive) { xSemaphoreGive(dataMutex); break; }
                             requestedCapture = CAPTURE_BOTH;
                             isAutoCaptureCycleActive = true;
                             autoCaptureAxisIndex = 0; 
@@ -268,6 +287,7 @@ void backgroundLoop(void * pvParameters) {
                         lastAutoCaptureMillis = millis(); // back off until the next interval instead of retrying every loop
                         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
                             snprintf(systemStatus, sizeof(systemStatus), "Failed to request data");
+                            recordCaptureResult(requestedAxis, "Trigger failed", "Not sent");
                             strcpy(trafficLightStatus, "ERROR"); 
                             lastCaptureActionTime = millis(); 
                             currentDataState = DD_IDLE;
@@ -299,6 +319,7 @@ void backgroundLoop(void * pvParameters) {
                             lastAutoCaptureMillis = millis();
                             if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
                                 snprintf(systemStatus, sizeof(systemStatus), "Timeout waiting for sensor");
+                                recordCaptureResult(requestedAxis, "Sensor timeout", "Not sent");
                                 strcpy(trafficLightStatus, "ERROR"); 
                                 lastCaptureActionTime = millis(); 
                                 currentDataState = DD_IDLE;

@@ -1,4 +1,11 @@
 # Prerequisites
+.pio/
+.pio-core/
+.venv/
+.uv-cache/
+.tools/
+demo/artifacts/
+include/generated/
 *.d
 
 # Compiled Object files

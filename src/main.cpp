@@ -119,6 +119,7 @@ void setup() {
     }
     
     // 7. Setup Web Server
+    setupMonitoring();
     registerWebRoutes();
     
     server.begin();

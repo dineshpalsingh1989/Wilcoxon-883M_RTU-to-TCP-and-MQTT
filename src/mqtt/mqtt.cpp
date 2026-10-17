@@ -287,7 +287,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
             }
             
             if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-                bool captureBusy = (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
+                bool captureBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
                 if ((strcmp(command, "trigger_all") == 0 || strcmp(command, "trigger_capture") == 0) && captureBusy) {
                     Serial.println("MQTT: capture ignored, device busy");
                 }

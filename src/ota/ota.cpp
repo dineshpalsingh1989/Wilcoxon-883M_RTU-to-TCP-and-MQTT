@@ -1,5 +1,16 @@
 #include "core/modules.h"
 
+namespace {
+bool manualAccepted = false, manualComplete = false;
+void releaseManualUpdate() {
+    if (manualAccepted && xSemaphoreTake(dataMutex, portMAX_DELAY) == pdTRUE) {
+        firmwareUpdateActive = false;
+        xSemaphoreGive(dataMutex);
+    }
+    manualAccepted = false;
+}
+}
+
 // =================================================================
 // --- OTA CONFIGURATION
 // =================================================================
@@ -39,11 +50,11 @@ void setupOTA() {
 // =================================================================
 void handleUpdateResult() {
     server.sendHeader("Connection", "close");
-    if (Update.hasError()) {
-        server.send(500, "text/html", "<h1>Update Failed.</h1><p>Device is rebooting with the old firmware. <a href='/'>Return</a> in 20 seconds.</p>");
-    } else {
-        server.send(200, "text/html", "<h1>Update Complete.</h1><p>Device is rebooting... <a href='/'>Click here to return</a> in 20 seconds.</p>");
+    if (!manualAccepted || !manualComplete || Update.hasError()) {
+        releaseManualUpdate();
+        server.send(409, "text/plain", "Update failed or device busy. No restart was performed."); return;
     }
+    server.send(200, "text/plain", "Update Complete. Gateway restarting...");
     delay(1000);
     ESP.restart();
 }
@@ -51,24 +62,42 @@ void handleUpdateResult() {
 void handleUpdateUpload() {
     HTTPUpload& upload = server.upload();
     if (upload.status == UPLOAD_FILE_START) {
+        manualAccepted = false; manualComplete = false;
+        if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) != pdTRUE) return;
+        if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum) { xSemaphoreGive(dataMutex); return; }
+        firmwareUpdateActive = true; manualAccepted = true;
+        xSemaphoreGive(dataMutex);
+        const uint32_t start = millis(); bool paused = false;
+        while (millis() - start < 15000) {
+            if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) { paused = backgroundPausedForUpdate; xSemaphoreGive(dataMutex); }
+            if (paused) break;
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        if (!paused) { releaseManualUpdate(); return; }
         logMessage("Firmware Update Started: " + upload.filename);
-        // Disable Watchdog for long updates prevents reboots during flash
-        esp_task_wdt_deinit(); 
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { 
             Update.printError(Serial);
+            releaseManualUpdate();
         }
     } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (!manualAccepted) return;
         // Flashing firmware to ESP
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
             Update.printError(Serial);
+            Update.abort(); releaseManualUpdate();
         }
     } else if (upload.status == UPLOAD_FILE_END) {
+        if (!manualAccepted) return;
         if (Update.end(true)) { // true to set the size to the current progress
+            manualComplete = true;
             logMessage("Firmware Update Success: " + String(upload.totalSize) + " bytes.");
         } else {
             Update.printError(Serial);
             logMessage("Firmware Update Failed.");
+            Update.abort(); releaseManualUpdate();
         }
+    } else if (upload.status == UPLOAD_FILE_ABORTED && manualAccepted) {
+        Update.abort(); releaseManualUpdate();
     }
 }
 
