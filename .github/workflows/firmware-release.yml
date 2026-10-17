@@ -72,4 +72,9 @@ jobs:
           printf 'FROM scratch\nCOPY firmware-adafruit_feather_esp32s3.bin /\n' > Dockerfile
           echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
           docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" -t "$image:${REF_NAME}" .
-          docker push "$image:${REF_NAME}"
+          for attempt in 1 2 3; do
+            docker push "$image:${REF_NAME}" && exit 0
+            echo "Push attempt $attempt failed; retrying"
+            sleep $((attempt * 10))
+          done
+          exit 1
