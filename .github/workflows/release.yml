@@ -1,10 +1,7 @@
-name: Build gateway release
+name: Release
 on:
   push:
-    branches: [main]
     tags: ['v*']
-  pull_request:
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -33,7 +30,6 @@ jobs:
           name: gateway-firmware
           path: firmware-adafruit_feather_esp32s3.bin
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
     needs: firmware
     runs-on: ubuntu-latest
     permissions:
@@ -51,7 +47,6 @@ jobs:
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes
           gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin --clobber
   package:
-    if: github.event_name == 'push'
     needs: firmware
     runs-on: ubuntu-latest
     permissions:
@@ -71,9 +66,9 @@ jobs:
           image="ghcr.io/${REPO,,}"
           printf 'FROM scratch\nCOPY firmware-adafruit_feather_esp32s3.bin /\n' > Dockerfile
           echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
-          docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" -t "$image:${REF_NAME}" .
+          docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" -t "$image:${REF_NAME}" -t "$image:latest" .
           for attempt in 1 2 3; do
-            docker push "$image:${REF_NAME}" && exit 0
+            docker push --all-tags "$image" && exit 0
             echo "Push attempt $attempt failed; retrying"
             sleep $((attempt * 10))
           done

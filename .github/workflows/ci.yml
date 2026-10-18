@@ -1,0 +1,33 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node demo/smoke_test.js
+  firmware:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install platformio==6.1.18 certifi
+      - run: pio run -e adafruit_feather_esp32s3
+      - name: Prepare board binary
+        run: cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gateway-firmware
+          path: firmware-adafruit_feather_esp32s3.bin
