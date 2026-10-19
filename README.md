@@ -1,184 +1,111 @@
-# Esp32-Wilcoxon-883M
-Firmware for Industrial IoT Vibration Monitoring using ESP32 and Wilcoxon 883M sensors.
+﻿<div align="center">
 
-The dashboard now includes RS485 sensor health, velocity and temperature trends,
-configurable delayed alarms, capture history with CSV export, and verified GitHub
-firmware installation. All settings pages and simulated update progress are
-available in the [hardware-free demo](demo/README.md). Run
-`node demo/mock_server.js` to preview locally. Alarm settings persist on the real
-gateway; trend and capture history reset at reboot. GitHub updates apply to the
-ESP32 gateway, not the Wilcoxon sensor firmware.
+# Wilcoxon 883M Industrial IoT Gateway
 
-# 🏭 Industrial IoT Vibration Monitor (ESP32 + Wilcoxon 883M)
+**Bring RS485 vibration data to your browser, PLC and MQTT broker.**
 
-![License](https://img.shields.io/badge/license-MIT-green)
-![Platform](https://img.shields.io/badge/platform-ESP32-blue)
-![Framework](https://img.shields.io/badge/framework-Arduino-orange)
-![Version](https://img.shields.io/badge/version-3.11.0-blueviolet)
-![Status](https://img.shields.io/badge/status-Production%20Ready-success)
+[![ESP32-S3](https://img.shields.io/badge/ESP32--S3-Arduino-00979D)](platformio.ini)
+[![Modbus](https://img.shields.io/badge/Modbus-RTU%20%2B%20TCP-2563eb)](#modbus-tcp)
+[![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-> **A professional-grade IoT gateway firmware for monitoring industrial machinery vibration using the Wilcoxon 883M (RS485) sensor and the Cytron Maker Feather AIoT S3.**
+[Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
 
----
+</div>
 
-## 📋 Project Overview
+![System overview: Wilcoxon 883M sends Modbus RTU data through an ESP32-S3 gateway to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
 
-This firmware transforms a standard Modbus RTU vibration sensor into a modern **Industrial IoT Node**. It provides real-time monitoring of critical machinery health metrics (Velocity, Acceleration, Displacement) via a web dashboard, MQTT, and Modbus TCP.
+Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
-### ✨ Key Features (v4.8.0)
-* **📊 Real-Time Web Dashboard:** Hosted directly on the ESP32. Visualizes live metrics and high-frequency waveform/spectrum graphs using Chart.js.
-* **☁️ MQTT Integration:** Publishes health status, metrics, and raw data chunks to any MQTT broker (TLS supported).
-* **🔗 Modbus TCP Gateway:** Acts as a bridge, allowing SCADA systems (Ignition, Node-RED) to query the sensor over Wi-Fi.
-* **🆔 UUID & Identity:** Auto-detects sensor Serial Number, Firmware Version, and Unique Device UUID.
-* **🕹️ PLC Remote Trigger:** New register allows PLCs to trigger data captures remotely.
-* **🚨 Smart Alerts:** Local buzzer alarms and LED indicators for Wi-Fi loss or sensor errors.
-* **💾 CSV Export:** Download internal metric logs directly from the browser.
+## What you can do
 
+| Feature | What it provides |
+| --- | --- |
+| Browser dashboard | Live X/Y/Z metrics, velocity and temperature trends, and waveform/spectrum charts |
+| Sensor health | Connection status, failed reads, timeouts and age of the last successful reading |
+| Configurable alarms | Velocity RMS and temperature thresholds with a configurable delay |
+| Capture tools | Single-axis or XYZ captures, capture history and CSV export |
+| MQTT integration | Scalar metrics, chunked waveform/spectrum data, health status and remote commands |
+| Modbus TCP bridge | Cached measurements and capture buffers for PLC and SCADA clients |
+| Gateway management | Wi-Fi, RS485, MQTT and time settings, plus GitHub firmware installation |
 
-### 🆕 Latest Update (v4.8.0)
+## Dashboard preview
 
-**Code restructure** – `src/main.cpp` was split into one folder per module:
+![ESP32 gateway dashboard showing simulated sensor health, vibration metrics, trends and capture controls.](docs/images/dashboard.png)
 
-| Folder | Purpose |
-|---|---|
-| `config/` | pins, Modbus register addresses, constants |
-| `core/` | shared types and global state, `modules.h` umbrella include |
-| `utils/` | timestamp, logging, spectrum peak finder |
-| `hardware/` | LED status, RS485 direction control |
-| `modbus/` | RTU sensor reads (`modbus_rtu`) and PLC register map (`modbus_tcp`) |
-| `capture/` | waveform/spectrum download state machine, metrics log |
-| `mqtt/` | publishers and command handler |
-| `ota/` | OTA and firmware upload |
-| `tasks/` | FreeRTOS web and background tasks |
-| `web/` | dashboard, settings, system, Modbus pages and routes |
+*Actual dashboard rendered by the hardware-free demo with simulated readings. Values shown are illustrative.*
 
-**Fixes**
-* MQTT waveform/spectrum chunks now carry **200 points** (was 600, which overflowed the JSON buffer and silently dropped data). Chunk counts are now 67 (waveform) and 31 (spectrum).
-* Spectrum peaks are now true local maxima (previously the top 5 bins were neighbours of one peak).
-* Capture triggers (web and MQTT) are refused while a download is in progress, preventing mixed-axis waveform/spectrum data.
-* Timestamps no longer end in `Z`, because they are local time, not UTC.
-* Failed sensor triggers/timeouts back off until the next interval instead of retrying every loop.
-* MQTT client ID is unique per device (`esp32-ila-<MAC>`), so several gateways can share a broker.
-* `/update` now reports failure when the flash update fails.
-* Input validation on `/set_intervals` (>= 10 s) and `/save_rs485` (slave ID 1-247, valid baud).
-* Displacement RMS temporaries are initialised (the register is still not read - see TODO in `capture` metrics block).
+## Quick start
 
-**New**
-* `demo/mock_server.js` - run `node demo/mock_server.js` and open http://localhost:8080 to try the dashboard in a browser with simulated data (no hardware needed).
-* `.claude/agents/` - debugging subagents for firmware, Modbus and MQTT.
+### Try it without hardware
 
-**Known issues / TODO:** no authentication on web/OTA endpoints, displacement RMS register not read, `platformio.ini` board/platform pinning.
----
+Install Node.js, then run:
 
-## 🛠️ Hardware Requirements
+```sh
+git clone https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT.git
+cd Wilcoxon-883M_RTU-to-TCP-and-MQTT
+node demo/mock_server.js
+```
 
-| Component | Description | Notes |
-| :--- | :--- | :--- |
-| **MCU** | [Cytron Maker Feather AIoT S3](https://www.cytron.io/) | ESP32-S3 with built-in RGB LED & Buzzer |
-| **Sensor** | [Wilcoxon 883M](https://wilcoxon.com/) | Digital Vibration Sensor (RS485 Modbus RTU) |
-| **Power** | 12V-24V DC PSU | Required to power the 883M sensor |
-| **Module** | RS485-to-TTL UART | For ESP32 to communicate with the sensor |
+Open **http://localhost:8080**. Use the demo scenario selector to explore normal operation, high vibration and an offline sensor. Settings and firmware update actions are simulated. See the [demo guide](demo/README.md) for details.
 
-### 🔌 Pin Configuration
-| ESP32 Pin | Function |
-| :--- | :--- |
-| **GPIO 16** | RS485 RX |
-| **GPIO 15** | RS485 TX |
-| **GPIO 12** | Buzzer (Alarm) |
-| **GPIO 3** | User Button (Hold 5s for AP Mode) |
-| **GPIO 46** | RGB Status LED |
+### Build and flash the gateway
 
----
-Required Libraries:
+1. Install PlatformIO and open this repository in VS Code.
+2. Check the board and pin assignments below against your hardware.
+3. Connect the ESP32-S3 over USB and run:
 
-- 📡 **PubSubClient** (by Nick O'Leary) – MQTT Client  
-- 🧩 **ArduinoJson** (by Benoit Blanchon) – JSON parser (v6 recommended)  
-- ⚙️ **ModbusMaster** (by Doc Walker) – RS485 Modbus RTU  
-- 🌐 **ModbusTCP** (by Matt Fryer) – Modbus TCP network
----
+```sh
+pio run
+pio run --target upload
+pio device monitor
+```
 
-## 🚀 Installation & Setup
+The configured environment is `adafruit_feather_esp32s3`, using the Arduino framework. PlatformIO installs the libraries declared in [platformio.ini](platformio.ini). The build helper also requires Python's `certifi` package in the PlatformIO Python environment.
 
-### 1. Flash the Firmware
-You can use **PlatformIO** (recommended) or Arduino IDE.
-1.  Clone this repository.
-2.  Open the folder in VS Code with the PlatformIO extension installed.
-3.  Connect your ESP32 via USB.
-4.  Click **Upload** (➡️).
+### Connect to Wi-Fi
 
-### 2. Connect to Wi-Fi
-1.  On first boot, the device will create a Wi-Fi Access Point:
-    * **SSID:** `ILA_Sensor_AP`
-    * **Password:** `12345678`
-2.  Connect your phone/laptop to this network.
-3.  Open a browser to `http://192.168.4.1`.
-4.  Go to **Settings > Wi-Fi** to scan and save your local network credentials.
+1. Connect to the gateway access point **`ILA_Sensor_AP`**, password **`12345678`**.
+2. Open **http://192.168.4.1**.
+3. Open **Settings > Wi-Fi** and save your network credentials.
+4. Open the gateway's assigned local IP address to use the dashboard.
 
----
+## Hardware and wiring
 
-## 📡 API & Communication
+| Component | Purpose |
+| --- | --- |
+| ESP32-S3 board | Gateway; project hardware targets the Cytron Maker Feather AIoT S3 |
+| Wilcoxon 883M | RS485 Modbus RTU vibration and temperature sensor |
+| RS485-to-TTL UART module | Interface with ESP32-compatible 3.3 V logic levels |
+| Suitable DC supply | Sensor power; check the linked sensor manual for supply and wiring requirements |
 
-### 🟢 Status LED Codes
-* 🟢 **Green:** System Healthy (Idle)
-* 🟡 **Yellow (Blinking):** Sensor Busy (Downloading Waveform)
-* 🔴 **Red:** Sensor Error / Timeout
-* ⚪ **White:** Wi-Fi Disconnected
-* 🔵 **Cyan:** Metrics Recording Active
+**Current firmware assignments** from [src/config/config.h](src/config/config.h):
 
-### 🏭 Modbus TCP Server Map
-The ESP32 acts as a Modbus TCP Slave on **Port 502**. This allows SCADA/PLC systems to read cached data.
+| ESP32 GPIO | Connection / function |
+| --- | --- |
+| 18 | RS485 module RO → UART RX |
+| 17 | UART TX → RS485 module DI |
+| 14 | RS485 module DE and RE direction control |
+| 5 | Buzzer |
+| 0 | User button |
+| 48 | RGB status LED |
 
-#### 1. Scalar Metrics (Standard Input Registers)
-Read these registers to get the latest processed values.
+Connect the sensor's RS485 pair to the module's A/B terminals according to the hardware documentation. Confirm grounding and termination for your installation. Board labels can differ from GPIO numbers; verify the selected board before applying power.
 
-| Reg | Description | Scale | Unit |
-| :--- | :--- | :--- | :--- |
-| **0** | X Accel RMS | x100 | g |
-| **1** | X Accel Peak | x100 | g |
-| **2** | X Accel RMS (10-5k Hz) | x100 | g |
-| **3** | X Accel Peak (10-5k Hz) | x100 | g |
-| **4** | X Velocity RMS | x10 | mm/s |
-| **5** | X Velocity Peak | x10 | mm/s |
-| **6** | X Displacement RMS | x1 | µm |
-| **7** | X Displacement Peak | x1 | µm |
-| **8** | X True Peak | x100 | g |
-| **9** | X Crest Factor | x100 | - |
-| **20** | Y Accel RMS | x100 | g |
-| **40** | Z Accel RMS | x100 | g |
-| **60** | Temperature | x10 | °C |
-| **95** | **PLC Trigger Command** | Write `1` | Triggers a new capture |
+[Wilcoxon 883M user manual (PDF)](883M-User-Manual-Rev.1.0_20241206-EN.pdf)
 
-#### 2. Large Data Access (Waveform & Spectrum)
-The Gateway maps the latest captured Waveform and Spectrum data to direct address ranges for fast reading.
+## MQTT
 
-| Reg Start | Size | Content | Format |
-| :--- | :--- | :--- | :--- |
-| **1000** | 13,334 | Time Waveform (Latest Axis) | Int16 (x0.001 g) |
-| **20000** | 6,145 | FFT Spectrum (Latest Axis) | UInt16 (x0.001 g) |
+The default base topic is **`883M`**, configurable in Settings. TLS is supported.
 
----
+| Topic | Direction | Content |
+| --- | --- | --- |
+| `883M` | Gateway → broker | Metrics, waveform chunks and spectrum chunks |
+| `883M/status` | Gateway → broker | Health status, normally every five minutes |
+| `883M/command` | Broker → gateway | Commands addressed to the sensor serial number |
 
-## ☁️ MQTT Topics & Commands
+Every command must include a **`serial_number` matching the connected sensor**.
 
-The device connects to your configured MQTT Broker (supports TLS/SSL) and interacts via JSON payloads.
-
-**Default Base Topic:** `883M` (Configurable in Settings)
-
-### 📤 Published Topics (Device -> Cloud)
-
-| Topic | Payload Type | Description |
-| :--- | :--- | :--- |
-| `883M/status` | JSON | **Health Check:** Publishes every 5 minutes.<br>Contains: Uptime, RSSI, IP, Serial Number, **UUID**, Free RAM. |
-| `883M` | JSON | **Metrics:** Object containing scalar values (RMS, Peak, Temp).<br>**Waveform:** Chunked arrays of raw time data.<br>**Spectrum:** Chunked arrays of frequency data. |
-
-### 📥 Command Topic (Cloud -> Device)
-
-**Topic:** `883M/command`
-
-> **⚠️ CRITICAL REQUIREMENT:**
-> Every command **MUST** include the `serial_number` field matching the device's specific serial number.
-
-#### 1. Trigger Data Capture (Single Axis)
 ```json
 {
   "serial_number": "ENTER_DEVICE_SERIAL_HERE",
@@ -186,309 +113,73 @@ The device connects to your configured MQTT Broker (supports TLS/SSL) and intera
   "axis": "X"
 }
 ```
-(Valid axis values: "X", "Y", "Z")
 
-### 2. Set Auto-Capture Interval
-Updates how often the device automatically cycles through X, Y, and Z axes.
+| Command | Additional fields | Action |
+| --- | --- | --- |
+| `trigger_capture` | `"axis": "X"`, `"Y"` or `"Z"` | Capture waveform and spectrum for one axis |
+| `trigger_all` | None | Start an XYZ capture sequence |
+| `get_metrics` | None | Publish scalar metrics immediately |
+| `set_interval` | `"interval_ms": 600000` | Set the automatic capture interval; example is 10 minutes |
+| `reboot` | None | Restart the gateway |
 
-```json
+Set `interval_ms` to `2147483647` to use the firmware's disabled auto-capture interval. Captures are refused while another capture or firmware update is active.
 
-{
-  "serial_number": "ENTER_DEVICE_SERIAL_HERE",
-  "command": "set_interval",
-  "interval_ms": 600000
-}
-(Example: 600000 = 10 Minutes. Set to 2147483647 to disable auto-capture.)
-```
+Waveform and spectrum messages use `type`, `axis`, `capture_id`, `chunk_index`, `total_chunks` and `data`. Reassemble chunks in index order for each capture and axis. Chunks carry up to **200 points**: 67 chunks for a 13,334-point waveform and 31 for a 6,145-point spectrum.
 
-### 3. Remote Reboot
-Forces the ESP32 to restart.
+For plots, waveform values represent acceleration in g; time depends on the sample interval. Spectrum values represent amplitude in g; frequency is the bin index multiplied by the firmware's frequency resolution (`13333.333 / 16384` Hz). Timestamps use configured local time and do not carry a UTC `Z` suffix.
 
-```json
+## Modbus TCP
 
-{
-  "serial_number": "ENTER_DEVICE_SERIAL_HERE",
-  "command": "reboot"
-}
-```
+The gateway serves cached data on the configured Modbus TCP port, normally **502**. Values are **holding registers**, using zero-based addresses. Divide raw values by the scale below to obtain engineering units.
 
+| Address | Measurement | Scale | Unit |
+| --- | --- | --- | --- |
+| 0 | X acceleration RMS | 100 | g |
+| 1 | X acceleration peak | 100 | g |
+| 2 | X acceleration RMS, 10–5k Hz | 100 | g |
+| 3 | X acceleration peak, 10–5k Hz | 100 | g |
+| 4 | X velocity RMS | 10 | mm/s |
+| 5 | X velocity peak | 10 | mm/s |
+| 6 | X displacement RMS* | 1 | µm |
+| 7 | X displacement peak | 1 | µm |
+| 8 | X true peak | 100 | g |
+| 9 | X crest factor | 100 | — |
+| 20–37 | Y metrics, same layout as X addresses 0–17 | Varies | Varies |
+| 40–57 | Z metrics, same layout as X addresses 0–17 | Varies | Varies |
+| 60 | Temperature | 10 | °C |
+| 1000–14333 | Latest-axis waveform, signed Int16 | 1000 | g |
+| 20000–26144 | Latest-axis spectrum, UInt16 | 1000 | g |
 
-### 4. Request Immediate Metrics
-Forces the device to publish the latest scalar metrics (RMS/Peak) to MQTT immediately without waiting for the next interval.
+*Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping and capture controls.*
 
-```json
-{
-  "serial_number": "ENTER_DEVICE_SERIAL_HERE",
-  "command": "get_metrics"
-}
-```
----
-### MQTT Message 
-  Message type :metrics
-  
-```text
-{
-"object
-model: "Wilcoxon 883M"            
-serial_number: "24120017"           
-vendor_url: "Unknown"
-timestamp: "2026-01-08T14:55:40Z"
-type: "metrics"
-data: object
-accelRms: object
-x: 0
-y: 0
-z: 0
-accelPeak: object
-accelRms2: object
-accelPeak2: object
-accelMetricRms: object
-accelMetricPeak: object
-accelMetricRms2: object
-accelMetricPeak2: object
-veloRms: object
-veloPeak: object
-veloWideRms: object
-veloWidePeak: object
-displRms: object
-displPeak: object
-displLowRms: object
-displLowPeak: object
-truePeak: object
-crestFactor: object
-stdDeviation: object
-temperature: 29.9"
-}
--END-
-```
- Message type :waveform_chunk
+## Firmware updates
 
-```text
+Open **Settings > GitHub Firmware Updates** to check for a newer stable release and install it on the **ESP32 gateway**.
 
- msg.payload : Object
-object
-model: "Wilcoxon 883M"
-serial_number: "24120017"
-timestamp: "2026-01-08T16:07:45Z"
-type: "waveform_chunk"  
-axis: "Z"          
-capture_id: "666179"
-chunk_index: 0
-total_chunks: 67
-data: array[200]
-[0 … 9]
-0: 0
-1: 0.013
-2: -0.013
-3: -0.002
-4: -0.001
-5: -0.006
-6: -0.01
-7: -0.004
-8: -0.007
-9: -0.012
-[10 … 19]
-[20 … 29]
-[30 … 39]
-[40 … 49]
-[50 … 59]
-[60 … 69]
-[70 … 79]
-[80 … 89]
-[90 … 99]
-[100 … 109]
-[110 … 119]
-[120 … 129]
-[130 … 139]
-[140 … 149]
-[150 … 159]
-[160 … 169]
-[170 … 179]
-[180 … 189]
-[190 … 199]
-[200 … 209]
-[210 … 219]
-[220 … 229]
-[230 … 239]
-[240 … 249]
-[250 … 259]
-[260 … 269]
-[270 … 279]
-[280 … 289]
-[290 … 299]
-[300 … 309]
-[310 … 319]
-[320 … 329]
-[330 … 339]
-[340 … 349]
-[350 … 359]
-[360 … 369]
-[370 … 379]
-[380 … 389]
-[390 … 399]
-[400 … 409]
-[410 … 419]
-[420 … 429]
-[430 … 439]
-[440 … 449]
-[450 … 459]
-[460 … 469]
-[470 … 479]
-[480 … 489]
-[490 … 499]
-[500 … 509]
-[510 … 519]
-[520 … 529]
-[530 … 539]
-[540 … 549]
-[550 … 559]
-[560 … 569]
-[570 … 579]
-[580 … 589]
-[590 … 599]
-```
-### How to DRAW the graph
-What you plot
-X-axis (horizontal) → Time
-Y-axis (vertical) → Vibration level
+The updater requires a stable `vMAJOR.MINOR.PATCH` release, the asset `firmware-adafruit_feather_esp32s3.bin`, and GitHub's SHA-256 asset digest. It validates HTTPS certificates, image compatibility, partition size and the downloaded checksum before activating the image and rebooting. Wi-Fi and a correct gateway clock are required.
 
+See the [update guide](demo/README.md#github-firmware-installation) for release publishing and validation details. Updates apply to the gateway; they do not update the Wilcoxon sensor firmware.
 
-Each number is one vibration measurement taken very fast (thousands per second).
+## Operational notes
 
-```text
-Index : Value (g)
-0 :  0
-1 :  0.013
-2 : -0.013
-3 : -0.002
-4 : -0.001
-5 : -0.006
-6 : -0.010
-7 : -0.004
-8 : -0.007
-9 : -0.012
-```
-The graph looks like this conceptually:
-Vibration (g)
-```text
-  |
-0.02 |        ●
-  |     ●
-  |         ●
-0.00 |●-------------------- Time
-  |        ●
-  |     ●
--0.02|         ●
-```
- 👉 The line goes up and down around zero
- 👉 That up-down motion is machine vibration
- Positive vs Negative (important clarification)
- Positive g → movement in one direction
- Negative g → movement in the opposite direction
-⚠️ Not good or bad — just direction
+- Trend history (120 successful snapshots) and capture history (20 results) are stored in RAM and reset on reboot. Alarm settings persist on the real gateway.
+- Dashboard alarms are disabled until configured. They do not control machinery or the buzzer; choose limits appropriate to the machine.
+- Web and OTA endpoints currently have no authentication. Deploy the gateway on a trusted network.
+- Firmware integrity checks do not provide signature verification or application-health rollback. Actual sensor operation and flash updates still require validation on the target hardware.
 
- Message type :spectrum
- 
-```text
-object
-model: "Wilcoxon 883M"
-serial_number: "24120017"
-timestamp: "2026-01-08T16:07:39Z"
-type: "spectrum_chunk"
-axis: "Y"
-capture_id: "659112"
-chunk_index: 10
-total_chunks: 31
-data: array[145]
-[0 … 9]
-0: 0
-1: 0
-2: 0
-3: 0
-4: 0
-5: 0
-6: 0
-7: 0
-8: 0
-9: 0
-[10 … 19]
-[20 … 29]
-[30 … 39]
-[40 … 49]
-[50 … 59]
-[60 … 69]
-[70 … 79]
-[80 … 89]
-[90 … 99]
-[100 … 109]
-[110 … 119]
-[120 … 129]
-[130 … 139]
-[140 … 144]
-```
-1️⃣ What you are drawing
+## Project layout
 
-This data is from a SPECTRUM (FFT)
+| Location | Contents |
+| --- | --- |
+| `src/config/`, `src/core/` | Pin/register definitions, shared state and monitoring |
+| `src/modbus/` | Sensor RTU communication and TCP register cache |
+| `src/capture/`, `src/mqtt/` | Capture state machine, logs, publishers and commands |
+| `src/web/` | Dashboard, settings pages and HTTP routes |
+| `src/ota/` | Firmware upload and GitHub release installation |
+| `src/hardware/`, `src/tasks/`, `src/utils/` | Hardware helpers, FreeRTOS tasks and utilities |
+| `demo/` | Hardware-free preview and browser checks |
+| `scripts/` | Build configuration helpers |
 
-Index : Value
-0 : 0
-1 : 0
-2 : 0
-3 : 0
-4 : 0
-5 : 0
-6 : 0
-7 : 0
-8 : 0
-9 : 0
+## License
 
-Meaning before drawing
-
-Index → Frequency band (Hz)
-
-Value → Vibration level (g)
-
-2️⃣ How to draw it (basic method – paper / Excel / software)
-Step 1: Draw the AXES
-
-X-axis (horizontal) → Frequency
-
-Y-axis (vertical) → Vibration level (g)
-```text
-Vibration (g)
-  |
-  |
-  |
-  |________________________ Frequency (Hz)
-```
-Step 2: Plot each point
-You plot one point per index:
-
-| Frequency Bin | Vibration (g) |
-|--------------|---------------|
-| 0            | 0             |
-| 1            | 0             |
-| 2            | 0             |
-| 3            | 0             |
-| 4            | 0             |
-| 5            | 0             |
-| 6            | 0             |
-| 7            | 0             |
-| 8            | 0             |
-| 9            | 0             |
-
-👉 All points sit on the zero line
-Step 3: Connect or bar-plot
-Resulting graph looks like this:
-```text
-Vibration (g)
-0.1 |
-0.05|
-0.00|■■■■■■■■■■________________ Frequency
-     0 1 2 3 4 5 6 7 8 9
-
-OR as a flat line:
-
-Vibration (g)
-0.00|——————————————— Frequency
-```
+Released under the [MIT License](LICENSE).
