@@ -164,6 +164,12 @@ The updater requires a stable `vMAJOR.MINOR.PATCH` release, the asset `firmware-
 
 See the [update guide](demo/README.md#github-firmware-installation) for release publishing and validation details. Updates apply to the gateway; they do not update the Wilcoxon sensor firmware.
 
+## Watchdog protection
+
+The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and MQTT chunk publishing. This is intended to recover from a subscribed task that stops servicing the watchdog.
+
+The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](src/tasks/tasks.cpp).
+
 ## Operational notes
 
 - Trend history (120 successful snapshots) and capture history (20 results) are stored in RAM and reset on reboot. Alarm settings persist on the real gateway.

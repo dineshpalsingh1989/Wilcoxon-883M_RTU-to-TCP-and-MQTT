@@ -30,3 +30,12 @@
 - Keep `README.md` focused on setup and integration; detailed guides belong in `docs/`.
 - Store tracked README images in `docs/images/`; label demo screenshots as simulated.
 - Summarize changes, checks performed and any hardware validation still required.
+
+## Specialized review agents
+- Reusable project agents are defined in `.codex/agents/`; see [.codex/agents/README.md](.codex/agents/README.md).
+- `firmware_review`: firmware tasks, captures, monitoring and hardware helpers.
+- `communications_review`: Modbus RTU/TCP and MQTT integration.
+- `web_update_review`: dashboard/settings, HTTP handlers and firmware updates.
+- `esp32_performance_review`: heap, task stacks, scheduling, watchdog coverage and flash/OTA capacity.
+- `validation_review`: failure/recovery verification and separation of simulated tests from hardware evidence.
+- When parallel review is requested, assign these distinct scopes, verify the evidence, and consolidate duplicate findings before reporting. Explicitly assign file ownership before parallel edits.
