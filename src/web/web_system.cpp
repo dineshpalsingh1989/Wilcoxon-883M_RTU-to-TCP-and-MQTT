@@ -18,6 +18,18 @@ button{width:100%;padding:12px;background:#007bff;color:white;border:none;border
 .current-time{text-align:center; font-size:18px; font-weight:bold; color:#007bff; margin-bottom:20px; font-family:monospace;}
 .nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;}
 .note{font-size:12px; color:#666; margin-top:-5px; margin-bottom:10px;}
+
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style></head><body><div class="container"><h2>Time Configuration</h2>
 <div class="current-time">Device Time:<br>)rawliteral" + getTimestamp() + R"rawliteral(</div>
 
@@ -204,6 +216,18 @@ input[type=file] { background: white; padding: 8px; border-radius: 6px; border: 
 .ota-drop-zone { border: 2px dashed #ced4da; border-radius: 8px; padding: 30px; text-align: center; color: #6c757d; cursor: pointer; transition: 0.3s; background: white; }
 .ota-drop-zone.active { border-color: #007bff; background-color: #f1f8ff; color: #007bff; }
 .ota-drop-zone p { margin: 10px 0 0; font-size: 14px; }
+
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style></head><body><div class="container"><h2>Device Diagnostics</h2>
 <div class="info-grid">
 

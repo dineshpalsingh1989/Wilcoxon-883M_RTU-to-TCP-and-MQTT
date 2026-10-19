@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # Wilcoxon 883M Industrial IoT Gateway
 
@@ -71,6 +71,10 @@ The configured environment is `adafruit_feather_esp32s3`, using the Arduino fram
 4. Open the gateway's assigned local IP address to use the dashboard.
 
 ## Hardware and wiring
+
+![ESP32-S3 to RS485 transceiver and Wilcoxon 883M functional wiring](docs/images/wiring.svg)
+
+Follow the [step-by-step wiring and troubleshooting guide](docs/wiring.md) before powering the hardware.
 
 | Component | Purpose |
 | --- | --- |
@@ -166,6 +170,10 @@ See the [update guide](demo/README.md#github-firmware-installation) for release 
 - Dashboard alarms are disabled until configured. They do not control machinery or the buzzer; choose limits appropriate to the machine.
 - Web and OTA endpoints currently have no authentication. Deploy the gateway on a trusted network.
 - Firmware integrity checks do not provide signature verification or application-health rollback. Actual sensor operation and flash updates still require validation on the target hardware.
+
+## Contributing with coding assistants
+
+[AGENTS.md](AGENTS.md) documents the project structure, coding rules and validation commands for coding assistants.
 
 ## Project layout
 

@@ -120,6 +120,33 @@ void handleRoot() {
         @media(max-width:760px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.trans-grid{grid-template-columns:1fr}.header{padding:16px 20px}.time-container{display:none}.main-content{padding:22px 16px}.overview-heading{align-items:flex-start;flex-direction:column}h1{font-size:25px}.actions-panel[style]{flex-wrap:wrap;gap:14px}.footer{flex-direction:column}.summary-card{padding:16px}.summary-value{font-size:28px}.status-grid{gap:8px}.status-box{padding:12px 6px}.status-box .box-label{font-size:13px}.status-box .box-value{font-size:10px}}
         @media(prefers-reduced-motion:reduce){*{transition:none!important}}
         .monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}.monitor-card{background:white;border:1px solid var(--medium-gray);border-radius:12px;padding:20px;min-width:0}.monitor-card h2{font-size:16px;margin:0 0 12px}.monitor-card p{color:#637c8b}.monitor-card canvas{width:100%;height:200px;display:block}.monitor-card label{display:block;margin:10px 0 4px}.monitor-card input{max-width:100%;padding:8px;border:1px solid #cbd8df;border-radius:6px}.monitor-card button{padding:9px 14px;background:#147d78;color:white;border:0;border-radius:6px;cursor:pointer}.monitor-card .legend{font-size:12px;color:#637c8b}.monitor-card table{width:100%;border-collapse:collapse;font-size:12px}.monitor-card td,.monitor-card th{padding:10px 6px;text-align:left;border-bottom:1px solid #e2e9ed}.full-width{grid-column:1/-1}#alarm-state{font-weight:600}.alarm-active{color:#b03f32!important}.health-details{font-variant-numeric:tabular-nums}.monitor-card .history-wrap{overflow:auto}@media(max-width:760px){.monitor-grid{grid-template-columns:1fr}}
+
+        /* Local visual polish: no additional network requests or UI dependencies. */
+        :root{--surface-shadow:0 8px 28px #173c4908}
+        body{background:radial-gradient(ellipse at top left,#e5f1f1 0,transparent 48%),#f2f5f7}
+        .header{background:linear-gradient(115deg,#102c3b,#194655);border-bottom:1px solid #315765}
+        .title-container{border-left:3px solid #5fd1bc;padding-left:14px}
+        .overview-heading{padding:8px 0}.eyebrow{color:#486c7a}
+        .summary-card,.monitor-card,.actions-panel,.trans-card{box-shadow:var(--surface-shadow)}
+        .summary-card{position:relative;overflow:hidden}
+        .summary-label span{display:grid;place-items:center;min-width:28px;height:24px;padding:0 6px;border-radius:7px;background:#eef5f5;color:#426676}
+        .summary-value{margin-top:16px}.summary-note{color:#617783}
+        .tabs{gap:8px;padding:5px;background:#e7eef1;border:1px solid #dbe5ea;border-radius:12px}
+        .tab-button{flex:1;padding:10px 14px;border-radius:8px;border-bottom:0;font-weight:600;color:#4c6776}
+        .tab-button.active{border-bottom:0;background:white;color:#116d67;box-shadow:0 2px 7px #173c4912}
+        .monitor-card h2{letter-spacing:-.25px}.monitor-card small{color:#526d7b}
+        .monitor-card summary{cursor:pointer;padding:10px 0;color:#245367;min-height:44px}
+        .monitor-card input:not([type=checkbox]){width:100%;min-height:42px;background:#f8fbfc;font:inherit;color:var(--text-color)}
+        .monitor-card input[type=checkbox]{width:18px;height:18px;accent-color:#147d78;vertical-align:middle}
+        .monitor-card button{min-height:42px;font:inherit;font-weight:600}.monitor-card button:hover{background:#0d655f}
+        .monitor-card button:disabled{opacity:.6;cursor:wait}
+        input:focus-visible,summary:focus-visible,.table-wrap:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+        .monitor-card .legend{padding-top:10px;border-top:1px solid #edf2f5}
+        .monitor-card.full-width{line-height:1.8}.monitor-card.full-width button{margin:4px 0}
+        #sensor-health{display:inline-block;padding:5px 10px;background:#edf3f6;border-radius:7px}
+        #alarm-state{padding:8px 0;min-height:40px}.alarm-active{border-left:3px solid currentColor;padding-left:10px!important}
+        .status-row{gap:14px}.json-preview{scrollbar-width:thin}
+        @media(max-width:480px){.header{padding:16px;gap:10px}.title{font-size:18px}.header .menu a{padding:8px 10px}.summary-card{padding:14px}.summary-value{font-size:27px}.summary-label{gap:4px}.monitor-card{padding:16px}.tab-button{font-size:12px;padding:10px 6px}.monitor-card.full-width button{display:block;width:100%}}
     </style>
 </head>
 <body>

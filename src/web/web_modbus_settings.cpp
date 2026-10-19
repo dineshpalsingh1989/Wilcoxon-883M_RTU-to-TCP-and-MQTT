@@ -46,7 +46,19 @@ void handleModbusTcpSettings() {
         .bg-blue { background-color: #17a2b8; }
         .axis-header { background-color: #e2e6ea; font-weight: bold; text-align: center; }
         .source-map { font-size: 0.85em; color: #555; margin-top: 5px; line-height: 1.4; border-top: 1px dashed #ccc; padding-top: 4px; }
-    </style>
+
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
 </head>
 <body>
 <div class="container">
