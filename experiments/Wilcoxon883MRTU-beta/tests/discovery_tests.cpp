@@ -32,14 +32,16 @@ struct IdentityIo {
 struct Adapter {
     Settings actual=settings(115200,7,SerialMode::E82),configured;
     bool mismatch=false,wrongModel=false,unsupported=false;
-    unsigned reads=0,writes=0;
+    unsigned reads=0,writes=0;uint32_t identityTimeout=0;
     bool configure(const Settings& s){configured=s;return true;}
     Result readHolding(uint16_t address,uint16_t count,uint16_t* out,size_t capacity,uint32_t){
         assert(address==0&&count==5&&capacity>=5);++reads;
-        out[0]=13;out[1]=8;out[2]=1;out[3]=2;out[4]=mismatch&&reads>1?8:actual.unit;
+        uint16_t code=6;while(baudForCode(code)!=actual.baud)++code;
+        out[0]=code;out[1]=8;out[2]=1;out[3]=2;out[4]=mismatch&&reads>1?8:actual.unit;
         return Result::Ok;
     }
-    Result readIdentity(Identity& out,uint32_t){
+    Result readIdentity(Identity& out,uint32_t timeout){
+        identityTimeout=timeout;
         if(unsupported)return Result::Exception;
         strcpy(out.vendor,"Wilcoxon");strcpy(out.model,wrongModel?"Other":"883M");return Result::Ok;
     }
@@ -95,6 +97,11 @@ int main(){
     adapter.wrongModel=false;adapter.unsupported=true;assert(!probeSensor(adapter,adapter.actual,options,result));
     options.requireIdentity=false;assert(probeSensor(adapter,adapter.actual,options,result)&&!result.identityVerified);
     adapter.unsupported=false;adapter.wrongModel=true;assert(!probeSensor(adapter,adapter.actual,options,result));
+    adapter.wrongModel=false;adapter.actual.baud=1200;
+    assert(probeSensor(adapter,adapter.actual,options,result)&&adapter.identityTimeout>=2645);
+    assert(discoveryTimeout(settings(9600,1,SerialMode::N81),256,250)>=321);
+    assert(discoveryTimeout(settings(115200,1,SerialMode::N81),256,250)==250);
+    puts("PASS low-baud identity response timeouts include maximum frame wire time");
     puts("PASS reported-settings confirmation, parity/stop-bit aliases, wrong-model rejection and explicit legacy fallback");
 
     Probe probe;Discovery<Probe> scanner(probe);options=DiscoveryOptions();options.maxDurationMs=0;

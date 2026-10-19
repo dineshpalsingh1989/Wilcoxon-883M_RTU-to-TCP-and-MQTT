@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-beta.3
+
+- Extend discovery response timeouts for low-baud frame wire time, especially paginated identification at 1200 baud.
+- Add low-baud timeout regression checks; keep discovery read-only and globally time-bounded.
+
 ## 0.1.0-beta.2
 
 - Read-only discovery for non-default baud rate, parity, stop bits and slave ID.

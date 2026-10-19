@@ -1,6 +1,6 @@
 # Wilcoxon883MRTU - beta library
 
-**Version 0.1.0-beta.2. ESP32 + Wilcoxon 883M over RS485 Modbus RTU only.**
+**Version 0.1.0-beta.3. ESP32 + Wilcoxon 883M over RS485 Modbus RTU only.**
 
 This is a standalone Arduino/PlatformIO library, extracted and refined from the separate Modbus lab. It has no TCP, Wi-Fi, MQTT, web dashboard or third-party Modbus dependency. It is not affiliated with or certified by Wilcoxon. The sensor in this repository is the **883M**; support for a different model such as an 833M has not been established.
 
@@ -8,7 +8,7 @@ The production gateway is unchanged. Do not treat this beta as a validated repla
 
 ## Download the beta
 
-[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.2) - download **`Wilcoxon883MRTU-0.1.0-beta.2.zip`** from its Assets section. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
+[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.3) - download **`Wilcoxon883MRTU-0.1.0-beta.3.zip`** from its Assets section. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
 
 **Does it come with my ESP32 upload?**
 
@@ -111,7 +111,7 @@ Based on your supplied **Wilcoxon 883M manual 97052 Rev.A (09/26)**, sections 4.
 3. Reconfigure only the ESP32 UART to the reported settings and read the table again. This avoids reporting a compatible stop-bit probe as the sensor's actual configuration.
 4. Read device identification using function `0x2B`, MEI `0x0E`, basic/regular requests with bounded pagination. By default, require vendor **Wilcoxon** and model **883M** before returning `Found`.
 
-There are **16,302 possible tuples**. The scanner tries common 9600/115200 rates and 8N1 early, first across the first ID's profiles and then across remaining IDs. The default overall budget is **two minutes**, not a guarantee to search every tuple. A complete exhaustive search can take **over an hour**. Silence, slow firmware, wrong wiring, incorrect power or duplicate addresses cannot be solved by scanning. A time-limit result means the search was incomplete, not proof that no sensor exists.
+There are **16,302 possible tuples**. The scanner tries common 9600/115200 rates and 8N1 early, first across the first ID's profiles and then across remaining IDs. The response timeout is extended when needed for the maximum identity frame at the detected baud, including 1200 baud. The default overall budget is **two minutes**, not a guarantee to search every tuple. A complete exhaustive search can take **over an hour**. Silence, slow firmware, wrong wiring, incorrect power or duplicate addresses cannot be solved by scanning. A time-limit result means the search was incomplete, not proof that no sensor exists.
 
 ### Narrow, extend or cancel a search
 
@@ -121,7 +121,7 @@ options.baud = 115200;                 // 0 = all manual-listed rates.
 options.firstUnit = 1;
 options.lastUnit = 16;
 options.mode = Wilcoxon883MRTU::SerialMode::Any;
-options.responseTimeoutMs = 250;       // Valid range: 150..5000 ms per request phase.
+options.responseTimeoutMs = 250;       // Floor: 150..5000 ms; extended for slow-baud response wire time.
 options.maxDurationMs = 120000;        // 0 = allow all finite candidates to be tried.
 options.requireIdentity = true;       // Default: verify Wilcoxon + 883M.
 sensor.startDiscovery(18, 17, 14, options);

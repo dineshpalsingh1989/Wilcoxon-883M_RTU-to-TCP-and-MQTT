@@ -38,6 +38,16 @@ struct DiscoveryProgress {
     uint32_t attempts=0,totalCandidates=0;
     Settings candidate;
 };
+// Allow the response to finish on the wire, even at 1200 baud with two
+// stop bits. Discovery's configured timeout is a floor, not a fixed budget
+// that would incorrectly reject long device-identification frames.
+inline uint32_t discoveryTimeout(const Settings& settings,size_t responseBytes,uint32_t floorMs) {
+    uint32_t bits=characterBits(settings.mode);
+    uint32_t wireMs=(uint32_t(responseBytes)*bits*1000+settings.baud-1)/settings.baud;
+    uint32_t silenceMs=settings.baud>19200?2:(3500*bits+settings.baud-1)/settings.baud;
+    uint32_t required=wireMs+silenceMs+50;
+    return required>floorMs?required:floorMs;
+}
 // Adapter exposes configure(Settings), readHolding(...) and readIdentity(...).
 // Always read settings twice, using the reported format for confirmation. A
 // compatible stop-bit probe is not treated as proof of the actual stop bits.
@@ -45,15 +55,15 @@ template<class Adapter> bool probeSensor(Adapter& port,const Settings& candidate
         const DiscoveryOptions& options,DiscoveryResult& output) {
     if(!port.configure(candidate))return false;
     uint16_t words[5];
-    if(port.readHolding(0,5,words,5,options.responseTimeoutMs)!=Result::Ok)return false;
+    if(port.readHolding(0,5,words,5,discoveryTimeout(candidate,15,options.responseTimeoutMs))!=Result::Ok)return false;
     Settings actual;
     if(!reportedSettings(words,actual) || actual.baud!=candidate.baud || actual.unit!=candidate.unit)return false;
     if(!port.configure(actual))return false;
-    if(port.readHolding(0,5,words,5,options.responseTimeoutMs)!=Result::Ok)return false;
+    if(port.readHolding(0,5,words,5,discoveryTimeout(actual,15,options.responseTimeoutMs))!=Result::Ok)return false;
     Settings confirmed;
     if(!reportedSettings(words,confirmed) || !sameSettings(actual,confirmed))return false;
     Identity identity;
-    Result status=port.readIdentity(identity,options.responseTimeoutMs);
+    Result status=port.readIdentity(identity,discoveryTimeout(actual,256,options.responseTimeoutMs));
     bool verified=status==Result::Ok && is883M(identity);
     if(status==Result::Ok && !verified)return false;
     if(options.requireIdentity && !verified)return false;
