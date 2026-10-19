@@ -1,6 +1,6 @@
 {
   "name": "Wilcoxon883MRTU",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Beta RTU-only ESP32 client for Wilcoxon 883M vibration sensors.",
   "keywords": [
     "modbus",

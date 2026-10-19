@@ -1,6 +1,6 @@
 # Wilcoxon883MRTU - beta library
 
-**Version 0.1.0-beta.1. ESP32 + Wilcoxon 883M over RS485 Modbus RTU only.**
+**Version 0.1.0-beta.2. ESP32 + Wilcoxon 883M over RS485 Modbus RTU only.**
 
 This is a standalone Arduino/PlatformIO library, extracted and refined from the separate Modbus lab. It has no TCP, Wi-Fi, MQTT, web dashboard or third-party Modbus dependency. It is not affiliated with or certified by Wilcoxon. The sensor in this repository is the **883M**; support for a different model such as an 833M has not been established.
 
@@ -8,7 +8,7 @@ The production gateway is unchanged. Do not treat this beta as a validated repla
 
 ## Download the beta
 
-[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.1) - download **`Wilcoxon883MRTU-0.1.0-beta.1.zip`** from its Assets section. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
+[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.2) - download **`Wilcoxon883MRTU-0.1.0-beta.2.zip`** from its Assets section. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
 
 **Does it come with my ESP32 upload?**
 
@@ -60,7 +60,7 @@ Use your actual board GPIOs and a 3.3 V logic-compatible RS485 transceiver. The 
 
 ## Serial settings and sensor helpers
 
-The bundled **883M User Manual Rev.1.0 (2024-12-06)** lists defaults of **9600 baud, 8 data bits, no parity, 1 stop bit, slave ID 1** (section 6, PDF page 14). A sensor already configured for another baud/parity/ID must use matching values. `begin()` changes the ESP32 UART, not sensor settings. Supported UART formats are 8N1, 8N2, 8E1 and 8O1; supported baud rates follow the manual's 1200-921600 list.
+The bundled **883M User Manual Rev.1.0 (2024-12-06)** lists defaults of **9600 baud, 8 data bits, no parity, 1 stop bit, slave ID 1** (section 6, PDF page 14). A sensor already configured for another baud/parity/ID must use matching values. `begin()` changes the ESP32 UART, not sensor settings. Supported UART formats are 8N1, 8N2, 8E1, 8O1, 8E2 and 8O2; supported baud rates follow the manual's 1200-921600 list.
 
 `readMetrics()` reads three groups from function 04, based on section 7 (PDF pages 16-18):
 
@@ -72,6 +72,69 @@ The bundled **883M User Manual Rev.1.0 (2024-12-06)** lists defaults of **9600 b
 
 Indices 0, 1 and 2 correspond to X, Y and Z. The method preserves the caller's previous output if any of the three reads fails. These are sequential sensor reads, not a simultaneous atomic sensor snapshot.
 
+## Plug-and-play discovery for non-default settings
+
+Open **File > Examples > Wilcoxon883MRTU > AutoDiscover**. Connect a single 883M to an isolated RS485 link with the ESP32 as the only master, then upload the example to a bench board. The library searches for the sensor and leaves the ESP32 UART configured for the confirmed settings so measurement reads can follow immediately.
+
+```cpp
+Wilcoxon883MRTU sensor(Serial1);
+
+void setup() {
+    Serial.begin(115200);
+    sensor.startDiscovery(18, 17, 14);
+}
+
+void loop() {
+    auto state = sensor.pollDiscovery();
+    if (state == Wilcoxon883MRTU::DiscoveryState::Found) {
+        const auto& found = sensor.discoveryResult();
+        // found.settings.baud, .unit, .mode: confirmed sensor settings.
+        // found.identity.vendor, .model, .product and .revision: identification.
+        Wilcoxon883MRTU::Metrics metrics;
+        if (sensor.readMetrics(metrics) == Wilcoxon883MRTU::Result::Ok) {
+            Serial.println(metrics.temperatureC);
+        }
+        delay(2000);
+    }
+    delay(1);
+}
+```
+
+`AutoDiscover.ino` also shows progress, timeout handling and cancellation by typing `x` in Serial Monitor. `pollDiscovery()` is cooperative but not instant/nonblocking: it performs one candidate per call, potentially several bounded requests for a responding device. Cancellation and the global time limit are checked between candidate probes; they can overshoot by the duration of the active probe. Give the library one UART/task owner and keep your application watchdog servicing appropriate to those bounded calls.
+
+### What is searched and verified
+
+Based on your supplied **Wilcoxon 883M manual 97052 Rev.A (09/26)**, sections 4.3.1 (page 18) and 4.7 (pages 38-41):
+
+1. Search the eleven manual-listed baud rates, six combinations of None/Even/Odd parity with one/two stop bits, and IDs 1-247. Eight data bits are fixed by the manual.
+2. Read holding registers `0x0000..0x0004` for the reported baud code, data bits, parity, stop bits and slave ID. No sensor setting is written.
+3. Reconfigure only the ESP32 UART to the reported settings and read the table again. This avoids reporting a compatible stop-bit probe as the sensor's actual configuration.
+4. Read device identification using function `0x2B`, MEI `0x0E`, basic/regular requests with bounded pagination. By default, require vendor **Wilcoxon** and model **883M** before returning `Found`.
+
+There are **16,302 possible tuples**. The scanner tries common 9600/115200 rates and 8N1 early, first across the first ID's profiles and then across remaining IDs. The default overall budget is **two minutes**, not a guarantee to search every tuple. A complete exhaustive search can take **over an hour**. Silence, slow firmware, wrong wiring, incorrect power or duplicate addresses cannot be solved by scanning. A time-limit result means the search was incomplete, not proof that no sensor exists.
+
+### Narrow, extend or cancel a search
+
+```cpp
+Wilcoxon883MRTU::DiscoveryOptions options;
+options.baud = 115200;                 // 0 = all manual-listed rates.
+options.firstUnit = 1;
+options.lastUnit = 16;
+options.mode = Wilcoxon883MRTU::SerialMode::Any;
+options.responseTimeoutMs = 250;       // Valid range: 150..5000 ms per request phase.
+options.maxDurationMs = 120000;        // 0 = allow all finite candidates to be tried.
+options.requireIdentity = true;       // Default: verify Wilcoxon + 883M.
+sensor.startDiscovery(18, 17, 14, options);
+// From your loop, between poll calls:
+// sensor.cancelDiscovery();
+```
+
+Progress provides `state`, `attempts`, `totalCandidates` and the last `candidate`. Terminal states are `Found`, `Exhausted`, `TimedOut` and `Cancelled`. Read `discoveryResult()` only after `Found`. During a scan, ordinary reads/writes return `Busy`, and `begin()` returns false. Call `cancelDiscovery()` before manual reconfiguration. After an unsuccessful/cancelled search, the UART may remain on its last attempted settings; the library does not restore or persist previous settings.
+
+Older sensor firmware may not support regular identification/model objects. Set `requireIdentity=false` only if you deliberately want a **settings-confirmed RTU candidate** without model confirmation; inspect `identityVerified` before calling it an 883M. A device explicitly identifying itself as another model is rejected even in this fallback mode. The default never guesses model identity from vibration values alone.
+
+The search emits function 03 and 43 reads only. It does not issue broadcasts, reset the sensor, change its address/baud, or trigger captures. Do not run a search on a live shared bus with another master. Physical RS485 discovery has not been tested on a real sensor yet, so this remains beta rather than guaranteed plug-and-play.
+
 ## Low-level API
 
 | Method | Purpose |
@@ -80,12 +143,14 @@ Indices 0, 1 and 2 correspond to X, Y and Z. The method preserves the caller's p
 | `readHoldingRegisters(address, count, values, capacity, timeoutMs)` | Function 03, 1-125 raw register words |
 | `writeSingleRegister(address, value, timeoutMs)` | Function 06; validates the sensor's echo |
 | `readMetrics(metrics, timeoutPerRequestMs)` | Read and convert acceleration RMS, velocity RMS and temperature |
+| `readIdentity(identity, timeoutMs)` | Read bounded basic/regular device identification |
+| `startDiscovery(...)`, `pollDiscovery()`, `cancelDiscovery()` | Search, advance or cancel read-only discovery |
 | `exceptionCode()` | Sensor exception code when the last result was `Exception` |
 | `resultText(result)` | Human-readable result description |
 
 `values` must point to at least `capacity` words and `capacity` must be at least `count`. Only complete, validated responses update read buffers. Return values distinguish invalid arguments, timeout, malformed frame, CRC failure, sensor exception and transport failure. CRC validation covers the entire received frame, including trailing bytes.
 
-Function 06 can change sensor configuration or trigger captures. The example only reads. Consult section 8 of the manual before writing any register. Identity (43/14), multiple-register writes, automatic retries, complete waveform/spectrum capture workflows and sensor setting management are not included in this beta. Raw reads support at most 125 registers per request; actual sensor limits still need bench verification.
+Function 06 can change sensor configuration or trigger captures. The example only reads. Consult section 8 of the manual before writing any register. Multiple-register writes, automatic retries, complete waveform/spectrum capture workflows and sensor setting management are not included in this beta. Read-only device identity (43/14) and serial discovery are included. Raw reads support at most 125 registers per request; actual sensor limits still need bench verification.
 
 ## Timing and ownership
 
@@ -105,7 +170,7 @@ This runs the actual portable RTU implementation against a simulated transport. 
 
 Covered: known CRC vector, 125-register replies including values after index 63, invalid ranges and capacities, transmit/receive direction order, partial/corrupt/oversized responses, wrong slave, exception replies, response timeout, UART write failure, timer wrap, unsigned vibration scaling, negative temperature and failed snapshot preservation.
 
-The BasicRead example and library are compiled for the configured ESP32-S3 board. No sensor, UART timing, physical fault recovery or long-duration operation has been validated. Keep this at beta until bench tests establish those behaviors.
+BasicRead and AutoDiscover are compiled for the configured ESP32-S3 board. Native discovery tests also cover every candidate exactly once, reported-setting aliases, wrong models, legacy identity fallback, pagination, global deadlines and cancellation. No sensor, UART timing, physical fault recovery or long-duration operation has been validated. Keep this at beta until bench tests establish those behaviors.
 
 Source reference: the [bundled 883M manual](../../883M-User-Manual-Rev.1.0_20241206-EN.pdf). When copying the library out of this repository, obtain that manual separately; repository-relative documentation links will no longer resolve.
 
@@ -116,6 +181,7 @@ License: [MIT](LICENSE).
 ```sh
 python experiments/Wilcoxon883MRTU-beta/tests/run_native.py
 pio run --project-dir experiments/Wilcoxon883MRTU-beta/tests/esp32_compile
+pio run --project-dir experiments/Wilcoxon883MRTU-beta/tests/esp32_discovery
 python experiments/Wilcoxon883MRTU-beta/tests/package_library.py --output .tools/artifacts
 ```
 

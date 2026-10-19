@@ -19,9 +19,9 @@ Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor
 
 ## Beta RTU library for ESP32 users
 
-A separate **Wilcoxon883MRTU 0.1.0-beta.1** library is available for testing direct ESP32-to-883M RS485 communication:
+A separate **Wilcoxon883MRTU 0.1.0-beta.2** library is available for testing direct ESP32-to-883M RS485 communication, including read-only discovery when serial settings are unknown:
 
-- [Download the beta library ZIP](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.1).
+- [Download the beta library ZIP](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.2).
 - [Installation, example and beta limitations](experiments/Wilcoxon883MRTU-beta/README.md).
 
 **The gateway firmware does not use this beta automatically.** Installing the ZIP only makes the library available in your IDE. It becomes part of an ESP32 application when you compile a sketch that includes and uses it, such as BasicRead. Uploading that example replaces the application on the selected board. This is a source-only library pre-release, not a gateway OTA firmware update.

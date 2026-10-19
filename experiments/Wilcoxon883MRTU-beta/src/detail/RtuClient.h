@@ -1,5 +1,6 @@
 #pragma once
 #include "RtuProtocol.h"
+#include "Identity.h"
 
 namespace wilcoxon883m {
 // Transport is owned by the caller; a client has exactly one task/owner.
@@ -20,13 +21,11 @@ public:
     }
     void reset() { configured_ = false; exception_ = 0; }
     uint8_t exceptionCode() const { return exception_; }
-    Result transact(uint8_t fn, uint16_t address, uint16_t value,
-                    uint16_t* output, size_t capacity, uint32_t timeoutMs) {
-        exception_ = 0;
-        if (!configured_ || !timeoutMs || timeoutMs > 60000 ||
-            (fn != 6 && (!output || capacity < value))) return Result::InvalidArgument;
-        uint8_t request[8], response[256];
-        if (!requestRtu(unit_, fn, address, value, request, sizeof(request))) return Result::InvalidArgument;
+    Result exchange(const uint8_t* request,size_t requestSize,uint8_t* response,
+                    size_t responseCapacity,size_t& responseSize,uint32_t timeoutMs) {
+        exception_=0;responseSize=0;
+        if(!configured_ || !request || !response || !requestSize || requestSize>256 ||
+           responseCapacity<5 || !timeoutMs || timeoutMs>60000)return Result::InvalidArgument;
         uint32_t start = port_.ms(), lastByte = port_.us();
         // Drain old input and require a complete silent interval, bounded even
         // on a noisy bus. Timeout arithmetic remains safe across timer wrap.
@@ -39,24 +38,56 @@ public:
             port_.idle();
         }
         port_.tx(true);
-        size_t sent = port_.write(request, sizeof(request));
+        size_t sent = port_.write(request, requestSize);
         port_.flush(); // Must finish transmitting before releasing DE.
         port_.tx(false);
-        if (sent != sizeof(request)) return Result::Transport;
+        if (sent != requestSize) return Result::Transport;
         start = port_.ms(); lastByte = port_.us(); size_t used = 0;
         while (uint32_t(port_.ms() - start) < timeoutMs) {
             if (port_.available()) {
                 int byte = port_.read();
                 if (byte < 0) continue;
-                if (used == sizeof(response)) return Result::Frame;
+                if (used == responseCapacity) return Result::Frame;
                 response[used++] = uint8_t(byte); lastByte = port_.us();
             } else {
-                if (used && uint32_t(port_.us() - lastByte) >= silenceUs_)
-                    return decodeRtu(response, used, unit_, fn, address, value, output, capacity, exception_);
+                if (used && uint32_t(port_.us() - lastByte) >= silenceUs_) {
+                    responseSize=used;
+                    return Result::Ok;
+                }
                 port_.idle();
             }
         }
         return Result::Timeout;
+    }
+    Result transact(uint8_t fn,uint16_t address,uint16_t value,uint16_t* output,
+                    size_t capacity,uint32_t timeoutMs) {
+        exception_=0;
+        if(!configured_ || (fn!=6 && (!output || capacity<value)))return Result::InvalidArgument;
+        uint8_t request[8],response[256];size_t size=0;
+        if(!requestRtu(unit_,fn,address,value,request,sizeof(request)))return Result::InvalidArgument;
+        Result status=exchange(request,sizeof(request),response,sizeof(response),size,timeoutMs);
+        if(status!=Result::Ok)return status;
+        return decodeRtu(response,size,unit_,fn,address,value,output,capacity,exception_);
+    }
+    Result readIdentity(Identity& output,uint32_t timeoutMs=2000) {
+        Identity next;
+        for(uint8_t code=1;code<=2;++code){
+            uint8_t first=code==1?0:3;bool finished=false;
+            for(unsigned page=0;page<8;++page){
+                uint8_t request[7],response[256];size_t size=0;
+                identityRequest(unit_,code,first,request);
+                Result status=exchange(request,sizeof(request),response,sizeof(response),size,timeoutMs);
+                if(status!=Result::Ok)return status;
+                IdentityPage part;
+                status=parseIdentity(response,size,unit_,code,first,next,part,exception_);
+                if(status!=Result::Ok)return status;
+                if(!part.more){finished=true;break;}
+                first=part.next;
+            }
+            if(!finished)return Result::Frame;
+        }
+        if(!next.vendor[0] || !next.model[0])return Result::Frame;
+        output=next;return Result::Ok;
     }
     Result readInput(uint16_t address, uint16_t count, uint16_t* out, size_t capacity, uint32_t timeout = 2000) {
         return transact(4, address, count, out, capacity, timeout);

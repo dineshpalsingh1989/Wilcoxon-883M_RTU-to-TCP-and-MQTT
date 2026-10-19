@@ -19,7 +19,9 @@ jobs:
       - name: Install PlatformIO
         run: pip install platformio==6.1.18
       - name: Compile RTU-only ESP32 example
-        run: pio run --project-dir experiments/Wilcoxon883MRTU-beta/tests/esp32_compile
+        run: |
+          pio run --project-dir experiments/Wilcoxon883MRTU-beta/tests/esp32_compile
+          pio run --project-dir experiments/Wilcoxon883MRTU-beta/tests/esp32_discovery
       - name: Package beta source library
         env:
           RELEASE_TAG: ${{ github.ref_name }}

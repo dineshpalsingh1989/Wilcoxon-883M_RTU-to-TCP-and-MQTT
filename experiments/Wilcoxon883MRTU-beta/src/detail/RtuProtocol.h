@@ -34,7 +34,7 @@ inline size_t requestRtu(uint8_t unit, uint8_t function, uint16_t address,
     uint16_t crc = crc16(out, 6); out[6] = crc & 255; out[7] = crc >> 8;
     return 8;
 }
-enum class Result { Ok, InvalidArgument, Timeout, Frame, Crc, Exception, Transport };
+enum class Result { Ok, InvalidArgument, Timeout, Frame, Crc, Exception, Transport, Busy };
 // Validate the entire response before modifying the caller's output.
 inline Result decodeRtu(const uint8_t* frame, size_t size, uint8_t unit,
                         uint8_t function, uint16_t address, uint16_t value,

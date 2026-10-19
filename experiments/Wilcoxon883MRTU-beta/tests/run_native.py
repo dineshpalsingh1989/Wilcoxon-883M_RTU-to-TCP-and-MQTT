@@ -20,8 +20,8 @@ else:
     raise SystemExit('Install a native C++ compiler and set CXX to its executable path.')
 extra = ['-nostdlib++', '-fno-exceptions', '-fno-rtti', '-DOWNMODBUS_NO_CXX_RUNTIME'] if 'zig' in Path(compiler[0]).name else []
 with tempfile.TemporaryDirectory(prefix='own-modbus-') as directory:
-    executable = Path(directory) / ('core_tests.exe' if os.name == 'nt' else 'core_tests')
-    subprocess.run(compiler + extra + ['-std=c++11', '-Wall', '-Wextra', '-Werror',
-                   '-I' + str(lab / 'src'), str(lab / 'tests/rtu_tests.cpp'),
-                   '-o', str(executable)], check=True)
-    subprocess.run([str(executable)], check=True)
+    for source in sorted((lab / 'tests').glob('*_tests.cpp')):
+        executable = Path(directory) / (source.stem + ('.exe' if os.name == 'nt' else ''))
+        subprocess.run(compiler + extra + ['-std=c++11', '-Wall', '-Wextra', '-Werror',
+                       '-I' + str(lab / 'src'), str(source), '-o', str(executable)], check=True)
+        subprocess.run([str(executable)], check=True)
