@@ -25,9 +25,15 @@ jobs:
           python-version: '3.12'
       - run: pip install platformio==6.1.18 certifi
       - run: pio run -e adafruit_feather_esp32s3
-      - name: Prepare board binary
-        run: cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+      - name: Bundle browser installer images
+        run: pio run -e adafruit_feather_esp32s3 -t webinstaller
+      - name: Prepare board binaries
+        run: |
+          cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+          (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
-          path: firmware-adafruit_feather_esp32s3.bin
+          path: |
+            firmware-adafruit_feather_esp32s3.bin
+            web-installer-adafruit_feather_esp32s3.zip

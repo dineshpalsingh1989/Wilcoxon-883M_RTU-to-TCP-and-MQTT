@@ -8,7 +8,7 @@ The gateway firmware in this repository is built with this library (beta, starti
 
 ## Download the beta
 
-[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.3) - download **`Wilcoxon883MRTU-0.1.0-beta.3.zip`** from its Assets section. That published release is RTU only; the TCP server arrives with the beta.4 release. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
+[GitHub beta pre-release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.4) - download **`Wilcoxon883MRTU-0.1.0-beta.4.zip`** from its Assets section; it includes both the RTU client and the TCP server. `SHA256SUMS.txt` beside it holds the ZIP's checksum. GitHub's automatic source-code ZIP contains the whole repository; use the named library ZIP for Arduino installation.
 
 **Does it come with my ESP32 upload?**
 
