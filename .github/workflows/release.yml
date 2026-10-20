@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,7 +15,7 @@ jobs:
       - run: node demo/smoke_test.js
   firmware:
     needs: tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,15 +23,21 @@ jobs:
           python-version: '3.12'
       - run: pip install platformio==6.1.18 certifi
       - run: pio run -e adafruit_feather_esp32s3
-      - name: Prepare board binary
-        run: cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+      - name: Bundle browser installer images
+        run: pio run -e adafruit_feather_esp32s3 -t webinstaller
+      - name: Prepare board binaries
+        run: |
+          cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+          (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
-          path: firmware-adafruit_feather_esp32s3.bin
+          path: |
+            firmware-adafruit_feather_esp32s3.bin
+            web-installer-adafruit_feather_esp32s3.zip
   release:
     needs: firmware
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -52,10 +58,18 @@ jobs:
             flags=()
           fi
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes "${flags[@]}"
-          gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin --clobber
+          gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin \
+            web-installer-adafruit_feather_esp32s3.zip --clobber
+  installer:
+    needs: release
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/installer-pages.yml
   package:
     needs: firmware
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write

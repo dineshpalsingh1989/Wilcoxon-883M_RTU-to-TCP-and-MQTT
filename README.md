@@ -61,6 +61,15 @@ The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883M
 
 ## Quick start
 
+### Install from your browser (easiest)
+
+Open the **[web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)** in Chrome or Edge on a computer, plug the Feather ESP32-S3 in over USB-C and click **Install**. No PlatformIO or drivers are needed. Then follow [Connect to Wi-Fi](#connect-to-wi-fi) below. See the [installation guide](docs/installing-firmware.md) for download mode, manual flashing and troubleshooting.
+
+| Download | For | Where |
+| --- | --- | --- |
+| Gateway firmware | Installing or updating the ESP32 gateway | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `firmware-adafruit_feather_esp32s3.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
+| Wilcoxon883MRTU library | Using the Modbus RTU/TCP library in your own sketch | `Wilcoxon883MRTU-<version>.zip` on the newest `wilcoxon883mrtu-v*` [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases); in Arduino IDE use **Sketch > Include Library > Add .ZIP Library** |
+
 ### Try it without hardware
 
 Install Node.js, then run:
@@ -226,7 +235,8 @@ The web task is not explicitly subscribed, and initialization/subscription retur
 | `src/ota/` | Firmware upload and GitHub release installation |
 | `src/hardware/`, `src/tasks/`, `src/utils/` | Hardware helpers, FreeRTOS tasks and utilities |
 | `demo/` | Hardware-free preview and browser checks |
-| `scripts/` | Build configuration helpers |
+| `installer/` | Browser installer page published to GitHub Pages |
+| `scripts/` | Build configuration, web installer bundle and site helpers |
 
 ## License
 

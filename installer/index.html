@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wilcoxon 883M Gateway Installer</title>
+<meta name="description" content="Install the Wilcoxon 883M gateway firmware on an Adafruit Feather ESP32-S3 from your browser.">
+<script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+<style>
+:root {
+  --bg: #f5f7fa; --card: #ffffff; --text: #1b2430; --muted: #5b6675; --line: #dde3ea;
+  --accent: #0b6bcb; --accent-text: #ffffff; --warn-bg: #fff6e0; --warn-line: #e8c46a;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11161d; --card: #1a212b; --text: #e6ebf1; --muted: #9aa6b4; --line: #2c3644;
+    --accent: #4da3ff; --accent-text: #0b1520; --warn-bg: #2b2414; --warn-line: #7a6326;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 32px 16px 48px; }
+h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 6px; }
+h2 { font-size: 1.15rem; margin: 32px 0 10px; }
+p.lead { color: var(--muted); margin: 0 0 24px; }
+a { color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin: 12px 0; }
+.channel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.channel h3 { margin: 0; font-size: 1.05rem; }
+.channel p { margin: 2px 0 0; color: var(--muted); font-size: .93rem; }
+.badge { display: inline-block; font-size: .75rem; font-weight: 600; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); margin-left: 6px; vertical-align: 2px; }
+.badge.beta { background: var(--warn-bg); border-color: var(--warn-line); }
+button.install { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
+button.install:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.notice { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 10px 14px; font-size: .93rem; }
+ol { padding-left: 22px; } li { margin: 6px 0; }
+code { font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Wilcoxon 883M Gateway Installer</h1>
+  <p class="lead">Install the gateway firmware on an <strong>Adafruit Feather ESP32-S3</strong> straight from this page. No software to install.</p>
+
+  <h2>1. Before you start</h2>
+  <ol>
+    <li>Use <strong>Chrome or Edge on a computer</strong> (Windows, macOS, Linux or ChromeOS). Phones and Firefox/Safari cannot flash over USB.</li>
+    <li>Connect the Feather to the computer with a <strong>USB-C data cable</strong>. Charge-only cables will not show a port.</li>
+  </ol>
+
+  <h2>2. Install</h2>
+  <div id="channels"><div class="card">Loading available versions…</div></div>
+  <p class="notice"><strong>Board not listed in the port window?</strong> Put it into download mode: hold <strong>BOOT</strong>, tap <strong>RESET</strong>, release <strong>BOOT</strong>, then click Install again. After installing, press <strong>RESET</strong> once to start the new firmware.</p>
+
+  <h2>3. First-time setup</h2>
+  <ol>
+    <li>On your phone or laptop, join the Wi-Fi network <code>ILA_Sensor_AP</code> (password <code>12345678</code>).</li>
+    <li>Open <a href="http://192.168.4.1">http://192.168.4.1</a>.</li>
+    <li>Go to <strong>Settings &gt; Wi-Fi</strong>, save your network, then open the gateway at its new local IP address.</li>
+    <li>Wire the RS485 module and sensor as shown in the <a id="wiring" href="#">wiring guide</a>.</li>
+  </ol>
+  <p>Already installed? Later updates can be done from the gateway itself under <strong>Settings &gt; GitHub Firmware Updates</strong>, which keeps your settings.</p>
+
+  <footer>
+    Choosing <em>Erase device</em> during install clears saved Wi-Fi, MQTT and alarm settings. Leave it unticked to keep them.
+    <br>Source, release notes and manual install files: <a id="repo" href="#">GitHub repository</a>.
+  </footer>
+</main>
+<script>
+(async () => {
+  const box = document.getElementById("channels");
+  try {
+    const data = await (await fetch("channels.json", { cache: "no-store" })).json();
+    for (const id of ["repo", "wiring"]) {
+      document.getElementById(id).href = data.repo + (id === "wiring" ? "/blob/main/docs/wiring.md" : "");
+    }
+    if (!data.channels.length) {
+      box.innerHTML = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
+      return;
+    }
+    box.textContent = "";
+    for (const c of data.channels) {
+      const beta = c.channel === "beta";
+      const card = document.createElement("div");
+      card.className = "card channel";
+      card.innerHTML =
+        '<div><h3></h3><p></p></div>' +
+        '<esp-web-install-button>' +
+        '<button slot="activate" class="install">Install</button>' +
+        '<span slot="unsupported">This browser cannot flash over USB. Use Chrome or Edge on a computer.</span>' +
+        '<span slot="not-allowed">Open this page over HTTPS to install.</span>' +
+        '</esp-web-install-button>';
+      const title = card.querySelector("h3");
+      title.textContent = c.tag;
+      const badge = document.createElement("span");
+      badge.className = "badge" + (beta ? " beta" : "");
+      badge.textContent = beta ? "Beta" : "Stable";
+      title.append(badge);
+      const note = card.querySelector("p");
+      note.textContent = beta ? "Pre-release for testing. Not recommended for production machines. " : "Recommended for most users. ";
+      const link = document.createElement("a");
+      link.href = c.notes;
+      link.textContent = "Release notes";
+      note.append(link);
+      card.querySelector("esp-web-install-button").setAttribute("manifest", c.manifest);
+      card.querySelector("button").setAttribute("aria-label", "Install " + c.tag);
+      box.append(card);
+    }
+  } catch (err) {
+    box.innerHTML = '<div class="card">Could not load the release list. Refresh the page, or download firmware from the GitHub releases page.</div>';
+  }
+})();
+</script>
+</body>
+</html>
