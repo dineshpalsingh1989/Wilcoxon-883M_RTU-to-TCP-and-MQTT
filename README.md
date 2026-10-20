@@ -9,7 +9,9 @@
 [![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[Install](#install-in-4-steps) · [Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
+[![Install on your ESP32 from the browser](https://img.shields.io/badge/Install%20on%20your%20ESP32-from%20the%20browser-0b6bcb?style=for-the-badge)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+
+[Install](#install-on-your-esp32-in-4-steps) · [Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
 
 </div>
 
@@ -17,9 +19,18 @@
 
 Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
-## Install in 4 steps
+## Install on your ESP32 in 4 steps
 
-No PlatformIO, Arduino IDE or libraries needed: the firmware already contains everything, including the Wilcoxon883MRTU Modbus RTU/TCP library. You need an **Adafruit Feather ESP32-S3**, a **USB-C data cable** and **Chrome or Edge on a computer**.
+**You can put this gateway on your own ESP32 board straight from your browser.** No PlatformIO, Arduino IDE or library downloads: the firmware already contains everything, including the Wilcoxon883MRTU Modbus RTU/TCP library.
+
+| You need | |
+| --- | --- |
+| ESP32 board | **Adafruit Feather ESP32-S3** (the board this firmware is built and pinned for) |
+| Cable | USB-C **data** cable |
+| Computer | Chrome or Edge on Windows, macOS, Linux or ChromeOS |
+| Sensor wiring (afterwards) | RS485-to-TTL module and Wilcoxon 883M, see [Hardware and wiring](#hardware-and-wiring) |
+
+> **Other ESP32 boards:** the installer only offers the Feather ESP32-S3 build. Other ESP32-S3 boards use different pins, flash layouts and USB setups, so the image may not start or may drive the wrong pins. Build from source for another board after checking [`src/config/config.h`](src/config/config.h) against your wiring.
 
 <p align="center"><a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/"><strong>➜ Open the web installer</strong></a></p>
 
@@ -89,7 +100,7 @@ The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883M
 
 ### Downloads
 
-Most users only need the [web installer](#install-in-4-steps).
+Most users only need the [web installer](#install-on-your-esp32-in-4-steps).
 
 | Download | For | Where |
 | --- | --- | --- |
