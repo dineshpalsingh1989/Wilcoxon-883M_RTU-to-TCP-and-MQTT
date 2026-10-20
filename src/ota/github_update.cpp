@@ -3,7 +3,15 @@
 #include <esp_ota_ops.h>
 #include <esp_app_format.h>
 #include <mbedtls/sha256.h>
+#include <mbedtls/version.h>
 #include "generated/github_roots.h"
+
+// mbedTLS 3 (espressif32 >= 8.0.0) dropped the *_ret SHA-256 names; the plain names now return int.
+#if MBEDTLS_VERSION_MAJOR >= 3
+#define mbedtls_sha256_starts_ret mbedtls_sha256_starts
+#define mbedtls_sha256_update_ret mbedtls_sha256_update
+#define mbedtls_sha256_finish_ret mbedtls_sha256_finish
+#endif
 
 namespace {
 const char* REPO = "dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT";
