@@ -49,3 +49,11 @@ include/generated/
 
 # Local agent handoffs and consolidated reports
 .agent-reports/
+
+# Local coding-agent definitions and guides (kept off GitHub)
+.claude/
+.codex/
+AGENTS.md
+docs/agent-coordination.md
+docs/agent-report-template.md
+scripts/agent_bridge.js

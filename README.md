@@ -214,10 +214,6 @@ The web task is not explicitly subscribed, and initialization/subscription retur
 - Web and OTA endpoints currently have no authentication. Deploy the gateway on a trusted network.
 - Firmware integrity checks do not provide signature verification or application-health rollback. Actual sensor operation and flash updates still require validation on the target hardware.
 
-## Contributing with coding assistants
-
-[AGENTS.md](AGENTS.md) documents the project structure, coding rules and validation commands for coding assistants.
-
 ## Project layout
 
 | Location | Contents |
