@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <HardwareSerial.h>
+#include "Wilcoxon883MVersion.h"
 #include "detail/RtuClient.h"
 #include "detail/Discovery.h"
 

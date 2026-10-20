@@ -3,15 +3,18 @@
 namespace wilcoxon883m {
 struct Identity {
     char vendor[32] = {}, product[40] = {}, revision[24] = {}, model[24] = {};
+    // Optional regular objects 3 and 4; longer values are truncated.
+    char vendorUrl[64] = {}, productName[40] = {};
 };
 struct IdentityPage { bool more = false; uint8_t next = 0; };
 inline size_t identityRequest(uint8_t unit, uint8_t code, uint8_t first, uint8_t* out) {
     out[0]=unit;out[1]=0x2b;out[2]=0x0e;out[3]=code;out[4]=first;
     uint16_t crc=crc16(out,5);out[5]=uint8_t(crc);out[6]=uint8_t(crc>>8);return 7;
 }
-inline bool identityString(char* out,size_t capacity,const uint8_t* value,size_t count) {
-    if (!count || count >= capacity) return false;
+inline bool identityString(char* out,size_t capacity,const uint8_t* value,size_t count,bool truncate=false) {
+    if (!count || (count >= capacity && !truncate)) return false;
     for(size_t i=0;i<count;++i)if(value[i]<32 || value[i]>126)return false;
+    if (count >= capacity) count = capacity - 1;
     memcpy(out,value,count);out[count]=0;return true;
 }
 inline Result parseIdentity(const uint8_t* frame,size_t size,uint8_t unit,uint8_t code,
@@ -33,6 +36,8 @@ inline Result parseIdentity(const uint8_t* frame,size_t size,uint8_t unit,uint8_
             case 0:ok=identityString(identity.vendor,sizeof(identity.vendor),frame+cursor,length);break;
             case 1:ok=identityString(identity.product,sizeof(identity.product),frame+cursor,length);break;
             case 2:ok=identityString(identity.revision,sizeof(identity.revision),frame+cursor,length);break;
+            case 3:ok=identityString(identity.vendorUrl,sizeof(identity.vendorUrl),frame+cursor,length,true);break;
+            case 4:ok=identityString(identity.productName,sizeof(identity.productName),frame+cursor,length,true);break;
             case 5:ok=identityString(identity.model,sizeof(identity.model),frame+cursor,length);break;
             default:break;
         }

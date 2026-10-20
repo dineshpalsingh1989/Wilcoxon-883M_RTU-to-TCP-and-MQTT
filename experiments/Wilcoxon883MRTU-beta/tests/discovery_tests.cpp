@@ -72,11 +72,18 @@ int main(){
     assert(parseIdentity(frame,n,1,2,3,identity,page,exception)==Result::Frame);
     n=identityFrame(frame,2,5,"883M");frame[10]=0;seal(frame,n);
     assert(parseIdentity(frame,n,1,2,3,identity,page,exception)==Result::Frame);
-    puts("PASS manual identity request vector, CRC, bounded objects, text and pagination validation");
+    const char* longName="883M triaxial vibration and temperature sensor, Modbus RTU";
+    n=identityFrame(frame,2,4,longName);
+    assert(parseIdentity(frame,n,1,2,3,identity,page,exception)==Result::Ok);
+    assert(strlen(identity.productName)==sizeof(identity.productName)-1&&!strncmp(identity.productName,longName,39));
+    n=identityFrame(frame,1,1,"0123456789012345678901234567890123456789");
+    assert(parseIdentity(frame,n,1,1,0,identity,page,exception)==Result::Frame); // Required fields stay strict.
+    puts("PASS manual identity request vector, CRC, bounded objects, text, pagination and optional-object truncation");
 
     IdentityIo io;Client<IdentityIo> client(io);assert(client.configure(9600,1,10));
     assert(client.readIdentity(identity,100)==Result::Ok&&is883M(identity));
     io.paginate=true;assert(client.readIdentity(identity,100)==Result::Ok&&is883M(identity));
+    assert(!strcmp(identity.vendorUrl,"www.wilcoxon.com"));
     Identity saved=identity;io.unsupported=true;
     assert(client.readIdentity(identity,100)==Result::Exception&&client.exceptionCode()==1);
     assert(!strcmp(identity.model,saved.model));io.unsupported=false;io.badCrc=true;

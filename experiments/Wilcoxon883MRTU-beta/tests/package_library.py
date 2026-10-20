@@ -1,4 +1,4 @@
-"""Create the RTU-only Arduino library ZIP and checksum from an allowlist."""
+"""Create the Arduino library ZIP and checksum from an allowlist."""
 import argparse
 import hashlib
 import json
@@ -21,6 +21,9 @@ def main():
         parser.error('The library release must have an explicit beta version')
     if properties.get('version') != version or properties.get('name') != manifest['name']:
         parser.error('Arduino and PlatformIO manifests disagree')
+    header = (root / 'src' / 'Wilcoxon883MVersion.h').read_text(encoding='utf-8')
+    if '#define WILCOXON883M_LIBRARY_VERSION "' + version + '"' not in header:
+        parser.error('src/Wilcoxon883MVersion.h does not match the manifest version')
     if args.tag and args.tag != 'wilcoxon883mrtu-v' + version:
         parser.error('Release tag does not match the beta library version')
     args.output.mkdir(parents=True, exist_ok=True)
