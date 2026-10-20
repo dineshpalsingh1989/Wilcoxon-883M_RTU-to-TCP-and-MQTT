@@ -73,7 +73,7 @@ void handleLongReads() {
                     if(local_requestedAxis == AXIS_X) statusVal = 2;
                     else if(local_requestedAxis == AXIS_Y) statusVal = 3;
                     else if(local_requestedAxis == AXIS_Z) statusVal = 4;
-                    modbusTCPServer.Hreg(HREG_WAVEFORM_READY_STATUS, statusVal);
+                    setModbusTCPRegister(HREG_WAVEFORM_READY_STATUS, statusVal);
                 }
                 
                 snprintf(systemStatus, sizeof(systemStatus), "Waveform (%c) Done. Reading Spectrum...", axisChar);
@@ -119,7 +119,7 @@ void handleLongReads() {
                     if(local_requestedAxis == AXIS_X) statusVal = 2;
                     else if(local_requestedAxis == AXIS_Y) statusVal = 3;
                     else if(local_requestedAxis == AXIS_Z) statusVal = 4;
-                    modbusTCPServer.Hreg(HREG_SPECTRUM_READY_STATUS, statusVal);
+                    setModbusTCPRegister(HREG_SPECTRUM_READY_STATUS, statusVal);
                 }
 
                 strncpy(lastCaptureTimestamp, ts.c_str(), sizeof(lastCaptureTimestamp) - 1);

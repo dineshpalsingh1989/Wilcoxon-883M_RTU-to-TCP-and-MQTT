@@ -13,6 +13,9 @@ const values = {
   d_url: 'https://wilcoxon.com', d_fw: 'Demo sensor', lastResetReason: 'Demo startup',
   ipAddr: '127.0.0.1', ipAddress: '127.0.0.1', rssiVal: '-55 dBm', uptime: 'Demo session',
   FIRMWARE_VERSION: '4.8.0', localLog: 'Demo mode: no hardware connected.',
+  // Read from the library so the demo shows the version the firmware is built with.
+  WILCOXON883M_LIBRARY_VERSION: fs.readFileSync(path.join(__dirname, '../experiments/Wilcoxon883MRTU-beta/src/Wilcoxon883MVersion.h'), 'utf8')
+    .match(/WILCOXON883M_LIBRARY_VERSION "([^"]+)"/)[1],
 };
 function expression(text) {
   let key = text.trim();

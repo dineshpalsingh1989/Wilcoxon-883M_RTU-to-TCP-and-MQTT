@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="t d">
+<title id="t">Gateway data flow with the Wilcoxon883MRTU library</title>
+<desc id="d">The 883M sensor is read over RS485 Modbus RTU by the Wilcoxon883MRTU client. Readings are stored in gateway memory protected by a mutex. The Wilcoxon883MTCP server answers PLCs from that memory, while the web dashboard and MQTT publisher read the same data.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#16364a"/></linearGradient><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#38bdf8"/></marker></defs>
+<rect width="1200" height="560" rx="20" fill="url(#bg)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+<text x="48" y="56" fill="#38bdf8" font-size="15" letter-spacing="3">GATEWAY DATA FLOW · BETA</text>
+<text x="48" y="98" fill="#f8fafc" font-size="30" font-weight="700">One library in, one library out</text>
+<text x="48" y="128" fill="#a9c2d7" font-size="16">PLC requests are answered from gateway memory, never by waiting for RS485.</text>
+<g fill="#16283e" stroke="#35516b" stroke-width="2">
+<rect x="48" y="200" width="190" height="130" rx="14"/>
+<rect x="300" y="160" width="560" height="250" rx="16" stroke="#38bdf8" stroke-dasharray="6 6"/>
+<rect x="930" y="160" width="222" height="70" rx="12"/><rect x="930" y="250" width="222" height="70" rx="12"/><rect x="930" y="340" width="222" height="70" rx="12"/>
+</g>
+<g fill="#0e3a52" stroke="#38bdf8" stroke-width="2"><rect x="316" y="216" width="180" height="96" rx="12"/><rect x="684" y="216" width="164" height="96" rx="12"/></g>
+<rect x="510" y="216" width="160" height="96" rx="12" fill="#1f2f45" stroke="#7dd3fc" stroke-width="2"/>
+<g fill="#f8fafc" font-weight="600"><text x="72" y="244" font-size="21">Wilcoxon 883M</text><text x="324" y="190" font-size="18">ESP32-S3 gateway firmware</text>
+<text x="330" y="250" font-size="16">Wilcoxon883MRTU</text><text x="524" y="250" font-size="16">Gateway memory</text><text x="698" y="250" font-size="16">Wilcoxon883MTCP</text>
+<text x="950" y="192" font-size="18">PLC / SCADA</text><text x="950" y="282" font-size="18">Web dashboard</text><text x="950" y="372" font-size="18">MQTT broker</text></g>
+<g fill="#a9c2d7" font-size="14"><text x="72" y="272">X / Y / Z vibration</text><text x="72" y="294">Temperature</text><text x="72" y="316">Waveform · spectrum</text>
+<text x="330" y="274">RTU client</text><text x="330" y="296">CRC · timeouts · identity</text>
+<text x="524" y="274">Metrics + captures</text><text x="524" y="296">dataMutex protected</text>
+<text x="698" y="274">TCP server, port 502</text><text x="698" y="296">up to 8 clients</text>
+<text x="950" y="214">Modbus TCP (FC 03/04/06/16)</text><text x="950" y="304">HTTP, same Wi-Fi</text><text x="950" y="394">Topics 883M, 883M/status</text>
+<text x="324" y="390">experiments/Wilcoxon883MRTU-beta · RS485 on GPIO 18 RX · 17 TX · 14 DE/RE</text></g>
+<g fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#a)"><path d="M238 264 H318"/><path d="M496 264 H504"/><path d="M670 264 H678"/><path d="M848 264 H880 V195 H924"/><path d="M590 312 V340 H880 V285 H924"/><path d="M880 340 V375 H924"/></g>
+<text x="250" y="254" fill="#7dd3fc" font-size="13">RS485</text>
+<g font-size="14"><text x="48" y="456" fill="#f8fafc" font-weight="600">PLC holding registers (unchanged map)</text>
+<g fill="#a9c2d7"><text x="48" y="482">0–17 X · 20–37 Y · 40–57 Z metrics</text><text x="330" y="482">60 temperature ×10</text><text x="510" y="482">90 / 91 waveform / spectrum ready</text><text x="790" y="482">1000–14333 waveform</text><text x="980" y="482">20000–26144 spectrum</text></g>
+<text x="48" y="524" fill="#7dd3fc" font-size="13">Waveform and spectrum registers are copied when a capture completes, so a PLC never reads a half-downloaded buffer.</text></g>
+</g></svg>

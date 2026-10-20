@@ -30,7 +30,7 @@ void recordMetricsHealth(bool success, uint8_t error) {
     readCount++;
     if (!success) {
         failures++; consecutive++; lastError = error;
-        if (error == ModbusMaster::ku8MBResponseTimedOut) timeouts++;
+        if (error == RTU_ERROR_TIMEOUT) timeouts++;
         // A communication gap must not count toward a sustained alarm.
         alarmPending = false; alarmActive = false;
         return;

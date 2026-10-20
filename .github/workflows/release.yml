@@ -44,7 +44,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
-          gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes
+          # Beta tags (v1.2.3-beta.N) become pre-releases that never replace "Latest";
+          # the gateway updater only offers the latest stable release.
+          if [[ "$RELEASE_TAG" == *-beta.* ]]; then
+            flags=(--prerelease --latest=false)
+          else
+            flags=()
+          fi
+          gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes "${flags[@]}"
           gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin --clobber
   package:
     needs: firmware
@@ -66,7 +73,9 @@ jobs:
           image="ghcr.io/${REPO,,}"
           printf 'FROM scratch\nCOPY firmware-adafruit_feather_esp32s3.bin /\n' > Dockerfile
           echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
-          docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" -t "$image:${REF_NAME}" -t "$image:latest" .
+          tags=(-t "$image:${REF_NAME}")
+          [[ "$REF_NAME" == *-beta.* ]] || tags+=(-t "$image:latest")
+          docker build --label "org.opencontainers.image.source=https://github.com/${REPO}" "${tags[@]}" .
           for attempt in 1 2 3; do
             docker push --all-tags "$image" && exit 0
             echo "Push attempt $attempt failed; retrying"

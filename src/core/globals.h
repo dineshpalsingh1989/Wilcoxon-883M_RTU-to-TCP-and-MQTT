@@ -20,8 +20,8 @@
 #include <Update.h>
 
 // Modbus
-#include <ModbusMaster.h> // RS485 Master
-#include <ModbusTCP.h>    // TCP Server
+#include <Wilcoxon883MRTU.h> // RS485 sensor client (experiments/Wilcoxon883MRTU-beta)
+#include <Wilcoxon883MTCP.h> // Modbus TCP server for PLCs
 #include <vector>
 #include <numeric>
 #include <cmath>
@@ -66,10 +66,9 @@ extern PubSubClient* mqttClient;
 // Modbus RTU / TCP
 extern uint8_t modbus_slave_id_val;
 extern long modbus_baud_rate_val;
-extern ModbusMaster node;
+extern Wilcoxon883MRTU sensorRtu; // Owned by the background task after setup().
 extern bool modbusTcpEnabled;
 extern uint16_t modbusTcpPort;
-extern ModbusTCP modbusTCPServer;
 
 // Global state
 extern char systemStatus[128];

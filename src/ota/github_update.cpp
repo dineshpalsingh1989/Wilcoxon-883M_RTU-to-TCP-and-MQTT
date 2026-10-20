@@ -133,11 +133,14 @@ void handleGithubInstall() {
     DynamicJsonDocument body(256);
     if (deserializeJson(body, server.arg("plain"))) { server.send(400, "text/plain", "Invalid update request"); return; }
     String tag = body["tag"] | "";
-    unsigned major, minor, patch, currentMajor, currentMinor, currentPatch; char extra;
+    unsigned major, minor, patch, currentMajor, currentMinor, currentPatch; char extra; int versionEnd = 0;
     if (tag.length() > 40 || sscanf(tag.c_str(), "v%u.%u.%u%c", &major, &minor, &patch, &extra) != 3 ||
-        sscanf(FIRMWARE_VERSION, "%u.%u.%u", &currentMajor, &currentMinor, &currentPatch) != 3) { server.send(400, "text/plain", "A stable vMAJOR.MINOR.PATCH release is required"); return; }
+        sscanf(FIRMWARE_VERSION, "%u.%u.%u%n", &currentMajor, &currentMinor, &currentPatch, &versionEnd) != 3) { server.send(400, "text/plain", "A stable vMAJOR.MINOR.PATCH release is required"); return; }
     if (tag != String("v") + major + "." + minor + "." + patch) { server.send(400, "text/plain", "Invalid release version"); return; }
-    bool newer = major > currentMajor || (major == currentMajor && (minor > currentMinor || (minor == currentMinor && patch > currentPatch)));
+    // A beta such as 4.10.0-beta.1 may move to the stable 4.10.0 release.
+    const bool currentIsBeta = FIRMWARE_VERSION[versionEnd] == '-';
+    bool newer = major > currentMajor || (major == currentMajor && (minor > currentMinor || (minor == currentMinor &&
+                 (patch > currentPatch || (patch == currentPatch && currentIsBeta)))));
     if (!newer) { server.send(400, "text/plain", "Release must be newer than installed firmware"); return; }
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) != pdTRUE) { server.send(503, "text/plain", "Device busy"); return; }
     bool busy = firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;

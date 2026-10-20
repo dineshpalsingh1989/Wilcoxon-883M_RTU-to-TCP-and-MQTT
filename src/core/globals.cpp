@@ -59,12 +59,11 @@ PubSubClient* mqttClient = nullptr;
 // --- Modbus RTU (RS485) ---
 uint8_t modbus_slave_id_val = 1;
 long modbus_baud_rate_val = 115200;
-ModbusMaster node;
+Wilcoxon883MRTU sensorRtu(Serial1);
 
-// --- Modbus TCP Server ---
+// --- Modbus TCP Server (registers and server live in modbus/modbus_tcp.cpp) ---
 bool modbusTcpEnabled = true;
 uint16_t modbusTcpPort = 502;
-ModbusTCP modbusTCPServer;
 
 // --- LINEAR MODBUS MAP ---
 

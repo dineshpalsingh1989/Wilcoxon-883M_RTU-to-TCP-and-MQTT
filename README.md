@@ -17,16 +17,18 @@
 
 Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
-## Beta RTU library for ESP32 users
+## Beta: built on our own Modbus library
 
-A separate **Wilcoxon883MRTU 0.1.0-beta.3** library is available for testing direct ESP32-to-883M RS485 communication, including read-only discovery when serial settings are unknown:
+> **Beta firmware.** The `main` branch now uses this project's own **Wilcoxon883MRTU 0.1.0-beta.4** library for both sides of the gateway. The third-party `ModbusMaster` and `modbus-esp8266` libraries are no longer used. Register addresses, MQTT messages and web pages are unchanged. Simulated tests and the ESP32-S3 build pass; **it has not yet been validated with a real 883M sensor or PLC.** Use the latest stable release for production and the beta on a bench gateway.
 
-- [Download the beta library ZIP](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/wilcoxon883mrtu-v0.1.0-beta.3).
-- [Installation, example and beta limitations](experiments/Wilcoxon883MRTU-beta/README.md).
+![Gateway data flow: the 883M is read by the Wilcoxon883MRTU client into gateway memory, and the Wilcoxon883MTCP server answers PLCs from that memory alongside the web dashboard and MQTT.](docs/images/data-flow.svg)
 
-**The gateway firmware does not use this beta automatically.** Installing the ZIP only makes the library available in your IDE. It becomes part of an ESP32 application when you compile a sketch that includes and uses it, such as BasicRead. Uploading that example replaces the application on the selected board. This is a source-only library pre-release, not a gateway OTA firmware update.
+| Part | Job | Replaces |
+| --- | --- | --- |
+| `Wilcoxon883MRTU` | Reads the sensor over RS485: metrics, captures, device identity | `ModbusMaster` |
+| `Wilcoxon883MTCP` | Serves the gateway's registers to PLCs/SCADA over Wi-Fi | `modbus-esp8266` |
 
-Simulated RTU tests and an ESP32-S3 example build pass; actual sensor communication and long-duration reliability still require hardware validation. Keep the beta for bench testing.
+The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
 
 ## What you can do
 
@@ -37,7 +39,7 @@ Simulated RTU tests and an ESP32-S3 example build pass; actual sensor communicat
 | Configurable alarms | Velocity RMS and temperature thresholds with a configurable delay |
 | Capture tools | Single-axis or XYZ captures, capture history and CSV export |
 | MQTT integration | Scalar metrics, chunked waveform/spectrum data, health status and remote commands |
-| Modbus TCP bridge | Cached measurements and capture buffers for PLC and SCADA clients |
+| Modbus TCP server | Cached measurements and capture buffers for up to 8 PLC and SCADA clients |
 | Gateway management | Wi-Fi, RS485, MQTT and time settings, plus GitHub firmware installation |
 
 ## Dashboard preview
@@ -45,6 +47,17 @@ Simulated RTU tests and an ESP32-S3 example build pass; actual sensor communicat
 ![ESP32 gateway dashboard showing simulated sensor health, vibration metrics, trends and capture controls.](docs/images/dashboard.png)
 
 *Actual dashboard rendered by the hardware-free demo with simulated readings. Values shown are illustrative.*
+
+<table>
+<tr>
+<td width="30%"><img src="docs/images/dashboard-mobile.png" alt="Dashboard on a phone-sized screen with simulated readings."></td>
+<td width="70%"><img src="docs/images/system-info.png" alt="Device Diagnostics page showing firmware and Modbus library version with simulated device values."></td>
+</tr>
+<tr>
+<td><em>Mobile layout (simulated).</em></td>
+<td><em>Device Diagnostics shows the installed Modbus library version (simulated).</em></td>
+</tr>
+</table>
 
 ## Quick start
 
@@ -165,7 +178,18 @@ The gateway serves cached data on the configured Modbus TCP port, normally **502
 | 1000–14333 | Latest-axis waveform, signed Int16 | 1000 | g |
 | 20000–26144 | Latest-axis spectrum, UInt16 | 1000 | g |
 
-*Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping and capture controls.*
+| 90 | Waveform ready: 2 = X, 3 = Y, 4 = Z, 0 = cleared | — | — |
+| 91 | Spectrum ready: same values as 90 | — | — |
+
+*Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping.*
+
+Server behaviour: function codes 03, 04, 06 and 16, up to **8 clients**, any unit ID, up to 125 registers per read. Registers 0–99 accept writes, but the next sensor update overwrites them. Waveform and spectrum registers are read-only and are copied from a finished capture, so a PLC never reads a buffer that is still downloading. A read that spans an unmapped gap (for example 95–105) returns an illegal-address exception. Modbus TCP has no authentication; keep port 502 on a trusted network.
+
+![Modbus TCP settings page with the register map and simulated live values.](docs/images/modbus-tcp-settings.png)
+
+*Settings > Modbus TCP lists the register map with live values (simulated here).*
+
+> **Known gap:** that page describes **92/93 as capture triggers** for PLCs, but the firmware does not act on writes to them yet. Start captures from the dashboard or with the MQTT `trigger_capture` / `trigger_all` commands for now.
 
 ## Firmware updates
 
@@ -174,6 +198,8 @@ Open **Settings > GitHub Firmware Updates** to check for a newer stable release 
 The updater requires a stable `vMAJOR.MINOR.PATCH` release, the asset `firmware-adafruit_feather_esp32s3.bin`, and GitHub's SHA-256 asset digest. It validates HTTPS certificates, image compatibility, partition size and the downloaded checksum before activating the image and rebooting. Wi-Fi and a correct gateway clock are required.
 
 See the [update guide](demo/README.md#github-firmware-installation) for release publishing and validation details. Updates apply to the gateway; they do not update the Wilcoxon sensor firmware.
+
+**Beta releases** use tags such as `v4.10.0-beta.1`. They are published as GitHub **pre-releases**, never marked Latest, so the gateway's updater does not offer them. To try a beta, download `firmware-adafruit_feather_esp32s3.bin` from the pre-release and upload it under **Settings > Device Diagnostics > Firmware Update (OTA)** or with PlatformIO. A gateway running a beta can later move to the matching stable release (for example `v4.10.0`) through the normal updater.
 
 ## Watchdog protection
 
@@ -198,6 +224,7 @@ The web task is not explicitly subscribed, and initialization/subscription retur
 | --- | --- |
 | `src/config/`, `src/core/` | Pin/register definitions, shared state and monitoring |
 | `src/modbus/` | Sensor RTU communication and TCP register cache |
+| `experiments/Wilcoxon883MRTU-beta/` | Our Modbus RTU client and TCP server library, used by the firmware |
 | `src/capture/`, `src/mqtt/` | Capture state machine, logs, publishers and commands |
 | `src/web/` | Dashboard, settings pages and HTTP routes |
 | `src/ota/` | Firmware upload and GitHub release installation |

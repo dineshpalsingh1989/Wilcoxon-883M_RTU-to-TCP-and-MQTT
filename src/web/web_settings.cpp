@@ -412,8 +412,8 @@ void handleClearDynamicData() {
         newSpectrumAvailable = false;
         
         if(modbusTcpEnabled) {
-            modbusTCPServer.Hreg(HREG_WAVEFORM_READY_STATUS, 0);
-            modbusTCPServer.Hreg(HREG_SPECTRUM_READY_STATUS, 0);
+            setModbusTCPRegister(HREG_WAVEFORM_READY_STATUS, 0);
+            setModbusTCPRegister(HREG_SPECTRUM_READY_STATUS, 0);
         }
 
         xSemaphoreGive(dataMutex);

@@ -94,28 +94,15 @@ void setup() {
     // 5.1 Initialize OTA
     setupOTA();
 
-    // 6. Init Modbus
-    Serial1.begin(modbus_baud_rate_val, SERIAL_8N1, RXD_PIN, TXD_PIN);
-    
-    // --- Register MAX485 Callbacks ---
-    node.preTransmission(preTransmission);
-    node.postTransmission(postTransmission);
-    
-    node.begin(modbus_slave_id_val, Serial1);
-    
-    // --- Call Custom Identity Function ---
-    delay(500); 
-    fetchSensorIdentity(); 
+    // 6. Init Modbus RTU (RS485 to the sensor)
+    beginSensorRtu();
+    delay(500);
+    fetchSensorIdentity();
 
+    // Modbus TCP for PLCs: 0-99 live metrics, 1000+ waveform, 20000+ spectrum.
     if (connected_to_wifi && modbusTcpEnabled) {
-      modbusTCPServer.server(modbusTcpPort);
-      // 1. Add Live Metrics Registers (0-100)
-      modbusTCPServer.addHreg(0, 0, 100); 
-      // 2. Add Full Waveform Block (1000 - 14334)
-      modbusTCPServer.addHreg(HREG_WAVEFORM_START, 0, WAVEFORM_TOTAL_POINTS);
-      // 3. Add Full Spectrum Block (20000 - 26145)
-      modbusTCPServer.addHreg(HREG_SPECTRUM_START, 0, SPECTRUM_TOTAL_POINTS);
-      logMessage("Modbus TCP: Map 1000->Waveform, 20000->Spectrum");
+      if (beginModbusTCPServer(modbusTcpPort)) logMessage("Modbus TCP: Map 1000->Waveform, 20000->Spectrum");
+      else logMessage("Modbus TCP: server failed to start on port " + String(modbusTcpPort));
     }
     
     // 7. Setup Web Server

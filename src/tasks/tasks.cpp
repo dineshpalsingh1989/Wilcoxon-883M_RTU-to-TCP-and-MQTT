@@ -128,7 +128,7 @@ void backgroundLoop(void * pvParameters) {
             }
         }
 
-        if (modbusTcpEnabled) { modbusTCPServer.task(); }
+        pollModbusTCPServer();
         updateLedStatus();
         
         handleLongReads(); // Handles the actual Modbus reading state machine
@@ -162,36 +162,37 @@ void backgroundLoop(void * pvParameters) {
                 float t_dlx, t_dly, t_dlz, t_dlpx, t_dlpy, t_dlpz;
 
                 uint8_t result;
+                uint16_t rb[3]; // Raw registers from the last read
 
                 // --- CRITICAL WDT FIX: Fail Fast on First Read ---
-                result = node.readInputRegisters(0x0000, 3); 
-                if (result == node.ku8MBSuccess) { 
-                    t_ax = (int16_t)node.getResponseBuffer(0)/100.0; 
-                    t_ay = (int16_t)node.getResponseBuffer(1)/100.0; 
-                    t_az = (int16_t)node.getResponseBuffer(2)/100.0;
+                result = readSensorRegisters(0x0000, 3, rb);
+                if (result == 0) {
+                    t_ax = (int16_t)rb[0]/100.0;
+                    t_ay = (int16_t)rb[1]/100.0;
+                    t_az = (int16_t)rb[2]/100.0;
                 } else {
                     read_ok = false;
                 }
                 
                 if (read_ok) { // Only proceed if first read worked
                     vTaskDelay(5);
-                    result = node.readInputRegisters(0x0004, 3); if(result == node.ku8MBSuccess) { t_apx=(int16_t)node.getResponseBuffer(0)/100.0; t_apy=(int16_t)node.getResponseBuffer(1)/100.0; t_apz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5);
-                    if(read_ok) { result = node.readInputRegisters(0x0008, 3); if(result == node.ku8MBSuccess) { t_mamx=(int16_t)node.getResponseBuffer(0)/10.0; t_mamy=(int16_t)node.getResponseBuffer(1)/10.0; t_mamz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x000C, 3); if(result == node.ku8MBSuccess) { t_mapx=(int16_t)node.getResponseBuffer(0)/10.0; t_mapy=(int16_t)node.getResponseBuffer(1)/10.0; t_mapz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0010, 3); if(result == node.ku8MBSuccess) { t_ax2=(int16_t)node.getResponseBuffer(0)/100.0; t_ay2=(int16_t)node.getResponseBuffer(1)/100.0; t_az2=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0014, 3); if(result == node.ku8MBSuccess) { t_apx2=(int16_t)node.getResponseBuffer(0)/100.0; t_apy2=(int16_t)node.getResponseBuffer(1)/100.0; t_apz2=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0018, 3); if(result == node.ku8MBSuccess) { t_mam2x=(int16_t)node.getResponseBuffer(0)/10.0; t_mam2y=(int16_t)node.getResponseBuffer(1)/10.0; t_mam2z=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x001C, 3); if(result == node.ku8MBSuccess) { t_map2x=(int16_t)node.getResponseBuffer(0)/10.0; t_map2y=(int16_t)node.getResponseBuffer(1)/10.0; t_map2z=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0020, 3); if(result == node.ku8MBSuccess) { t_vx=(int16_t)node.getResponseBuffer(0)/10.0; t_vy=(int16_t)node.getResponseBuffer(1)/10.0; t_vz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0024, 3); if(result == node.ku8MBSuccess) { t_vpx=(int16_t)node.getResponseBuffer(0)/10.0; t_vpy=(int16_t)node.getResponseBuffer(1)/10.0; t_vpz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0028, 3); if(result == node.ku8MBSuccess) { t_vwx=(int16_t)node.getResponseBuffer(0)/10.0; t_vwy=(int16_t)node.getResponseBuffer(1)/10.0; t_vwz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x002C, 3); if(result == node.ku8MBSuccess) { t_vwpx=(int16_t)node.getResponseBuffer(0)/10.0; t_vwpy=(int16_t)node.getResponseBuffer(1)/10.0; t_vwpz=(int16_t)node.getResponseBuffer(2)/10.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0030, 3); if(result == node.ku8MBSuccess) { t_dlx=(int16_t)node.getResponseBuffer(0)/1.0; t_dly=(int16_t)node.getResponseBuffer(1)/1.0; t_dlz=(int16_t)node.getResponseBuffer(2)/1.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0034, 3); if(result == node.ku8MBSuccess) { t_dlpx=(int16_t)node.getResponseBuffer(0)/1.0; t_dlpy=(int16_t)node.getResponseBuffer(1)/1.0; t_dlpz=(int16_t)node.getResponseBuffer(2)/1.0; t_dpx=(int16_t)node.getResponseBuffer(0)/1.0; t_dpy=(int16_t)node.getResponseBuffer(1)/1.0; t_dpz=(int16_t)node.getResponseBuffer(2)/1.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0040, 3); if(result == node.ku8MBSuccess) { t_tpx=(int16_t)node.getResponseBuffer(0)/100.0; t_tpy=(int16_t)node.getResponseBuffer(1)/100.0; t_tpz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0044, 3); if(result == node.ku8MBSuccess) { t_cfx=(int16_t)node.getResponseBuffer(0)/100.0; t_cfy=(int16_t)node.getResponseBuffer(1)/100.0; t_cfz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0048, 3); if(result == node.ku8MBSuccess) { t_sdx=(int16_t)node.getResponseBuffer(0)/100.0; t_sdy=(int16_t)node.getResponseBuffer(1)/100.0; t_sdz=(int16_t)node.getResponseBuffer(2)/100.0;} else read_ok=false; vTaskDelay(5); }
-                    if(read_ok) { result = node.readInputRegisters(0x0050, 1); if(result == node.ku8MBSuccess) t_t = (int16_t)node.getResponseBuffer(0)/10.0; else read_ok = false; }
+                    result = readSensorRegisters(0x0004, 3, rb); if(result == 0) { t_apx=(int16_t)rb[0]/100.0; t_apy=(int16_t)rb[1]/100.0; t_apz=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5);
+                    if(read_ok) { result = readSensorRegisters(0x0008, 3, rb); if(result == 0) { t_mamx=(int16_t)rb[0]/10.0; t_mamy=(int16_t)rb[1]/10.0; t_mamz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x000C, 3, rb); if(result == 0) { t_mapx=(int16_t)rb[0]/10.0; t_mapy=(int16_t)rb[1]/10.0; t_mapz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0010, 3, rb); if(result == 0) { t_ax2=(int16_t)rb[0]/100.0; t_ay2=(int16_t)rb[1]/100.0; t_az2=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0014, 3, rb); if(result == 0) { t_apx2=(int16_t)rb[0]/100.0; t_apy2=(int16_t)rb[1]/100.0; t_apz2=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0018, 3, rb); if(result == 0) { t_mam2x=(int16_t)rb[0]/10.0; t_mam2y=(int16_t)rb[1]/10.0; t_mam2z=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x001C, 3, rb); if(result == 0) { t_map2x=(int16_t)rb[0]/10.0; t_map2y=(int16_t)rb[1]/10.0; t_map2z=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0020, 3, rb); if(result == 0) { t_vx=(int16_t)rb[0]/10.0; t_vy=(int16_t)rb[1]/10.0; t_vz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0024, 3, rb); if(result == 0) { t_vpx=(int16_t)rb[0]/10.0; t_vpy=(int16_t)rb[1]/10.0; t_vpz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0028, 3, rb); if(result == 0) { t_vwx=(int16_t)rb[0]/10.0; t_vwy=(int16_t)rb[1]/10.0; t_vwz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x002C, 3, rb); if(result == 0) { t_vwpx=(int16_t)rb[0]/10.0; t_vwpy=(int16_t)rb[1]/10.0; t_vwpz=(int16_t)rb[2]/10.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0030, 3, rb); if(result == 0) { t_dlx=(int16_t)rb[0]/1.0; t_dly=(int16_t)rb[1]/1.0; t_dlz=(int16_t)rb[2]/1.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0034, 3, rb); if(result == 0) { t_dlpx=(int16_t)rb[0]/1.0; t_dlpy=(int16_t)rb[1]/1.0; t_dlpz=(int16_t)rb[2]/1.0; t_dpx=(int16_t)rb[0]/1.0; t_dpy=(int16_t)rb[1]/1.0; t_dpz=(int16_t)rb[2]/1.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0040, 3, rb); if(result == 0) { t_tpx=(int16_t)rb[0]/100.0; t_tpy=(int16_t)rb[1]/100.0; t_tpz=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0044, 3, rb); if(result == 0) { t_cfx=(int16_t)rb[0]/100.0; t_cfy=(int16_t)rb[1]/100.0; t_cfz=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0048, 3, rb); if(result == 0) { t_sdx=(int16_t)rb[0]/100.0; t_sdy=(int16_t)rb[1]/100.0; t_sdz=(int16_t)rb[2]/100.0;} else read_ok=false; vTaskDelay(5); }
+                    if(read_ok) { result = readSensorRegisters(0x0050, 1, rb); if(result == 0) t_t = (int16_t)rb[0]/10.0; else read_ok = false; }
                 }
 
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {

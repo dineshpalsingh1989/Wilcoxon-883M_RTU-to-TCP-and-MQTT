@@ -245,6 +245,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 <div class="info-item"><span class="info-label">System Uptime</span><span class="info-value" id="val-uptime">)rawliteral" + uptime + R"rawliteral(</span></div>
 <div class="info-item"><span class="info-label">Free RAM</span><span class="info-value" id="val-ram">)rawliteral" + String(ESP.getFreeHeap()) + R"rawliteral( bytes</span></div>
 <div class="info-item"><span class="info-label">Firmware</span><span class="info-value">)rawliteral" + String(FIRMWARE_VERSION) + R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Modbus Library</span><span class="info-value" id="val-modbus-lib">Wilcoxon883MRTU )rawliteral" + String(WILCOXON883M_LIBRARY_VERSION) + R"rawliteral(</span></div>
 </div>
 
 <div class="ota-box">

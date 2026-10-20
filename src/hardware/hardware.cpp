@@ -41,12 +41,3 @@ void updateLedStatus() {
     pixels.show();
 }
 
-// --- MAX485 CALLBACKS ---
-void preTransmission() {
-  digitalWrite(RS485_CTRL_PIN, HIGH); // DE/RE High = Transmit
-}
-
-void postTransmission() {
-  digitalWrite(RS485_CTRL_PIN, LOW);  // DE/RE Low = Receive
-}
-

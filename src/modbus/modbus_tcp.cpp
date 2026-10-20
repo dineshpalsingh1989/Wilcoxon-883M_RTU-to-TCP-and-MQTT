@@ -1,5 +1,36 @@
 #include "core/modules.h"
 
+// PLC-visible holding registers. Waveform and spectrum are copies taken when a
+// capture completes, so a PLC never reads a buffer that is still downloading.
+namespace {
+uint16_t liveRegisters[100];
+uint16_t waveformRegisters[WAVEFORM_TOTAL_POINTS];
+uint16_t spectrumRegisters[SPECTRUM_TOTAL_POINTS];
+Wilcoxon883MTCP::RegisterBlocks<3> plcRegisters;
+Wilcoxon883MTCP plcServer(plcRegisters);
+
+bool lockData(void*) { return xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE; }
+void unlockData(void*) { xSemaphoreGive(dataMutex); }
+}
+
+bool beginModbusTCPServer(uint16_t port) {
+    // 0-99 stay writable as before; values are overwritten by the next sensor update.
+    bool mapped = plcRegisters.addHolding(0, liveRegisters, 100, true) &&
+                  plcRegisters.addHolding(HREG_WAVEFORM_START, waveformRegisters, WAVEFORM_TOTAL_POINTS) &&
+                  plcRegisters.addHolding(HREG_SPECTRUM_START, spectrumRegisters, SPECTRUM_TOTAL_POINTS);
+    plcRegisters.setLock(lockData, unlockData);
+    // Same capacity and unit-ID handling as the previous server: 8 clients, any unit ID.
+    return mapped && plcServer.begin(port, Wilcoxon883MTCP::MaxClients, 0);
+}
+
+void pollModbusTCPServer() {
+    if (modbusTcpEnabled) plcServer.poll();
+}
+
+void setModbusTCPRegister(uint16_t address, uint16_t value) {
+    if (address < 100) liveRegisters[address] = value;
+}
+
 // =================================================================
 // --- MODBUS TCP HELPERS (LINEAR MAPPING)
 // =================================================================
@@ -8,64 +39,64 @@ void updateModbusTCPCache() {
 
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         // X
-        modbusTCPServer.Hreg(0, (int16_t)(accelRmsX * 100));
-        modbusTCPServer.Hreg(1, (int16_t)(accelPeakX * 100));
-        modbusTCPServer.Hreg(2, (int16_t)(accelRms2X * 100));
-        modbusTCPServer.Hreg(3, (int16_t)(accelPeak2X * 100));
-        modbusTCPServer.Hreg(4, (int16_t)(veloRmsX * 10));
-        modbusTCPServer.Hreg(5, (int16_t)(veloPeakX * 10));
-        modbusTCPServer.Hreg(6, (int16_t)(displRmsX * 1));
-        modbusTCPServer.Hreg(7, (int16_t)(displPeakX * 1));
-        modbusTCPServer.Hreg(8, (int16_t)(truePeakX * 100));
-        modbusTCPServer.Hreg(9, (int16_t)(crestFactorX * 100));
-        modbusTCPServer.Hreg(10, (int16_t)(accelMetricRmsX * 10));
-        modbusTCPServer.Hreg(11, (int16_t)(accelMetricPeakX * 10));
-        modbusTCPServer.Hreg(12, (int16_t)(accelMetricRms2X * 10));
-        modbusTCPServer.Hreg(13, (int16_t)(accelMetricPeak2X * 10));
-        modbusTCPServer.Hreg(14, (int16_t)(veloWideRmsX * 10));
-        modbusTCPServer.Hreg(15, (int16_t)(veloWidePeakX * 10));
-        modbusTCPServer.Hreg(16, (int16_t)(displLowRmsX * 1));
-        modbusTCPServer.Hreg(17, (int16_t)(displLowPeakX * 1));
+        liveRegisters[0] = uint16_t((int16_t)(accelRmsX * 100));
+        liveRegisters[1] = uint16_t((int16_t)(accelPeakX * 100));
+        liveRegisters[2] = uint16_t((int16_t)(accelRms2X * 100));
+        liveRegisters[3] = uint16_t((int16_t)(accelPeak2X * 100));
+        liveRegisters[4] = uint16_t((int16_t)(veloRmsX * 10));
+        liveRegisters[5] = uint16_t((int16_t)(veloPeakX * 10));
+        liveRegisters[6] = uint16_t((int16_t)(displRmsX * 1));
+        liveRegisters[7] = uint16_t((int16_t)(displPeakX * 1));
+        liveRegisters[8] = uint16_t((int16_t)(truePeakX * 100));
+        liveRegisters[9] = uint16_t((int16_t)(crestFactorX * 100));
+        liveRegisters[10] = uint16_t((int16_t)(accelMetricRmsX * 10));
+        liveRegisters[11] = uint16_t((int16_t)(accelMetricPeakX * 10));
+        liveRegisters[12] = uint16_t((int16_t)(accelMetricRms2X * 10));
+        liveRegisters[13] = uint16_t((int16_t)(accelMetricPeak2X * 10));
+        liveRegisters[14] = uint16_t((int16_t)(veloWideRmsX * 10));
+        liveRegisters[15] = uint16_t((int16_t)(veloWidePeakX * 10));
+        liveRegisters[16] = uint16_t((int16_t)(displLowRmsX * 1));
+        liveRegisters[17] = uint16_t((int16_t)(displLowPeakX * 1));
         // Y
-        modbusTCPServer.Hreg(20, (int16_t)(accelRmsY * 100));
-        modbusTCPServer.Hreg(21, (int16_t)(accelPeakY * 100));
-        modbusTCPServer.Hreg(22, (int16_t)(accelRms2Y * 100));
-        modbusTCPServer.Hreg(23, (int16_t)(accelPeak2Y * 100));
-        modbusTCPServer.Hreg(24, (int16_t)(veloRmsY * 10));
-        modbusTCPServer.Hreg(25, (int16_t)(veloPeakY * 10));
-        modbusTCPServer.Hreg(26, (int16_t)(displRmsY * 1));
-        modbusTCPServer.Hreg(27, (int16_t)(displPeakY * 1));
-        modbusTCPServer.Hreg(28, (int16_t)(truePeakY * 100));
-        modbusTCPServer.Hreg(29, (int16_t)(crestFactorY * 100));
-        modbusTCPServer.Hreg(30, (int16_t)(accelMetricRmsY * 10));
-        modbusTCPServer.Hreg(31, (int16_t)(accelMetricPeakY * 10));
-        modbusTCPServer.Hreg(32, (int16_t)(accelMetricRms2Y * 10));
-        modbusTCPServer.Hreg(33, (int16_t)(accelMetricPeak2Y * 10));
-        modbusTCPServer.Hreg(34, (int16_t)(veloWideRmsY * 10));
-        modbusTCPServer.Hreg(35, (int16_t)(veloWidePeakY * 10));
-        modbusTCPServer.Hreg(36, (int16_t)(displLowRmsY * 1));
-        modbusTCPServer.Hreg(37, (int16_t)(displLowPeakY * 1));
+        liveRegisters[20] = uint16_t((int16_t)(accelRmsY * 100));
+        liveRegisters[21] = uint16_t((int16_t)(accelPeakY * 100));
+        liveRegisters[22] = uint16_t((int16_t)(accelRms2Y * 100));
+        liveRegisters[23] = uint16_t((int16_t)(accelPeak2Y * 100));
+        liveRegisters[24] = uint16_t((int16_t)(veloRmsY * 10));
+        liveRegisters[25] = uint16_t((int16_t)(veloPeakY * 10));
+        liveRegisters[26] = uint16_t((int16_t)(displRmsY * 1));
+        liveRegisters[27] = uint16_t((int16_t)(displPeakY * 1));
+        liveRegisters[28] = uint16_t((int16_t)(truePeakY * 100));
+        liveRegisters[29] = uint16_t((int16_t)(crestFactorY * 100));
+        liveRegisters[30] = uint16_t((int16_t)(accelMetricRmsY * 10));
+        liveRegisters[31] = uint16_t((int16_t)(accelMetricPeakY * 10));
+        liveRegisters[32] = uint16_t((int16_t)(accelMetricRms2Y * 10));
+        liveRegisters[33] = uint16_t((int16_t)(accelMetricPeak2Y * 10));
+        liveRegisters[34] = uint16_t((int16_t)(veloWideRmsY * 10));
+        liveRegisters[35] = uint16_t((int16_t)(veloWidePeakY * 10));
+        liveRegisters[36] = uint16_t((int16_t)(displLowRmsY * 1));
+        liveRegisters[37] = uint16_t((int16_t)(displLowPeakY * 1));
         // Z
-        modbusTCPServer.Hreg(40, (int16_t)(accelRmsZ * 100));
-        modbusTCPServer.Hreg(41, (int16_t)(accelPeakZ * 100));
-        modbusTCPServer.Hreg(42, (int16_t)(accelRms2Z * 100));
-        modbusTCPServer.Hreg(43, (int16_t)(accelPeak2Z * 100));
-        modbusTCPServer.Hreg(44, (int16_t)(veloRmsZ * 10));
-        modbusTCPServer.Hreg(45, (int16_t)(veloPeakZ * 10));
-        modbusTCPServer.Hreg(46, (int16_t)(displRmsZ * 1));
-        modbusTCPServer.Hreg(47, (int16_t)(displPeakZ * 1));
-        modbusTCPServer.Hreg(48, (int16_t)(truePeakZ * 100));
-        modbusTCPServer.Hreg(49, (int16_t)(crestFactorZ * 100));
-        modbusTCPServer.Hreg(50, (int16_t)(accelMetricRmsZ * 10));
-        modbusTCPServer.Hreg(51, (int16_t)(accelMetricPeakZ * 10));
-        modbusTCPServer.Hreg(52, (int16_t)(accelMetricRms2Z * 10));
-        modbusTCPServer.Hreg(53, (int16_t)(accelMetricPeak2Z * 10));
-        modbusTCPServer.Hreg(54, (int16_t)(veloWideRmsZ * 10));
-        modbusTCPServer.Hreg(55, (int16_t)(veloWidePeakZ * 10));
-        modbusTCPServer.Hreg(56, (int16_t)(displLowRmsZ * 1));
-        modbusTCPServer.Hreg(57, (int16_t)(displLowPeakZ * 1));
+        liveRegisters[40] = uint16_t((int16_t)(accelRmsZ * 100));
+        liveRegisters[41] = uint16_t((int16_t)(accelPeakZ * 100));
+        liveRegisters[42] = uint16_t((int16_t)(accelRms2Z * 100));
+        liveRegisters[43] = uint16_t((int16_t)(accelPeak2Z * 100));
+        liveRegisters[44] = uint16_t((int16_t)(veloRmsZ * 10));
+        liveRegisters[45] = uint16_t((int16_t)(veloPeakZ * 10));
+        liveRegisters[46] = uint16_t((int16_t)(displRmsZ * 1));
+        liveRegisters[47] = uint16_t((int16_t)(displPeakZ * 1));
+        liveRegisters[48] = uint16_t((int16_t)(truePeakZ * 100));
+        liveRegisters[49] = uint16_t((int16_t)(crestFactorZ * 100));
+        liveRegisters[50] = uint16_t((int16_t)(accelMetricRmsZ * 10));
+        liveRegisters[51] = uint16_t((int16_t)(accelMetricPeakZ * 10));
+        liveRegisters[52] = uint16_t((int16_t)(accelMetricRms2Z * 10));
+        liveRegisters[53] = uint16_t((int16_t)(accelMetricPeak2Z * 10));
+        liveRegisters[54] = uint16_t((int16_t)(veloWideRmsZ * 10));
+        liveRegisters[55] = uint16_t((int16_t)(veloWidePeakZ * 10));
+        liveRegisters[56] = uint16_t((int16_t)(displLowRmsZ * 1));
+        liveRegisters[57] = uint16_t((int16_t)(displLowPeakZ * 1));
         // Other
-        modbusTCPServer.Hreg(60, (int16_t)(temperature * 10));
+        liveRegisters[60] = uint16_t((int16_t)(temperature * 10));
 
         xSemaphoreGive(dataMutex);
     }
@@ -77,17 +108,9 @@ void syncModbusRegisters() {
 
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
         
-        if (newWaveformAvailable) {
-            for (int i = 0; i < WAVEFORM_TOTAL_POINTS; i++) {
-                modbusTCPServer.Hreg(HREG_WAVEFORM_START + i, fullWaveform[i]);
-            }
-        }
-
-        if (newSpectrumAvailable) {
-            for (int i = 0; i < SPECTRUM_TOTAL_POINTS; i++) {
-                modbusTCPServer.Hreg(HREG_SPECTRUM_START + i, spectrumData[i]);
-            }
-        }
+        // int16_t samples are served as their raw 16-bit words, as before.
+        if (newWaveformAvailable) memcpy(waveformRegisters, fullWaveform, sizeof(waveformRegisters));
+        if (newSpectrumAvailable) memcpy(spectrumRegisters, spectrumData, sizeof(spectrumRegisters));
 
         xSemaphoreGive(dataMutex);
     }

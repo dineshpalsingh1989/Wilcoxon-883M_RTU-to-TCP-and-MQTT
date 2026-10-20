@@ -1,93 +1,74 @@
 #include "core/modules.h"
 
+namespace {
+uint8_t errorCode(Wilcoxon883MRTU::Result result) {
+    switch (result) {
+        case Wilcoxon883MRTU::Result::Ok: return 0;
+        case Wilcoxon883MRTU::Result::Exception: return sensorRtu.exceptionCode();
+        case Wilcoxon883MRTU::Result::Timeout: return RTU_ERROR_TIMEOUT;
+        case Wilcoxon883MRTU::Result::Crc: return RTU_ERROR_CRC;
+        case Wilcoxon883MRTU::Result::Frame: return RTU_ERROR_INVALID_RESPONSE;
+        default: return RTU_ERROR_GATEWAY;
+    }
+}
+}
+
+void beginSensorRtu() {
+    // The library drives DE/RE on RS485_CTRL_PIN around each request.
+    if (!sensorRtu.begin(RXD_PIN, TXD_PIN, RS485_CTRL_PIN, modbus_baud_rate_val, modbus_slave_id_val, SERIAL_8N1)) {
+        logMessage("[Modbus] RS485 setup failed: check baud rate (" + String(modbus_baud_rate_val) + ") and slave ID");
+    }
+}
+
 // =================================================================
-// --- MODBUS IDENTITY FUNCTION
+// --- MODBUS IDENTITY FUNCTION (function 43 / MEI 14)
 // =================================================================
 void fetchSensorIdentity() {
-    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(1000)) != pdTRUE) return;
-    
     logMessage("[System] Fetching Sensor Identity...");
-
-    // Must enable TX manually for raw serial writes
-    digitalWrite(RS485_CTRL_PIN, HIGH);
-    delay(2);
-
-    uint8_t readCodes[2] = {0x01, 0x02};
-    for (int q = 0; q < 2; q++) {
-        uint8_t currentCode = readCodes[q];
-        while(Serial1.available()) Serial1.read();
-        
-        uint8_t request[] = {modbus_slave_id_val, 0x2B, 0x0E, currentCode, 0x00, 0x00, 0x00};
-        uint16_t crc = 0xFFFF;
-        for (int i = 0; i < 5; i++) {
-            crc ^= request[i];
-            for (int j = 0; j < 8; j++) { if (crc & 1) crc = (crc >> 1) ^ 0xA001; else crc >>= 1; }
-        }
-        request[5] = crc & 0xFF; request[6] = crc >> 8;
-
-        Serial1.write(request, 7);
-        Serial1.flush(); // Wait for TX to finish
-        
-        // Switch to RX immediately after flush
-        digitalWrite(RS485_CTRL_PIN, LOW); 
-        delay(300); 
-
-        uint8_t buffer[256]; 
-        int idx = 0;
-        while(Serial1.available() && idx < 256) { buffer[idx++] = Serial1.read(); }
-
-        if (idx > 8 && buffer[1] == 0x2B && buffer[2] == 0x0E && buffer[3] == currentCode) {
-            int objCount = buffer[7]; int ptr = 8; 
-            for (int i = 0; i < objCount; i++) {
-                if (ptr + 2 >= idx) break; 
-                uint8_t objId = buffer[ptr]; uint8_t objLen = buffer[ptr+1];
-                String objData = "";
-                for (int k = 0; k < objLen; k++) { if (ptr + 2 + k < idx) objData += (char)buffer[ptr + 2 + k]; }
-                if (objId == 0x01) sensor_serial = objData;        
-                if (objId == 0x02) sensor_fw_version = objData;  
-                if (objId == 0x05) sensor_model = objData;        
-                if (objId == 0x03) sensor_vendor_url = objData;  
-                if (objId == 0x04) sensor_part_number = objData; 
-                ptr += (2 + objLen); 
-            }
-        }
-        delay(100); 
-        // Re-enable TX for next loop iteration
-        digitalWrite(RS485_CTRL_PIN, HIGH);
+    Wilcoxon883MRTU::Identity identity;
+    Wilcoxon883MRTU::Result result = sensorRtu.readIdentity(identity, 1000);
+    if (result != Wilcoxon883MRTU::Result::Ok) {
+        logMessage(String("[System] Identity read failed: ") + Wilcoxon883MRTU::resultText(result));
+        return;
     }
-    
-    // Ensure we end in RX mode
-    digitalWrite(RS485_CTRL_PIN, LOW);
-
-    logMessage("[System] ID Result -> Model: " + sensor_model + " | Serial: " + sensor_serial + " | PN: " + sensor_part_number);
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(1000)) != pdTRUE) return;
+    // Object IDs as used before: 1 product code (used as serial for MQTT commands),
+    // 2 revision, 3 vendor URL, 4 product name (part number), 5 model.
+    sensor_serial = identity.product;
+    sensor_fw_version = identity.revision;
+    sensor_vendor_url = identity.vendorUrl;
+    sensor_part_number = identity.productName;
+    sensor_model = identity.model;
+    String summary = "[System] ID Result -> Model: " + sensor_model + " | Serial: " + sensor_serial + " | PN: " + sensor_part_number;
     xSemaphoreGive(dataMutex);
+    logMessage(summary);
 }
 
 bool requestNewWaveform() {
-    uint8_t result = node.writeSingleRegister(REG_TRIGGER, VAL_TRIGGER_START);
-    return (result == node.ku8MBSuccess);
+    return sensorRtu.writeSingleRegister(REG_TRIGGER, VAL_TRIGGER_START) == Wilcoxon883MRTU::Result::Ok;
 }
 
 bool isWaveformReady() {
-    uint8_t result = node.readHoldingRegisters(REG_TRIGGER, 1);
-    if (result == node.ku8MBSuccess) {
-        return (node.getResponseBuffer(0) == VAL_STATUS_READY);
-    }
-    return false;
+    uint16_t status = 0;
+    return sensorRtu.readHoldingRegisters(REG_TRIGGER, 1, &status, 1) == Wilcoxon883MRTU::Result::Ok &&
+           status == VAL_STATUS_READY;
+}
+
+uint8_t readSensorRegisters(uint16_t address, uint16_t count, uint16_t* values) {
+    return errorCode(sensorRtu.readInputRegisters(address, count, values, count));
 }
 
 bool readSensorValue(const char* name, uint16_t address, float scale, float &target) {
-    uint8_t result = node.readInputRegisters(address, 1);
-    if (result == node.ku8MBSuccess) {
-        target = (int16_t)node.getResponseBuffer(0) / scale;
-        return true;
-    }
-    return false;
+    uint16_t raw = 0;
+    if (readSensorRegisters(address, 1, &raw) != 0) return false;
+    target = (int16_t)raw / scale;
+    return true;
 }
 
 bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* buffer) {
     uint16_t pointsRead = 0;
-    const uint16_t chunkSize = 125;
+    const uint16_t chunkSize = Wilcoxon883MRTU::MaxRegisters;
+    uint16_t chunk[Wilcoxon883MRTU::MaxRegisters];
     int retryCount = 0;
     const int maxRetries = 3;
 
@@ -98,24 +79,20 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
     }
 
     while (pointsRead < totalPoints) {
-        esp_task_wdt_reset(); 
-
-        if (modbusTcpEnabled) {
-             modbusTCPServer.task();
-        }
+        esp_task_wdt_reset();
+        pollModbusTCPServer();
 
         uint16_t pointsLeft = totalPoints - pointsRead;
         uint16_t pointsToRead = (pointsLeft > chunkSize) ? chunkSize : pointsLeft;
-        uint8_t result = node.readInputRegisters(startAddress + pointsRead, pointsToRead);
+        bool stored = false;
+        if (readSensorRegisters(startAddress + pointsRead, pointsToRead, chunk) == 0 &&
+            xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            for (int i = 0; i < pointsToRead; i++) buffer[pointsRead + i] = (int16_t)chunk[i];
+            xSemaphoreGive(dataMutex);
+            stored = true;
+        }
 
-        if (result == node.ku8MBSuccess) {
-            if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                for (int i = 0; i < pointsToRead; i++) {
-                    buffer[pointsRead + i] = (int16_t)node.getResponseBuffer(i);
-                }
-                xSemaphoreGive(dataMutex);
-            }
-            
+        if (stored) {
             pointsRead += pointsToRead;
             retryCount = 0;
 
@@ -124,14 +101,15 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
                     snprintf(systemStatus, sizeof(systemStatus), "Downloading... (%d%%)", (pointsRead * 100) / totalPoints);
                     xSemaphoreGive(dataMutex);
                 }
-                if (mqttClient && mqttClient->connected()) mqttClient->loop(); 
-                esp_task_wdt_reset(); 
+                if (mqttClient && mqttClient->connected()) mqttClient->loop();
+                esp_task_wdt_reset();
             }
         } else {
+            // A failed read or a busy mutex retries the same chunk, so no gap is left in the buffer.
             retryCount++;
             if (retryCount > maxRetries) {
                 logMessage("[Modbus] Read fail (Addr: " + String(startAddress + pointsRead) + ")");
-                return false; 
+                return false;
             }
             vTaskDelay(pdMS_TO_TICKS(100));
         }
@@ -139,4 +117,3 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
     }
     return true;
 }
-

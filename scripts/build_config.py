@@ -27,5 +27,5 @@ content = '#pragma once\nstatic const char GITHUB_ROOTS[] = R"certs(\n' + '\n'.j
 if not target.exists() or target.read_text() != content:
     target.write_text(content)
 tag = os.environ.get("GITHUB_REF_NAME", "")
-if os.environ.get("GITHUB_REF_TYPE") == "tag" and re.fullmatch(r"v\d+\.\d+\.\d+", tag):
+if os.environ.get("GITHUB_REF_TYPE") == "tag" and re.fullmatch(r"v\d+\.\d+\.\d+(-beta\.\d+)?", tag):
     env.Append(CPPDEFINES=[("GATEWAY_RELEASE_VERSION", env.StringifyMacro(tag[1:]))])

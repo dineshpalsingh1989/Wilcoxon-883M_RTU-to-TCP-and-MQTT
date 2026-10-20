@@ -2,5 +2,4 @@
 #include "core/globals.h"
 
 void updateLedStatus();
-void preTransmission();   // MAX485: DE/RE high (transmit)
-void postTransmission();  // MAX485: DE/RE low (receive)
+// MAX485 DE/RE (RS485_CTRL_PIN) is driven by Wilcoxon883MRTU around each request.
