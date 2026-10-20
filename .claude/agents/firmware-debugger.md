@@ -1,6 +1,6 @@
 ---
 name: firmware-debugger
-description: Debugs ESP32-S3 firmware issues in src/main.cpp - crashes, watchdog resets, FreeRTOS mutex/race problems, stack or heap exhaustion, and PlatformIO build errors. Use when the device reboots, hangs, or the build fails.
+description: Debugs ESP32-S3 firmware issues across src/ (tasks, capture, core, hardware) - crashes, watchdog resets, FreeRTOS mutex/race problems, stack or heap exhaustion, and PlatformIO build errors. Use when the device reboots, hangs, or the build fails.
 tools: Read, Grep, Glob, Bash
 ---
 

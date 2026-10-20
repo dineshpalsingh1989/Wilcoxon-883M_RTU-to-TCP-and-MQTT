@@ -46,3 +46,6 @@ include/generated/
 
 # debug information files
 *.dwo
+
+# Local agent handoffs and consolidated reports
+.agent-reports/

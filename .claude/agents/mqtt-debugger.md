@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash
 You debug the MQTT layer of the Wilcoxon 883M gateway in `src/` (see `src/core/modules.h`).
 
 Key facts:
-- `PubSubClient* mqttClient` (plain or TLS via `WiFiClientSecure`), buffer set to 4096 bytes, client ID `esp32-ila-sensor`, reconnect every 5 s in `backgroundLoop`.
+- `PubSubClient* mqttClient` (plain or TLS via `WiFiClientSecure`), buffer set to 4096 bytes, client ID `esp32-ila-<MAC-without-colons>`, reconnect every 5 s in `backgroundLoop`.
 - Data topic is `mqtt_topic_str`; status/health uses `883M/status`; commands arrive on `883M/command` and must contain a `serial_number` equal to `sensor_serial`.
 - Publishers: `publishMetrics`, `publishDownsampledWaveform`, `publishFullWaveformInChunks`, `publishFullSpectrumInChunks`, `publishSpectrumPeaks`, `publishCombinedSpectrumPeaks`, `publishDeviceHealth`.
 - Commands: `get_metrics`, `trigger_all`, `trigger_capture` (axis), `set_interval`, `reboot`.

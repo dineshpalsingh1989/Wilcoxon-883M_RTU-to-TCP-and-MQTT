@@ -32,7 +32,8 @@
 - Summarize changes, checks performed and any hardware validation still required.
 
 ## Specialized review agents
-- Reusable project agents are defined in `.codex/agents/`; see [.codex/agents/README.md](.codex/agents/README.md).
+- Reusable project agents are defined in `.codex/agents/`; see [.codex/agents/README.md](.codex/agents/README.md). Claude Code equivalents with hyphenated names live in `.claude/agents/`.
+- `review_coordinator`: collect specialist reports, verify/deduplicate findings and return one prioritized report; see [coordination guide](docs/agent-coordination.md).
 - `firmware_review`: firmware tasks, captures, monitoring and hardware helpers.
 - `communications_review`: Modbus RTU/TCP and MQTT integration.
 - `web_update_review`: dashboard/settings, HTTP handlers and firmware updates.
