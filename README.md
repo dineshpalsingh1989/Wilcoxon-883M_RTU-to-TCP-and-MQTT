@@ -9,13 +9,39 @@
 [![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
+[Install](#install-in-4-steps) · [Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
 
 </div>
 
 ![System overview: Wilcoxon 883M sends Modbus RTU data through an ESP32-S3 gateway to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
 
 Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
+
+## Install in 4 steps
+
+No PlatformIO, Arduino IDE or libraries needed: the firmware already contains everything, including the Wilcoxon883MRTU Modbus RTU/TCP library. You need an **Adafruit Feather ESP32-S3**, a **USB-C data cable** and **Chrome or Edge on a computer**.
+
+<p align="center"><a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/"><strong>➜ Open the web installer</strong></a></p>
+
+![Four install steps: open the web installer, plug in the Feather over USB-C, click Install and pick the port, then press RESET and join the ILA_Sensor_AP Wi-Fi network.](docs/images/install-steps.svg)
+
+1. **Open the [web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)** in Chrome or Edge on a computer.
+2. **Plug the board in** with a USB-C data cable.
+3. **Click Install** and pick the board's port. It takes about a minute. If no port appears, hold **BOOT**, tap **RESET**, release **BOOT** and try again.
+4. **Press RESET**, join the Wi-Fi network **`ILA_Sensor_AP`** (password `12345678`), open **http://192.168.4.1** and enter your own Wi-Fi under **Settings > Wi-Fi**.
+
+<table>
+<tr>
+<td width="60%"><img src="docs/images/web-installer.png" alt="Web installer page with an Install button next to the available firmware version."></td>
+<td width="40%"><img src="docs/images/wifi-setup.png" alt="Gateway Wi-Fi Settings page with a network selected, password entered and a Save and Connect button."></td>
+</tr>
+<tr>
+<td><em>Step 3: the web installer. The version shown is an example; the page lists the current releases.</em></td>
+<td><em>Step 4: Wi-Fi Settings on the gateway (simulated demo).</em></td>
+</tr>
+</table>
+
+After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring). Problems or manual flashing: see the [installation guide](docs/installing-firmware.md).
 
 ## Beta: built on our own Modbus library
 
@@ -61,9 +87,9 @@ The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883M
 
 ## Quick start
 
-### Install from your browser (easiest)
+### Downloads
 
-Open the **[web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)** in Chrome or Edge on a computer, plug the Feather ESP32-S3 in over USB-C and click **Install**. No PlatformIO or drivers are needed. Then follow [Connect to Wi-Fi](#connect-to-wi-fi) below. See the [installation guide](docs/installing-firmware.md) for download mode, manual flashing and troubleshooting.
+Most users only need the [web installer](#install-in-4-steps).
 
 | Download | For | Where |
 | --- | --- | --- |
