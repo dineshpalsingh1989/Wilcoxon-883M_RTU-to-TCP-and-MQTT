@@ -86,8 +86,8 @@ bool installRelease(String tag, String& error) {
     esp_image_header_t header; memcpy(&header, buffer, headerSize);
     if (header.magic != ESP_IMAGE_HEADER_MAGIC || header.chip_id != ESP_CHIP_ID_ESP32S3) { http.end(); error = "Firmware is not an ESP32-S3 application"; return false; }
     if (!Update.begin(size)) { http.end(); error = Update.errorString(); return false; }
-    mbedtls_sha256_context sha; mbedtls_sha256_init(&sha); mbedtls_sha256_starts_ret(&sha, 0);
-    mbedtls_sha256_update_ret(&sha, buffer, headerSize);
+    mbedtls_sha256_context sha; mbedtls_sha256_init(&sha); mbedtls_sha256_starts(&sha, 0);
+    mbedtls_sha256_update(&sha, buffer, headerSize);
     size_t received = headerSize;
     bool written = Update.write(buffer, headerSize) == headerSize;
     uint32_t lastData = millis(), lastProgress = 0;
@@ -101,7 +101,7 @@ bool installRelease(String tag, String& error) {
         int count = stream->read(buffer, amount);
         if (count <= 0) break;
         lastData = millis();
-        mbedtls_sha256_update_ret(&sha, buffer, count);
+        mbedtls_sha256_update(&sha, buffer, count);
         written = Update.write(buffer, count) == size_t(count);
         received += count;
         unsigned percent = received * 100 / size;
@@ -109,7 +109,7 @@ bool installRelease(String tag, String& error) {
         vTaskDelay(1);
     }
     http.end();
-    unsigned char hash[32]; mbedtls_sha256_finish_ret(&sha, hash); mbedtls_sha256_free(&sha);
+    unsigned char hash[32]; mbedtls_sha256_finish(&sha, hash); mbedtls_sha256_free(&sha);
     char hex[65]; for (int i = 0; i < 32; i++) snprintf(hex + i * 2, 3, "%02x", hash[i]);
     String expected = digest.substring(7); expected.toLowerCase();
     if (!written || received != size || expected != hex) { Update.abort(); error = "Download incomplete or SHA-256 verification failed; current firmware retained"; return false; }
