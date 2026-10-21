@@ -63,9 +63,9 @@ jobs:
           # Beta tags (v1.2.3-beta.N) become pre-releases that never replace "Latest";
           # the gateway updater only offers the latest stable release.
           if [[ "$RELEASE_TAG" == *-beta.* ]]; then
-            flags=(--prerelease --latest=false)
+            flags=(--prerelease)
           else
-            flags=()
+            flags=(--latest)
           fi
           # Install instructions go above GitHub's generated change list.
           pages="https://${GH_REPO%%/*}.github.io/${GH_REPO#*/}/"

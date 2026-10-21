@@ -29,17 +29,23 @@ def gh(*args):
     return subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
 
 
+def version(tag):
+    """(major, minor, patch, beta) with a stable release sorting after its betas."""
+    numbers = [int(n) for n in re.findall(r"\d+", tag)]
+    return (*numbers[:3], numbers[3] if len(numbers) > 3 else float("inf"))
+
+
 def pick_channels():
-    releases = json.loads(gh("release", "list", "--limit", "100", "--json", "tagName,isLatest,isPrerelease,isDraft"))
-    releases = [r for r in releases if not r["isDraft"]]  # newest first
-    stable = next((r["tagName"] for r in releases if r["isLatest"] and STABLE.fullmatch(r["tagName"])), None)
-    beta = None
-    for release in releases:
-        if release["tagName"] == stable:
-            break  # only offer a beta that is newer than the stable release
-        if release["isPrerelease"] and BETA.fullmatch(release["tagName"]):
-            beta = release["tagName"]
-            break
+    # Chosen by version number rather than GitHub's "Latest" flag, which a new pre-release
+    # has been seen to move back to an older release.
+    releases = json.loads(gh("release", "list", "--limit", "100", "--json", "tagName,isPrerelease,isDraft"))
+    releases = [r for r in releases if not r["isDraft"]]
+    stables = [r["tagName"] for r in releases if not r["isPrerelease"] and STABLE.fullmatch(r["tagName"])]
+    stable = max(stables, key=version, default=None)
+    betas = [r["tagName"] for r in releases if r["isPrerelease"] and BETA.fullmatch(r["tagName"])]
+    beta = max(betas, key=version, default=None)
+    if beta and stable and version(beta) < version(stable):
+        beta = None  # only offer a beta that is newer than the stable release
     return [(name, tag) for name, tag in (("stable", stable), ("beta", beta)) if tag]
 
 
