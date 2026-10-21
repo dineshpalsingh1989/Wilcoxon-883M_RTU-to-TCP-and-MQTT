@@ -221,6 +221,11 @@ function updateTlsOptions() {
         portInput.value = '1883';
     }
 }
+// Broker, port and topic are only required while the MQTT client is enabled.
+function updateRequiredFields() {
+    const enabled = document.getElementById('enabled').checked;
+    ['server', 'port', 'topic'].forEach(id => { document.getElementById(id).required = enabled; });
+}
 function updateMqttStatus() {
     fetch('/mqtt_status').then(r => r.json()).then(data => { document.getElementById('mqtt-status').textContent = data.status; });
 }
@@ -230,7 +235,9 @@ window.onload = function() {
     document.getElementById('skip_val').checked = )rawliteral" + String(mqtt_skip_cert_validation ? "true" : "false") + R"rawliteral(;
     document.getElementById('progress').checked = )rawliteral" + String(mqtt_publish_progress ? "true" : "false") + R"rawliteral(;
     document.getElementById('tls').addEventListener('change', updateTlsOptions);
+    document.getElementById('enabled').addEventListener('change', updateRequiredFields);
     updateTlsOptions();
+    updateRequiredFields();
     updateMqttStatus();
     setInterval(updateMqttStatus, 2000);
 }
