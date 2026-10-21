@@ -22,21 +22,24 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install platformio==6.1.18 certifi
-      - run: pio run -e adafruit_feather_esp32s3
+      # Every [env:...] in platformio.ini is a supported board.
+      - run: pio run
       - name: Bundle browser installer images
-        run: pio run -e adafruit_feather_esp32s3 -t webinstaller
+        run: pio run -t webinstaller
       - name: Prepare board binaries
         run: |
-          cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
-          cp .pio/build/adafruit_feather_esp32s3/factory.bin factory-adafruit_feather_esp32s3.bin
-          (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
+          for board in adafruit_feather_esp32s3 cytron_maker_esp32; do
+            cp .pio/build/$board/firmware.bin firmware-$board.bin
+            cp .pio/build/$board/factory.bin factory-$board.bin
+            (cd .pio/build/$board/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-$board.zip" *)
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
           path: |
-            firmware-adafruit_feather_esp32s3.bin
-            web-installer-adafruit_feather_esp32s3.zip
-            factory-adafruit_feather_esp32s3.bin
+            firmware-*.bin
+            web-installer-*.zip
+            factory-*.bin
   release:
     needs: firmware
     runs-on: ubuntu-24.04
@@ -64,16 +67,20 @@ jobs:
           {
             echo "## Install"
             echo
-            echo "- **Easiest:** open the [web installer]($pages) in Chrome or Edge, plug in the Feather ESP32-S3 and click **Install**."
-            echo "- **Manual, any flashing tool:** write \`factory-adafruit_feather_esp32s3.bin\` at address \`0x0\`. This clears saved settings."
-            echo "- **Gateway already running:** \`firmware-adafruit_feather_esp32s3.bin\` is the OTA update file."
+            echo "- **Easiest:** open the [web installer]($pages) in Chrome or Edge, plug in the board and click **Install**. It detects the chip and installs the matching build."
+            echo "- **Manual, any flashing tool:** write \`factory-<board>.bin\` for your board at address \`0x0\`. This clears saved settings."
+            echo "- **Gateway already running:** \`firmware-<board>.bin\` is the OTA update file."
+            echo
+            echo "| Board | Chip | \`<board>\` in file names |"
+            echo "|---|---|---|"
+            echo "| Adafruit Feather ESP32-S3 | ESP32-S3 | \`adafruit_feather_esp32s3\` |"
+            echo "| Cytron Maker ESP32 | ESP32 | \`cytron_maker_esp32\` |"
             echo
             echo "Guide and troubleshooting: [installing-firmware.md](https://github.com/$GH_REPO/blob/$RELEASE_TAG/docs/installing-firmware.md)"
           } > install-notes.md
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes \
             --notes "$(cat install-notes.md)" "${flags[@]}"
-          gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin \
-            web-installer-adafruit_feather_esp32s3.zip factory-adafruit_feather_esp32s3.bin --clobber
+          gh release upload "$RELEASE_TAG" firmware-*.bin web-installer-*.zip factory-*.bin --clobber
   installer:
     needs: release
     permissions:
@@ -99,7 +106,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
         run: |
           image="ghcr.io/${REPO,,}"
-          printf 'FROM scratch\nCOPY firmware-adafruit_feather_esp32s3.bin /\n' > Dockerfile
+          printf 'FROM scratch\nCOPY firmware-*.bin /\n' > Dockerfile
           echo "$GH_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
           tags=(-t "$image:${REF_NAME}")
           [[ "$REF_NAME" == *-beta.* ]] || tags+=(-t "$image:latest")

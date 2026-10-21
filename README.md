@@ -4,7 +4,7 @@
 
 **Bring RS485 vibration data to your browser, PLC and MQTT broker.**
 
-[![ESP32-S3](https://img.shields.io/badge/ESP32--S3-Arduino-00979D)](platformio.ini)
+[![ESP32-S3 and ESP32](https://img.shields.io/badge/ESP32--S3%20%7C%20ESP32-Arduino-00979D)](#supported-boards)
 [![Modbus](https://img.shields.io/badge/Modbus-RTU%20%2B%20TCP-2563eb)](#modbus-tcp)
 [![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -17,7 +17,7 @@
 
 ![System overview: Wilcoxon 883M sends Modbus RTU data through an ESP32-S3 gateway to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
 
-Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
+Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
 ## Install on your ESP32 in 4 steps
 
@@ -25,12 +25,34 @@ Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor
 
 | You need | |
 | --- | --- |
-| ESP32 board | **Adafruit Feather ESP32-S3** (the board this firmware is built and pinned for) |
+| ESP32 board | **Adafruit Feather ESP32-S3** or **Cytron Maker ESP32**, see [Supported boards](#supported-boards) |
 | Cable | USB-C **data** cable |
 | Computer | Chrome or Edge on Windows, macOS, Linux or ChromeOS |
 | Sensor wiring (afterwards) | RS485-to-TTL module and Wilcoxon 883M, see [Hardware and wiring](#hardware-and-wiring) |
 
-> **Other ESP32 boards:** the installer only offers the Feather ESP32-S3 build. Other ESP32-S3 boards use different pins, flash layouts and USB setups, so the image may not start or may drive the wrong pins. Build from source for another board after checking [`src/config/config.h`](src/config/config.h) against your wiring.
+### Supported boards
+
+This gateway supports **two ESP32 boards**:
+
+1. **Adafruit Feather ESP32-S3** (ESP32-S3 chip)
+2. **Cytron Maker ESP32** (original ESP32 chip)
+
+**The installer finds your board's chip automatically.** When you click **Install** and pick the port, it reads the chip on the connected board and installs the matching build. There is nothing to choose.
+
+**Any chip not in this list is refused.** If the board has an ESP32-S2, ESP32-C3, ESP32-C6, ESP32-H2 or any other chip, the installer stops with *"This device is not supported"* and writes nothing to the board.
+
+| Board | Chip | Build installed | Status LED | Buzzer | User button |
+| --- | --- | --- | --- | --- | --- |
+| Adafruit Feather ESP32-S3 | ESP32-S3 | `adafruit_feather_esp32s3` | RGB LED, GPIO48 | GPIO5 | GPIO0 (BOOT) |
+| [Cytron Maker ESP32](https://my.cytron.io/p-maker-esp32-bundle) | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` | Onboard LED on GPIO2 | Onboard piezo, GPIO26 | Onboard button, GPIO4 |
+
+Both builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GPIO14 (DE/RE). See [Hardware and wiring](#hardware-and-wiring).
+
+> **Cytron Maker ESP32 is new and not yet tested on hardware.** It builds and installs the same gateway, but it has not yet been run on a real Maker ESP32 with an 883M sensor. The original ESP32 also has less RAM than the ESP32-S3, so check captures, MQTT over TLS and **Settings > GitHub Firmware Updates** on a bench board first. If the GitHub updater reports a memory or TLS error, update by uploading `firmware-cytron_maker_esp32.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)** instead.
+>
+> On the Maker ESP32 the GPIO2 LED is **on** when the gateway is online, **blinks** during captures and metric recording, and is **off** when offline or after a sensor error. GPIO17 and GPIO18 also have onboard activity LEDs, so they flicker with RS485 traffic. The buzzer's mute switch silences the Wi-Fi alarm beeps.
+
+> **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](src/config/config.h) against your hardware and build from source.
 
 <p align="center"><a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/"><strong>➜ Open the web installer</strong></a></p>
 
@@ -38,8 +60,8 @@ Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor
 
 1. **Open the [web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)** in Chrome or Edge on a computer.
 2. **Plug the board in** with a USB-C data cable.
-3. **Click Install** and pick the board's port. It takes about a minute. If no port appears, hold **BOOT**, tap **RESET**, release **BOOT** and try again.
-4. **Press RESET**, join the Wi-Fi network **`ILA_Sensor_AP`** (password `12345678`), open **http://192.168.4.1** and enter your own Wi-Fi under **Settings > Wi-Fi**.
+3. **Click Install** and pick the board's port. It takes about a minute. If no port appears, hold **BOOT**, tap **RESET** (labelled **EN** on the Maker ESP32), release **BOOT** and try again.
+4. **Press RESET** (or **EN**), join the Wi-Fi network **`ILA_Sensor_AP`** (password `12345678`), open **http://192.168.4.1** and enter your own Wi-Fi under **Settings > Wi-Fi**.
 
 <table>
 <tr>
@@ -56,11 +78,13 @@ After saving, the gateway restarts and joins your network. Open its new IP addre
 
 ### If the install does not work
 
-Re-installing is always safe: the ESP32-S3's built-in loader cannot be erased, so you can simply try again.
+Re-installing is always safe: the ESP32's built-in loader cannot be erased, so you can simply try again.
 
 | Problem | Fix |
 | --- | --- |
 | No port appears | Use a USB-C **data** cable, try another USB socket (no hub), then hold **BOOT**, tap **RESET**, release **BOOT** and try again |
+| No port appears (Maker ESP32, Windows or macOS) | Install the WCH USB-serial driver (CH9102/CH343) for the board's USB chip, then reconnect |
+| "This device is not supported" | The board's chip is not ESP32-S3 or ESP32, or the selected release is older than Maker ESP32 support |
 | "Failed to connect" or timeout | Close Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET as above |
 | Stops halfway | Change the cable, avoid hubs and install again |
 | Finished but nothing happens | Press **RESET**. Still no `ILA_Sensor_AP`? Install again with *Erase device* ticked |
@@ -70,12 +94,12 @@ Re-installing is always safe: the ESP32-S3's built-in loader cannot be erased, s
 
 | Way | Use when |
 | --- | --- |
-| [Espressif browser flasher](docs/installing-firmware.md#2-espressif-browser-flasher): write `factory-adafruit_feather_esp32s3.bin` at `0x0` | The installer page fails but Chrome or Edge works |
-| [esptool command line](docs/installing-firmware.md#3-esptool-command-line): `python -m esptool --chip esp32s3 write_flash 0x0 factory-adafruit_feather_esp32s3.bin` | Any computer with Python, no browser needed |
+| [Espressif browser flasher](docs/installing-firmware.md#2-espressif-browser-flasher): write `factory-<board>.bin` at `0x0` | The installer page fails but Chrome or Edge works |
+| [esptool command line](docs/installing-firmware.md#3-esptool-command-line): `python -m esptool write_flash 0x0 factory-<board>.bin` | Any computer with Python, no browser needed |
 | [Espressif Flash Download Tool](docs/installing-firmware.md#4-espressif-flash-download-tool-windows) | Windows users who prefer a desktop app |
 | [Build from source](#build-and-flash-the-gateway) with PlatformIO | Developers |
 
-The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
+`<board>` is `adafruit_feather_esp32s3` or `cytron_maker_esp32` ([Supported boards](#supported-boards)). The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
 
 ## Beta: built on our own Modbus library
 
@@ -127,8 +151,8 @@ Most users only need the [web installer](#install-on-your-esp32-in-4-steps).
 
 | Download | For | Where |
 | --- | --- | --- |
-| Gateway firmware, new board | First install or recovery | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `factory-adafruit_feather_esp32s3.bin` at `0x0` from the [releases](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) |
-| Gateway firmware, update | A gateway that already runs this firmware | **Settings > GitHub Firmware Updates**, or `firmware-adafruit_feather_esp32s3.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
+| Gateway firmware, new board | First install or recovery | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `factory-<board>.bin` at `0x0` from the [releases](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) |
+| Gateway firmware, update | A gateway that already runs this firmware | **Settings > GitHub Firmware Updates**, or `firmware-<board>.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
 | Wilcoxon883MRTU library | Using the Modbus RTU/TCP library in your own sketch | `Wilcoxon883MRTU-<version>.zip` on the newest `wilcoxon883mrtu-v*` [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases); in Arduino IDE use **Sketch > Include Library > Add .ZIP Library** |
 
 ### Try it without hardware
@@ -147,15 +171,15 @@ Open **http://localhost:8080**. Use the demo scenario selector to explore normal
 
 1. Install PlatformIO and open this repository in VS Code.
 2. Check the board and pin assignments below against your hardware.
-3. Connect the ESP32-S3 over USB and run:
+3. Connect the board over USB and run, choosing the environment for your board:
 
 ```sh
-pio run
-pio run --target upload
+pio run -e adafruit_feather_esp32s3            # or: -e cytron_maker_esp32
+pio run -e adafruit_feather_esp32s3 --target upload
 pio device monitor
 ```
 
-The configured environment is `adafruit_feather_esp32s3`, using the Arduino framework. PlatformIO installs the libraries declared in [platformio.ini](platformio.ini). The build helper also requires Python's `certifi` package in the PlatformIO Python environment.
+Each [supported board](#supported-boards) has its own environment, `adafruit_feather_esp32s3` or `cytron_maker_esp32`, using the Arduino framework. `pio run` alone builds both. PlatformIO installs the libraries declared in [platformio.ini](platformio.ini). The build helper also requires Python's `certifi` package in the PlatformIO Python environment.
 
 ### Connect to Wi-Fi
 
@@ -172,21 +196,21 @@ Follow the [step-by-step wiring and troubleshooting guide](docs/wiring.md) befor
 
 | Component | Purpose |
 | --- | --- |
-| ESP32-S3 board | Gateway; project hardware targets the Cytron Maker Feather AIoT S3 |
+| ESP32 board | Gateway; see [Supported boards](#supported-boards). Project hardware targets the Cytron Maker Feather AIoT S3 |
 | Wilcoxon 883M | RS485 Modbus RTU vibration and temperature sensor |
 | RS485-to-TTL UART module | Interface with ESP32-compatible 3.3 V logic levels |
 | Suitable DC supply | Sensor power; check the linked sensor manual for supply and wiring requirements |
 
 **Current firmware assignments** from [src/config/config.h](src/config/config.h):
 
-| ESP32 GPIO | Connection / function |
-| --- | --- |
-| 18 | RS485 module RO → UART RX |
-| 17 | UART TX → RS485 module DI |
-| 14 | RS485 module DE and RE direction control |
-| 5 | Buzzer |
-| 0 | User button |
-| 48 | RGB status LED |
+| Connection / function | ESP32-S3 build | Cytron Maker ESP32 build |
+| --- | --- | --- |
+| RS485 module RO → UART RX | GPIO18 | GPIO18 |
+| UART TX → RS485 module DI | GPIO17 | GPIO17 |
+| RS485 module DE and RE direction control | GPIO14 | GPIO14 |
+| Buzzer | GPIO5 | GPIO26 (onboard) |
+| User button | GPIO0 | GPIO4 (onboard) |
+| Status LED | GPIO48, RGB | GPIO2, onboard single-colour LED |
 
 Connect the sensor's RS485 pair to the module's A/B terminals according to the hardware documentation. Confirm grounding and termination for your installation. Board labels can differ from GPIO numbers; verify the selected board before applying power.
 
@@ -265,11 +289,11 @@ Server behaviour: function codes 03, 04, 06 and 16, up to **8 clients**, any uni
 
 Open **Settings > GitHub Firmware Updates** to check for a newer stable release and install it on the **ESP32 gateway**.
 
-The updater requires a stable `vMAJOR.MINOR.PATCH` release, the asset `firmware-adafruit_feather_esp32s3.bin`, and GitHub's SHA-256 asset digest. It validates HTTPS certificates, image compatibility, partition size and the downloaded checksum before activating the image and rebooting. Wi-Fi and a correct gateway clock are required.
+The updater requires a stable `vMAJOR.MINOR.PATCH` release, the asset for the gateway's own board (`firmware-adafruit_feather_esp32s3.bin` or `firmware-cytron_maker_esp32.bin`), and GitHub's SHA-256 asset digest. It validates HTTPS certificates, image compatibility, partition size and the downloaded checksum before activating the image and rebooting. Wi-Fi and a correct gateway clock are required.
 
 See the [update guide](demo/README.md#github-firmware-installation) for release publishing and validation details. Updates apply to the gateway; they do not update the Wilcoxon sensor firmware.
 
-**Beta releases** use tags such as `v4.10.0-beta.1`. They are published as GitHub **pre-releases**, never marked Latest, so the gateway's updater does not offer them. To try a beta, download `firmware-adafruit_feather_esp32s3.bin` from the pre-release and upload it under **Settings > Device Diagnostics > Firmware Update (OTA)** or with PlatformIO. A gateway running a beta can later move to the matching stable release (for example `v4.10.0`) through the normal updater.
+**Beta releases** use tags such as `v4.10.0-beta.1`. They are published as GitHub **pre-releases**, never marked Latest, so the gateway's updater does not offer them. To try a beta, download the `firmware-<board>.bin` for your board from the pre-release and upload it under **Settings > Device Diagnostics > Firmware Update (OTA)** or with PlatformIO. A gateway running a beta can later move to the matching stable release (for example `v4.10.0`) through the normal updater.
 
 ## Watchdog protection
 

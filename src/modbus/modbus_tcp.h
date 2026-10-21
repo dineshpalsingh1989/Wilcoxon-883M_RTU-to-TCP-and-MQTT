@@ -1,6 +1,8 @@
 #pragma once
 #include "core/globals.h"
 
+// Call once at boot, before any capture or PLC access.
+bool allocateModbusTCPBuffers();
 bool beginModbusTCPServer(uint16_t port);
 // Background task only; answers PLC requests without blocking.
 void pollModbusTCPServer();

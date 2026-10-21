@@ -1,10 +1,17 @@
 #pragma once
 #include <stdint.h>
 
-#define RGB_PIN 48        
+#if defined(BOARD_CYTRON_MAKER_ESP32)
+// Cytron Maker ESP32: no RGB LED; the onboard GPIO2 LED shows status instead.
+#define STATUS_LED_PIN 2
+#define BUZZER_PIN 26     // Onboard piezo (has a mute switch)
+#define USER_BUTTON_PIN 4 // Onboard user button
+#else
+#define RGB_PIN 48
 #define NUM_PIXELS 1
 #define BUZZER_PIN 5
 #define USER_BUTTON_PIN 0
+#endif
 #define RXD_PIN        18 // Connect to RO (Receiver Output)
 #define TXD_PIN        17 // Connect to DI (Driver Input)
 #define RS485_CTRL_PIN 14 // Connect to DE and RE

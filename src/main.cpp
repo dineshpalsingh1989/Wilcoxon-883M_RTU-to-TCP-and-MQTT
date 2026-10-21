@@ -7,14 +7,13 @@ void setup() {
     // 1. Initialize Mutex
     dataMutex = xSemaphoreCreateMutex();
     if (dataMutex == NULL) { ESP.restart(); }
+    if (!allocateCaptureBuffers() || !allocateModbusTCPBuffers()) { ESP.restart(); }
 
     // 2. Capture Reset Reason immediately
     lastResetReason = getResetReasonString();
     
     // 3. Init Hardware
-    pixels.begin();
-    pixels.setBrightness(40);
-    pixels.show();
+    initStatusLed();
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
     

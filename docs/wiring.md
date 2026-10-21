@@ -39,4 +39,4 @@ Power the ESP32 through its supported USB/power input. Use the sensor's specifie
 - Check A/B naming against both manufacturers' documentation; naming conventions can differ.
 - Check termination, biasing and cable routing if communication is intermittent.
 
-The RGB LED, buzzer and user-button assignments are GPIO48, GPIO5 and GPIO0 respectively. Verify whether these are already onboard before adding external components.
+The RS485 wiring above is the same for every [supported board](../README.md#supported-boards). On the ESP32-S3 build the RGB LED, buzzer and user-button assignments are GPIO48, GPIO5 and GPIO0; verify whether these are already onboard before adding external components. On the Cytron Maker ESP32 build they are the board's onboard GPIO2 LED, GPIO26 piezo buzzer and GPIO4 user button, so nothing extra is wired. The Maker ESP32's onboard GPIO17 and GPIO18 LEDs flicker with RS485 traffic.

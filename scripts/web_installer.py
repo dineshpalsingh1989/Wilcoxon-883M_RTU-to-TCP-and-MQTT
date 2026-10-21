@@ -11,8 +11,14 @@ from pathlib import Path
 
 Import("env")
 
+# ESP Web Tools picks the build whose chipFamily matches the connected chip.
+CHIP_FAMILIES = {"esp32": "ESP32", "esp32s3": "ESP32-S3"}
+
 
 def bundle(target, source, env):
+    mcu = env.BoardConfig().get("build.mcu")
+    if mcu not in CHIP_FAMILIES:
+        raise RuntimeError(f"No web installer chip family for MCU {mcu}")
     out = Path(env.subst("$BUILD_DIR")) / "web-installer"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
@@ -29,7 +35,7 @@ def bundle(target, source, env):
         "name": "Wilcoxon 883M Gateway",
         "version": os.environ.get("GITHUB_REF_NAME", "local build"),
         "new_install_prompt_erase": True,
-        "builds": [{"chipFamily": "ESP32-S3", "parts": parts}],
+        "builds": [{"chipFamily": CHIP_FAMILIES[mcu], "parts": parts}],
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Web installer bundle: {out}")
@@ -42,7 +48,7 @@ def bundle(target, source, env):
     factory = Path(env.subst("$BUILD_DIR")) / "factory.bin"
     regions = [arg for part in parts for arg in (hex(part["offset"]), str(out / part["path"]))]
     if env.Execute(env.VerboseAction(
-            " ".join(['"$PYTHONEXE"', f'"{esptool}"', "--chip", "esp32s3", "merge_bin", "-o", f'"{factory}"']
+            " ".join(['"$PYTHONEXE"', f'"{esptool}"', "--chip", mcu, "merge_bin", "-o", f'"{factory}"']
                      + [f'"{r}"' for r in regions]),
             "Merging factory image")):
         raise RuntimeError("esptool merge_bin failed")

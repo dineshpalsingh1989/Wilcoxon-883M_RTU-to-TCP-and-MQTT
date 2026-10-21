@@ -15,7 +15,14 @@
 
 namespace {
 const char* REPO = "dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT";
-const char* ASSET = "firmware-adafruit_feather_esp32s3.bin";
+const char* ASSET = "firmware-" GATEWAY_BOARD ".bin";
+#if CONFIG_IDF_TARGET_ESP32S3
+const esp_chip_id_t CHIP_ID = ESP_CHIP_ID_ESP32S3;
+const char* CHIP_ERROR = "Firmware is not an ESP32-S3 application";
+#else
+const esp_chip_id_t CHIP_ID = ESP_CHIP_ID_ESP32;
+const char* CHIP_ERROR = "Firmware is not an ESP32 application";
+#endif
 char updateState[24] = "idle", updateMessage[160] = "No update running";
 unsigned updateProgress = 0;
 String requestedTag;
@@ -92,7 +99,7 @@ bool installRelease(String tag, String& error) {
     const size_t headerSize = sizeof(esp_image_header_t);
     if (stream->readBytes(buffer, headerSize) != headerSize) { http.end(); error = "Incomplete firmware header"; return false; }
     esp_image_header_t header; memcpy(&header, buffer, headerSize);
-    if (header.magic != ESP_IMAGE_HEADER_MAGIC || header.chip_id != ESP_CHIP_ID_ESP32S3) { http.end(); error = "Firmware is not an ESP32-S3 application"; return false; }
+    if (header.magic != ESP_IMAGE_HEADER_MAGIC || header.chip_id != CHIP_ID) { http.end(); error = CHIP_ERROR; return false; }
     if (!Update.begin(size)) { http.end(); error = Update.errorString(); return false; }
     mbedtls_sha256_context sha; mbedtls_sha256_init(&sha); mbedtls_sha256_starts_ret(&sha, 0);
     mbedtls_sha256_update_ret(&sha, buffer, headerSize);

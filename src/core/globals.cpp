@@ -6,7 +6,9 @@ bool shouldReboot = false; // Safe reboot flag
 
 // --- Hardware Config (ESP32-S3-DevKitC-1) ---
 // Onboard RGB LED is typically GPIO 48 on DevKitC-1
+#ifdef RGB_PIN
 Adafruit_NeoPixel pixels(NUM_PIXELS, RGB_PIN, NEO_GRB + NEO_KHZ800);
+#endif
 
 // External Buzzer (Connect to Pin 5)
 
@@ -121,11 +123,20 @@ float displLowRmsX=0.0, displLowRmsY=0.0, displLowRmsZ=0.0;
 float displLowPeakX=0.0, displLowPeakY=0.0, displLowPeakZ=0.0;
 
 // --- Buffers ---
-int16_t fullWaveform[WAVEFORM_TOTAL_POINTS];
+CAPTURE_BUFFER(int16_t, fullWaveform, WAVEFORM_TOTAL_POINTS);
 bool newWaveformAvailable = false;
-int16_t spectrumData[SPECTRUM_TOTAL_POINTS];
+CAPTURE_BUFFER(int16_t, spectrumData, SPECTRUM_TOTAL_POINTS);
 bool newSpectrumAvailable = false;
-int16_t globalScratchBuffer[WAVEFORM_TOTAL_POINTS]; 
+CAPTURE_BUFFER(int16_t, globalScratchBuffer, WAVEFORM_TOTAL_POINTS);
+
+bool allocateCaptureBuffers() {
+#if CONFIG_IDF_TARGET_ESP32
+    return allocateBuffer(fullWaveform, WAVEFORM_TOTAL_POINTS) && allocateBuffer(spectrumData, SPECTRUM_TOTAL_POINTS) &&
+           allocateBuffer(globalScratchBuffer, WAVEFORM_TOTAL_POINTS);
+#else
+    return true;
+#endif
+}
 
 // --- Spectrum Helpers ---
 std::map<Axis, std::vector<SpectrumPeak>> xyzPeakDataCache;

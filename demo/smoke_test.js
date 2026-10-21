@@ -18,13 +18,13 @@ for (const [file, handler] of pages) {
 new vm.Script(renderPage('web_monitoring.cpp', 'handleMonitoringScript'));
 const html = renderPage('web_updates.cpp', 'handleGithubUpdates');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0][1];
-async function check(response, expected, downloadVisible) {
+async function check(response, expected, downloadVisible, board = 'adafruit_feather_esp32s3') {
   const elements = {};
   const context = {
     URL,
     document: { documentElement: { dataset: {} }, getElementById(id) { return elements[id] ||= {}; } },
     setInterval() {}, AbortSignal,
-    fetch: async url => url === '/firmware_info' ? { ok: true, json: async () => ({ version: '4.8.0' }) } : url === '/github_update_status' ? { ok: true, json: async () => ({state:'idle',message:'Idle',progress:0,active:false}) } : response,
+    fetch: async url => url === '/firmware_info' ? { ok: true, json: async () => ({ version: '4.8.0', board }) } : url === '/github_update_status' ? { ok: true, json: async () => ({state:'idle',message:'Idle',progress:0,active:false}) } : response,
   };
   vm.createContext(context);
   vm.runInContext(script, context);
@@ -41,7 +41,10 @@ async function check(response, expected, downloadVisible) {
   await check({ ok: true, json: async () => release }, /binary.*missing/, false);
   release.assets.push({ name: 'firmware-adafruit_feather_esp32s3.bin', browser_download_url: base + 'download/v4.9.0/firmware-adafruit_feather_esp32s3.bin' });
   await check({ ok: true, json: async () => release }, /Latest release loaded/, true);
+  await check({ ok: true, json: async () => release }, /binary.*missing/, false, 'cytron_maker_esp32');
+  release.assets.push({ name: 'firmware-cytron_maker_esp32.bin', browser_download_url: base + 'download/v4.9.0/firmware-cytron_maker_esp32.bin' });
+  await check({ ok: true, json: async () => release }, /Latest release loaded/, true, 'cytron_maker_esp32');
   release.assets[0].browser_download_url = 'https://example.com/firmware.bin';
   await check({ ok: true, json: async () => release }, /Unexpected release URL/, false);
-  console.log('PASS: nine page renders and script syntax; GitHub release success, missing asset, no release, rate limit, and URL validation.');
+  console.log('PASS: nine page renders and script syntax; GitHub release success, missing asset, per-board asset selection, no release, rate limit, and URL validation.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
