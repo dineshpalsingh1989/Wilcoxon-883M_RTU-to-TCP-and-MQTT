@@ -1,4 +1,7 @@
 #include "core/modules.h"
+#if GATEWAY_ETHERNET
+#include "generated/github_roots.h" // public root CAs, reused for MQTT over TLS
+#endif
 
 void setup() {
     Serial.begin(115200);
@@ -125,6 +128,12 @@ void setup() {
 
     if(connected_to_wifi && mqttEnabled){
         if (mqtt_use_tls) {
+#if GATEWAY_ETHERNET
+            // BearSSL on the RP2350 can take several seconds per handshake; stay well inside
+            // the 16 s watchdog. With validation on, trust the embedded public root CAs.
+            WiFiClientSecure::setTLSConnectTimeout(10000);
+            if (!mqtt_skip_cert_validation) espClientSecure.setTrustAnchors(new BearSSL::X509List(GITHUB_ROOTS));
+#endif
             if (mqtt_skip_cert_validation) {
                 espClientSecure.setInsecure();
             } 
