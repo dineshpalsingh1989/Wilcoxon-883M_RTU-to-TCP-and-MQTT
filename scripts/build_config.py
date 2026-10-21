@@ -1,4 +1,4 @@
-"""Embed selected Mozilla trust roots for certificate-verified GitHub downloads."""
+"""Embed selected Mozilla trust roots for certificate-verified GitHub downloads and define build IDs."""
 import os
 import re
 import ssl
@@ -29,3 +29,5 @@ if not target.exists() or target.read_text() != content:
 tag = os.environ.get("GITHUB_REF_NAME", "")
 if os.environ.get("GITHUB_REF_TYPE") == "tag" and re.fullmatch(r"v\d+\.\d+\.\d+(-beta\.\d+)?", tag):
     env.Append(CPPDEFINES=[("GATEWAY_RELEASE_VERSION", env.StringifyMacro(tag[1:]))])
+# Release asset names and /firmware_info use the PlatformIO environment name as the board ID.
+env.Append(CPPDEFINES=[("GATEWAY_BOARD", env.StringifyMacro(env["PIOENV"]))])

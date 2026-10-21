@@ -12,6 +12,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "time.h"
 #include <esp_task_wdt.h>
+#include <esp_heap_caps.h>
 
 // OTA
 #include <ESPmDNS.h>
@@ -38,7 +39,9 @@
 
 extern SemaphoreHandle_t dataMutex;
 extern bool shouldReboot;
+#ifdef RGB_PIN
 extern Adafruit_NeoPixel pixels;
+#endif
 
 // Device info
 extern String sensor_model, sensor_serial, sensor_vendor_url, sensor_part_number, sensor_fw_version;
@@ -114,12 +117,23 @@ extern float veloWidePeakX, veloWidePeakY, veloWidePeakZ;
 extern float displLowRmsX, displLowRmsY, displLowRmsZ;
 extern float displLowPeakX, displLowPeakY, displLowPeakZ;
 
-// Buffers
-extern int16_t fullWaveform[WAVEFORM_TOTAL_POINTS];
+// Buffers. The original ESP32 has too little static DRAM for the capture buffers,
+// so there they are fixed-size heap blocks taken once at boot by allocateCaptureBuffers().
+#if CONFIG_IDF_TARGET_ESP32
+#define CAPTURE_BUFFER(type, name, size) type* name
+template <typename T> bool allocateBuffer(T*& buffer, size_t count) {
+    buffer = static_cast<T*>(heap_caps_calloc(count, sizeof(T), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    return buffer != nullptr;
+}
+#else
+#define CAPTURE_BUFFER(type, name, size) type name[size]
+#endif
+extern CAPTURE_BUFFER(int16_t, fullWaveform, WAVEFORM_TOTAL_POINTS);
 extern bool newWaveformAvailable;
-extern int16_t spectrumData[SPECTRUM_TOTAL_POINTS];
+extern CAPTURE_BUFFER(int16_t, spectrumData, SPECTRUM_TOTAL_POINTS);
 extern bool newSpectrumAvailable;
-extern int16_t globalScratchBuffer[WAVEFORM_TOTAL_POINTS];
+extern CAPTURE_BUFFER(int16_t, globalScratchBuffer, WAVEFORM_TOTAL_POINTS);
+bool allocateCaptureBuffers();
 extern std::map<Axis, std::vector<SpectrumPeak>> xyzPeakDataCache;
 
 // Metrics logger

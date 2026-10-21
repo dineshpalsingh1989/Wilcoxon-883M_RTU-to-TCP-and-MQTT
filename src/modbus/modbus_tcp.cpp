@@ -4,13 +4,21 @@
 // capture completes, so a PLC never reads a buffer that is still downloading.
 namespace {
 uint16_t liveRegisters[100];
-uint16_t waveformRegisters[WAVEFORM_TOTAL_POINTS];
-uint16_t spectrumRegisters[SPECTRUM_TOTAL_POINTS];
+CAPTURE_BUFFER(uint16_t, waveformRegisters, WAVEFORM_TOTAL_POINTS);
+CAPTURE_BUFFER(uint16_t, spectrumRegisters, SPECTRUM_TOTAL_POINTS);
 Wilcoxon883MTCP::RegisterBlocks<3> plcRegisters;
 Wilcoxon883MTCP plcServer(plcRegisters);
 
 bool lockData(void*) { return xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE; }
 void unlockData(void*) { xSemaphoreGive(dataMutex); }
+}
+
+bool allocateModbusTCPBuffers() {
+#if CONFIG_IDF_TARGET_ESP32
+    return allocateBuffer(waveformRegisters, WAVEFORM_TOTAL_POINTS) && allocateBuffer(spectrumRegisters, SPECTRUM_TOTAL_POINTS);
+#else
+    return true;
+#endif
 }
 
 bool beginModbusTCPServer(uint16_t port) {
@@ -109,8 +117,8 @@ void syncModbusRegisters() {
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
         
         // int16_t samples are served as their raw 16-bit words, as before.
-        if (newWaveformAvailable) memcpy(waveformRegisters, fullWaveform, sizeof(waveformRegisters));
-        if (newSpectrumAvailable) memcpy(spectrumRegisters, spectrumData, sizeof(spectrumRegisters));
+        if (newWaveformAvailable) memcpy(waveformRegisters, fullWaveform, WAVEFORM_TOTAL_POINTS * sizeof(uint16_t));
+        if (newSpectrumAvailable) memcpy(spectrumRegisters, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(uint16_t));
 
         xSemaphoreGive(dataMutex);
     }

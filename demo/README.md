@@ -48,10 +48,11 @@ supported. No personal access token is used or stored.
 
 **Install on gateway** starts a background update task. The device re-fetches the
 selected release over certificate-verified HTTPS, requires a newer stable
-`vMAJOR.MINOR.PATCH` tag and the exact asset
-`firmware-adafruit_feather_esp32s3.bin`, and requires GitHub's SHA-256 asset digest.
-It pauses sensor work, rejects overlapping captures/updates, validates the
-ESP32-S3 image header and inactive partition size, streams to the inactive slot,
+`vMAJOR.MINOR.PATCH` tag and the exact asset for its own board
+(`firmware-<board>.bin`, where `<board>` is the `board` reported by `/firmware_info`),
+and requires GitHub's SHA-256 asset digest.
+It pauses sensor work, rejects overlapping captures/updates, validates that the
+image header matches the gateway's chip (ESP32-S3 or ESP32) and inactive partition size, streams to the inactive slot,
 and compares SHA-256 before activating the image and rebooting. Redirects are
 limited to HTTPS GitHub download hosts. Failed downloads/checksums are aborted.
 

@@ -24,16 +24,21 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install platformio==6.1.18 certifi
-      - run: pio run -e adafruit_feather_esp32s3
+      # Every [env:...] in platformio.ini is a supported board.
+      - run: pio run
       - name: Bundle browser installer images
-        run: pio run -e adafruit_feather_esp32s3 -t webinstaller
+        run: pio run -t webinstaller
       - name: Prepare board binaries
         run: |
-          cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
-          (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
+          for board in adafruit_feather_esp32s3 cytron_maker_esp32; do
+            cp .pio/build/$board/firmware.bin firmware-$board.bin
+            cp .pio/build/$board/factory.bin factory-$board.bin
+            (cd .pio/build/$board/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-$board.zip" *)
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
           path: |
-            firmware-adafruit_feather_esp32s3.bin
-            web-installer-adafruit_feather_esp32s3.zip
+            firmware-*.bin
+            web-installer-*.zip
+            factory-*.bin
