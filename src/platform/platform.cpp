@@ -46,6 +46,10 @@ String resetReason() {
 // It must outlast the TLS handshake limit set in main.cpp, or MQTT over TLS would reset the chip.
 void watchdogStart() { rp2040.wdt_begin(16000); }
 void watchdogFeed() { rp2040.wdt_reset(); }
+namespace { volatile uint32_t blockingUntil = 0; volatile bool blocking = false; }
+void watchdogBlockingBegin(uint32_t limitMs) { blockingUntil = millis() + limitMs; blocking = true; rp2040.wdt_reset(); }
+void watchdogBlockingEnd() { blocking = false; rp2040.wdt_reset(); }
+void watchdogService() { if (blocking && int32_t(blockingUntil - millis()) > 0) rp2040.wdt_reset(); }
 bool startTask(TaskFunction_t task, const char* name, uint32_t stackBytes, UBaseType_t priority, int) {
     return xTaskCreate(task, name, stackBytes / sizeof(StackType_t), nullptr, priority, nullptr) == pdPASS;
 }
@@ -129,6 +133,10 @@ void watchdogStart() {
     esp_task_wdt_add(NULL);
 }
 void watchdogFeed() { esp_task_wdt_reset(); }
+// The ESP32 task watchdog allows 60 s, longer than any MQTT/TLS connect attempt.
+void watchdogBlockingBegin(uint32_t) {}
+void watchdogBlockingEnd() {}
+void watchdogService() {}
 bool startTask(TaskFunction_t task, const char* name, uint32_t stackBytes, UBaseType_t priority, int core) {
     if (core < 0) return xTaskCreate(task, name, stackBytes, nullptr, priority, nullptr) == pdPASS;
     return xTaskCreatePinnedToCore(task, name, stackBytes, nullptr, priority, nullptr, core) == pdPASS;
