@@ -18,7 +18,9 @@ CHIP_FAMILIES = {"esp32": "ESP32", "esp32s3": "ESP32-S3"}
 def bundle(target, source, env):
     mcu = env.BoardConfig().get("build.mcu")
     if mcu not in CHIP_FAMILIES:
-        raise RuntimeError(f"No web installer chip family for MCU {mcu}")
+        # RP2350 boards install by copying firmware.uf2 to the USB drive the bootloader shows.
+        print(f"No browser installer for {mcu}; release firmware.uf2 instead")
+        return
     out = Path(env.subst("$BUILD_DIR")) / "web-installer"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)

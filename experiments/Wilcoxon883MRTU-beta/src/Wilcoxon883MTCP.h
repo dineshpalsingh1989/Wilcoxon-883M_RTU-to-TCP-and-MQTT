@@ -5,8 +5,8 @@
 #include "detail/TcpSession.h"
 #include "detail/RegisterBlocks.h"
 
-#if !defined(ARDUINO_ARCH_ESP32)
-#error "Wilcoxon883MTCP beta supports Arduino on ESP32 only."
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_RP2040)
+#error "Wilcoxon883MTCP beta supports Arduino on ESP32 and RP2040/RP2350 only."
 #endif
 
 // Modbus TCP server (functions 03, 04, 06, 16) for publishing data to PLCs.

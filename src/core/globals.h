@@ -2,23 +2,26 @@
 // Shared libraries and extern declarations for all global state.
 // Definitions live in core/globals.cpp.
 
+#include "platform/platform.h" // chip differences, FreeRTOS and Preferences
 #include <SPI.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
-#include <Preferences.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include <Adafruit_NeoPixel.h>
 #include "time.h"
-#include <esp_task_wdt.h>
+#if !GATEWAY_ETHERNET
+#include <Adafruit_NeoPixel.h>
 #include <esp_heap_caps.h>
+#include <ESPmDNS.h>
+#include <Update.h>
+#else
+#include <Updater.h>
+#endif
 
 // OTA
-#include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#include <Update.h>
 
 // Modbus
 #include <Wilcoxon883MRTU.h> // RS485 sensor client (experiments/Wilcoxon883MRTU-beta)
@@ -28,11 +31,6 @@
 #include <cmath>
 #include <algorithm>
 #include <map>
-
-// FreeRTOS
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/semphr.h>
 
 #include "config/config.h"
 #include "core/types.h"

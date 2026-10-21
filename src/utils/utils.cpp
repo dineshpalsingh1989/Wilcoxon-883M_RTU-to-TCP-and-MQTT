@@ -11,9 +11,11 @@ String formatUptime(unsigned long ms) {
 }
 
 String getTimestamp() {
+  // Never wait for NTP here: without it (AP mode) a wait would block while dataMutex is held.
+  time_t now = time(nullptr);
+  if (now < 1600000000) { return "No Time Sync"; }
   struct tm timeinfo;
-  // Timeout 0: without NTP (AP mode) the default waits 5 s, often while dataMutex is held.
-  if (!getLocalTime(&timeinfo, 0)) { return "No Time Sync"; }
+  localtime_r(&now, &timeinfo);
   char timeString[21];
   strftime(timeString, sizeof(timeString), "%Y-%m-%dT%H:%M:%S", &timeinfo); // local time (no 'Z': not UTC)
   return String(timeString);
@@ -34,21 +36,7 @@ void logMessage(String msg) {
     }
 }
 
-String getResetReasonString() {
-    esp_reset_reason_t reason = esp_reset_reason();
-    switch (reason) {
-        case ESP_RST_POWERON: return "Power On";
-        case ESP_RST_EXT: return "External Pin Reset";
-        case ESP_RST_SW: return "Software Reset";
-        case ESP_RST_PANIC: return "Crash (Panic/Exception)";
-        case ESP_RST_INT_WDT: return "Internal Watchdog";
-        case ESP_RST_TASK_WDT: return "Task WDT (Background Loop Stuck)";
-        case ESP_RST_WDT: return "Other Watchdog";
-        case ESP_RST_DEEPSLEEP: return "Deep Sleep Wake";
-        case ESP_RST_BROWNOUT: return "Brownout";
-        default: return "Unknown (" + String(reason) + ")";
-    }
-}
+String getResetReasonString() { return gw::resetReason(); }
 
 std::vector<SpectrumPeak> findSpectrumPeaks(const int16_t* spectrum_buffer, int num_peaks) {
     // Only local maxima count as peaks, otherwise the top N bins are just neighbours of one peak.

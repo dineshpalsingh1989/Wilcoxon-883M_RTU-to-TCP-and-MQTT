@@ -4,7 +4,7 @@
 
 **Bring RS485 vibration data to your browser, PLC and MQTT broker.**
 
-[![ESP32-S3 and ESP32](https://img.shields.io/badge/ESP32--S3%20%7C%20ESP32-Arduino-00979D)](#supported-boards)
+[![ESP32-S3, ESP32 and RP2350](https://img.shields.io/badge/ESP32--S3%20%7C%20ESP32%20%7C%20RP2350-Arduino-00979D)](#supported-boards)
 [![Modbus](https://img.shields.io/badge/Modbus-RTU%20%2B%20TCP-2563eb)](#modbus-tcp)
 [![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
@@ -25,19 +25,20 @@ Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibrati
 
 | You need | |
 | --- | --- |
-| ESP32 board | **Adafruit Feather ESP32-S3** or **Cytron Maker ESP32**, see [Supported boards](#supported-boards) |
+| Board | **Cytron Maker ESP32**, **Adafruit Feather ESP32-S3** or **Cytron IRIV IO Controller**, see [Supported boards](#supported-boards) |
 | Cable | USB-C **data** cable |
 | Computer | Chrome or Edge on Windows, macOS, Linux or ChromeOS |
 | Sensor wiring (afterwards) | RS485-to-TTL module and Wilcoxon 883M, see [Hardware and wiring](#hardware-and-wiring) |
 
 ### Supported boards
 
-This gateway supports **two ESP32 boards**:
+This gateway supports **three boards**. On the [web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), first choose **ESP32 board** or **IRIV IO Controller**:
 
-1. **Adafruit Feather ESP32-S3** (ESP32-S3 chip)
-2. **Cytron Maker ESP32** (original ESP32 chip)
+1. **Adafruit Feather ESP32-S3** (ESP32-S3 chip): ESP32 board, Wi-Fi
+2. **Cytron Maker ESP32** (original ESP32 chip): ESP32 board, Wi-Fi
+3. **Cytron IRIV IO Controller** (RP2350A chip): industrial controller with isolated RS485 and **wired Ethernet**; installs by copying a `.uf2` file, see [IRIV IO Controller](#iriv-io-controller)
 
-**The installer finds your board's chip automatically.** When you click **Install** and pick the port, it reads the chip on the connected board and installs the matching build. There is nothing to choose.
+**For ESP32 boards the installer finds the chip automatically.** When you click **Install** and pick the port, it reads the chip on the connected board and installs the matching build. There is nothing to choose.
 
 **Any chip not in this list is refused.** If the board has an ESP32-S2, ESP32-C3, ESP32-C6, ESP32-H2 or any other chip, the installer stops with *"This device is not supported"* and writes nothing to the board.
 
@@ -45,12 +46,24 @@ This gateway supports **two ESP32 boards**:
 | --- | --- | --- | --- | --- | --- |
 | Adafruit Feather ESP32-S3 | ESP32-S3 | `adafruit_feather_esp32s3` | RGB LED, GPIO48 | GPIO5 | GPIO0 (BOOT) |
 | [Cytron Maker ESP32](https://my.cytron.io/p-maker-esp32-bundle) | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` | Onboard LED on GPIO2 | Onboard piezo, GPIO26 | Onboard button, GPIO4 |
+| Cytron IRIV IO Controller | RP2350A (2 MB flash) | `cytron_iriv_io_controller` (`.uf2`) | USR LED, GP29 | Internal buzzer, GP11 | USER button, GP28 |
 
-Both builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GPIO14 (DE/RE). See [Hardware and wiring](#hardware-and-wiring).
+Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GPIO14 (DE/RE). The IRIV IO Controller has RS485 built in. See [Hardware and wiring](#hardware-and-wiring).
 
 > **Cytron Maker ESP32 is supported from v4.10.0.** The original ESP32 has less RAM than the ESP32-S3, so the firmware sends large pages in parts and sets its capture buffers aside at startup. If the GitHub updater ever reports a memory or TLS error, update by uploading `firmware-cytron_maker_esp32.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)** instead.
 >
 > On the Maker ESP32 the GPIO2 LED is **on** when the gateway is online, **blinks** during captures and metric recording, and is **off** when offline or after a sensor error. GPIO17 and GPIO18 also have onboard activity LEDs, so they flicker with RS485 traffic. The buzzer's mute switch silences the Wi-Fi alarm beeps.
+
+### IRIV IO Controller
+
+> **New and not yet tested on hardware.** The IRIV build compiles and runs the same gateway (dashboard, Modbus TCP, MQTT, captures), but it has not yet been run on a real IRIV with an 883M sensor.
+
+The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
+
+1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
+2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1.
+3. **Wire the sensor** to the IRIV's RS485 **A, B, G** terminals, see [the wiring guide](docs/wiring.md#cytron-iriv-io-controller).
+4. **Update:** upload `firmware-cytron_iriv_io_controller.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)**, or copy a new `.uf2`. Both keep settings. **Settings > GitHub Firmware Updates** cannot install directly on this board yet.
 
 > **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](src/config/config.h) against your hardware and build from source.
 
@@ -174,12 +187,12 @@ Open **http://localhost:8080**. Use the demo scenario selector to explore normal
 3. Connect the board over USB and run, choosing the environment for your board:
 
 ```sh
-pio run -e adafruit_feather_esp32s3            # or: -e cytron_maker_esp32
+pio run -e adafruit_feather_esp32s3            # or: -e cytron_maker_esp32 / -e cytron_iriv_io_controller
 pio run -e adafruit_feather_esp32s3 --target upload
 pio device monitor
 ```
 
-Each [supported board](#supported-boards) has its own environment, `adafruit_feather_esp32s3` or `cytron_maker_esp32`, using the Arduino framework. `pio run` alone builds both. PlatformIO installs the libraries declared in [platformio.ini](platformio.ini). The build helper also requires Python's `certifi` package in the PlatformIO Python environment.
+Each [supported board](#supported-boards) has its own environment, `adafruit_feather_esp32s3`, `cytron_maker_esp32` or `cytron_iriv_io_controller`, using the Arduino framework. `pio run` alone builds all three. The IRIV build uses the Arduino-Pico core through the community `maxgerhardt/platform-raspberrypi` PlatformIO platform, pinned to a fixed commit; its `firmware.uf2` is in `.pio/build/cytron_iriv_io_controller/`. PlatformIO installs the libraries declared in [platformio.ini](platformio.ini). The build helper also requires Python's `certifi` package in the PlatformIO Python environment.
 
 ### Connect to Wi-Fi
 
@@ -203,14 +216,15 @@ Follow the [step-by-step wiring and troubleshooting guide](docs/wiring.md) befor
 
 **Current firmware assignments** from [src/config/config.h](src/config/config.h):
 
-| Connection / function | ESP32-S3 build | Cytron Maker ESP32 build |
-| --- | --- | --- |
-| RS485 module RO → UART RX | GPIO18 | GPIO18 |
-| UART TX → RS485 module DI | GPIO17 | GPIO17 |
-| RS485 module DE and RE direction control | GPIO14 | GPIO14 |
-| Buzzer | GPIO5 | GPIO26 (onboard) |
-| User button | GPIO0 | GPIO4 (onboard) |
-| Status LED | GPIO48, RGB | GPIO2, onboard single-colour LED |
+| Connection / function | ESP32-S3 build | Cytron Maker ESP32 build | IRIV IO Controller build |
+| --- | --- | --- | --- |
+| RS485 module RO → UART RX | GPIO18 | GPIO18 | Built in (UART1 RX, GP25) |
+| UART TX → RS485 module DI | GPIO17 | GPIO17 | Built in (UART1 TX, GP24) |
+| RS485 module DE and RE direction control | GPIO14 | GPIO14 | Not needed: automatic |
+| Buzzer | GPIO5 | GPIO26 (onboard) | GP11 (internal) |
+| User button | GPIO0 | GPIO4 (onboard) | GP28 (USER) |
+| Status LED | GPIO48, RGB | GPIO2, onboard single-colour LED | GP29 (USR LED) |
+| Network | Wi-Fi | Wi-Fi | Ethernet, W5500 on SPI0 (GP18–23) |
 
 Connect the sensor's RS485 pair to the module's A/B terminals according to the hardware documentation. Confirm grounding and termination for your installation. Board labels can differ from GPIO numbers; verify the selected board before applying power.
 

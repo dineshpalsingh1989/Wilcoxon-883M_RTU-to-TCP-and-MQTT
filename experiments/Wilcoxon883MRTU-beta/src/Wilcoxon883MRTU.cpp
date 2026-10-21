@@ -1,14 +1,22 @@
 #include "Wilcoxon883MRTU.h"
+#if defined(ARDUINO_ARCH_ESP32)
 #include <driver/gpio.h>
+#endif
 
 const uint16_t Wilcoxon883MRTU::MaxRegisters;
 
-Wilcoxon883MRTU::Wilcoxon883MRTU(HardwareSerial& serial) : transport_(serial), client_(transport_), probe_(*this), discovery_(probe_) {}
+Wilcoxon883MRTU::Wilcoxon883MRTU(Uart& serial) : transport_(serial), client_(transport_), probe_(*this), discovery_(probe_) {}
 
 namespace {
+// direction -1 means the transceiver switches direction itself.
 bool validPins(int rx,int tx,int direction) {
-    return rx>=0 && tx>=0 && direction>=0 && GPIO_IS_VALID_GPIO(rx) &&
-        GPIO_IS_VALID_OUTPUT_GPIO(tx) && GPIO_IS_VALID_OUTPUT_GPIO(direction) &&
+#if defined(ARDUINO_ARCH_ESP32)
+    const bool pinsExist = GPIO_IS_VALID_GPIO(rx) && GPIO_IS_VALID_OUTPUT_GPIO(tx) &&
+        (direction < 0 || GPIO_IS_VALID_OUTPUT_GPIO(direction));
+#else
+    const bool pinsExist = rx < 48 && tx < 48 && direction < 48;
+#endif
+    return rx>=0 && tx>=0 && direction>=-1 && pinsExist &&
         rx!=tx && rx!=direction && tx!=direction;
 }
 uint32_t serialFormat(Wilcoxon883MRTU::SerialMode mode) {
@@ -43,8 +51,15 @@ bool Wilcoxon883MRTU::configureUart(int rx, int tx, int direction, uint32_t baud
     }
     client_.reset();
     transport_.direction = direction;
-    pinMode(direction, OUTPUT); transport_.tx(false);
+    if (direction >= 0) pinMode(direction, OUTPUT);
+    transport_.tx(false);
+#if defined(ARDUINO_ARCH_RP2040)
+    transport_.serial.end();
+    if (!transport_.serial.setRX(rx) || !transport_.serial.setTX(tx)) return false;
+    transport_.serial.begin(baud, static_cast<uint16_t>(format));
+#else
     transport_.serial.begin(baud, format, rx, tx);
+#endif
     if (!transport_.serial) return false;
     return client_.configure(baud, unit, characterBits);
 }

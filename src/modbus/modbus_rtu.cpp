@@ -79,7 +79,7 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
     }
 
     while (pointsRead < totalPoints) {
-        esp_task_wdt_reset();
+        gw::watchdogFeed();
         pollModbusTCPServer();
 
         uint16_t pointsLeft = totalPoints - pointsRead;
@@ -102,7 +102,7 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
                     xSemaphoreGive(dataMutex);
                 }
                 if (mqttClient && mqttClient->connected()) mqttClient->loop();
-                esp_task_wdt_reset();
+                gw::watchdogFeed();
             }
         } else {
             // A failed read or a busy mutex retries the same chunk, so no gap is left in the buffer.

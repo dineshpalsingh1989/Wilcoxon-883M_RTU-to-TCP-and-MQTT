@@ -13,8 +13,8 @@ void publishDeviceHealth() {
     doc["type"] = "health_status";
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
         doc["uptime"] = formatUptime(millis());
-        doc["wifi_signal_rssi"] = WiFi.RSSI();
-        doc["free_heap_memory"] = ESP.getFreeHeap();
+        doc["wifi_signal_rssi"] = gw::netRssi(); // 0 on wired Ethernet
+        doc["free_heap_memory"] = gw::freeHeap();
         doc["reset_reason"] = lastResetReason;
         xSemaphoreGive(dataMutex);
     } else { return; }
@@ -142,7 +142,7 @@ void publishFullWaveformInChunks(Axis capturedAxis) {
     }
 
     for (int i = 0; i < totalChunks; i++) {
-        esp_task_wdt_reset(); 
+        gw::watchdogFeed();
         
         DynamicJsonDocument doc(4096); 
         doc["model"] = sensor_model;
@@ -194,7 +194,7 @@ void publishFullSpectrumInChunks(Axis capturedAxis) {
     }
 
     for (int i = 0; i < totalChunks; i++) {
-        esp_task_wdt_reset(); 
+        gw::watchdogFeed();
         
         DynamicJsonDocument doc(4096); 
         doc["model"] = sensor_model;

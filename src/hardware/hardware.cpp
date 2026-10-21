@@ -65,7 +65,7 @@ void updateLedStatus() {
     }
     if (strstr(local_status, "failed") != NULL || strstr(local_status, "Error") != NULL || strstr(local_status, "Timeout") != NULL || strstr(local_status, "Disconnected") != NULL) {
         showStatus(LedStatus::Fault);
-    } else if (WiFi.status() != WL_CONNECTED) {
+    } else if (!gw::netConnected()) {
         showStatus(LedStatus::Offline);
     } else {
         showStatus(LedStatus::Online);

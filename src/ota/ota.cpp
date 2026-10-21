@@ -1,7 +1,17 @@
 #include "core/modules.h"
+#if GATEWAY_ETHERNET
+#include <LittleFS.h>
+#endif
 
 namespace {
 bool manualAccepted = false, manualComplete = false;
+void abortUpdate() {
+#if GATEWAY_ETHERNET
+    Update.end(false); // incomplete image: discarded, nothing is installed
+#else
+    Update.abort();
+#endif
+}
 void releaseManualUpdate() {
     if (manualAccepted && xSemaphoreTake(dataMutex, portMAX_DELAY) == pdTRUE) {
         firmwareUpdateActive = false;
@@ -56,7 +66,7 @@ void handleUpdateResult() {
     }
     server.send(200, "text/plain", "Update Complete. Gateway restarting...");
     delay(1000);
-    ESP.restart();
+    gw::restart();
 }
 
 void handleUpdateUpload() {
@@ -75,7 +85,14 @@ void handleUpdateUpload() {
         }
         if (!paused) { releaseManualUpdate(); return; }
         logMessage("Firmware Update Started: " + upload.filename);
+#if GATEWAY_ETHERNET
+        // The RP2350 stages the image in LittleFS and installs it at the next boot.
+        FSInfo fs; LittleFS.info(fs);
+        const size_t room = fs.totalBytes > fs.usedBytes + 16384 ? fs.totalBytes - fs.usedBytes - 16384 : 0;
+        if (!Update.begin(room)) {
+#else
         if (!Update.begin(UPDATE_SIZE_UNKNOWN)) { 
+#endif
             Update.printError(Serial);
             releaseManualUpdate();
         }
@@ -84,7 +101,7 @@ void handleUpdateUpload() {
         // Flashing firmware to ESP
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
             Update.printError(Serial);
-            Update.abort(); releaseManualUpdate();
+            abortUpdate(); releaseManualUpdate();
         }
     } else if (upload.status == UPLOAD_FILE_END) {
         if (!manualAccepted) return;
@@ -94,10 +111,10 @@ void handleUpdateUpload() {
         } else {
             Update.printError(Serial);
             logMessage("Firmware Update Failed.");
-            Update.abort(); releaseManualUpdate();
+            abortUpdate(); releaseManualUpdate();
         }
     } else if (upload.status == UPLOAD_FILE_ABORTED && manualAccepted) {
-        Update.abort(); releaseManualUpdate();
+        abortUpdate(); releaseManualUpdate();
     }
 }
 

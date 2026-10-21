@@ -61,7 +61,11 @@ PubSubClient* mqttClient = nullptr;
 // --- Modbus RTU (RS485) ---
 uint8_t modbus_slave_id_val = 1;
 long modbus_baud_rate_val = 115200;
+#if GATEWAY_ETHERNET
+Wilcoxon883MRTU sensorRtu(Serial2); // IRIV: UART1 on GP24/GP25
+#else
 Wilcoxon883MRTU sensorRtu(Serial1);
+#endif
 
 // --- Modbus TCP Server (registers and server live in modbus/modbus_tcp.cpp) ---
 bool modbusTcpEnabled = true;

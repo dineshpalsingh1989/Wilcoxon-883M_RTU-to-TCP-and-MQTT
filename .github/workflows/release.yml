@@ -33,11 +33,16 @@ jobs:
             cp .pio/build/$board/factory.bin factory-$board.bin
             (cd .pio/build/$board/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-$board.zip" *)
           done
+          # RP2350: .uf2 for USB drag-and-drop install, .bin for the gateway's firmware upload.
+          board=cytron_iriv_io_controller
+          cp .pio/build/$board/firmware.bin firmware-$board.bin
+          cp .pio/build/$board/firmware.uf2 firmware-$board.uf2
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
           path: |
             firmware-*.bin
+            firmware-*.uf2
             web-installer-*.zip
             factory-*.bin
   release:
@@ -70,17 +75,19 @@ jobs:
             echo "- **Easiest:** open the [web installer]($pages) in Chrome or Edge, plug in the board and click **Install**. It detects the chip and installs the matching build."
             echo "- **Manual, any flashing tool:** write \`factory-<board>.bin\` for your board at address \`0x0\`. This clears saved settings."
             echo "- **Gateway already running:** \`firmware-<board>.bin\` is the OTA update file."
+            echo "- **IRIV IO Controller:** hold BOOT, press RESET, then copy \`firmware-cytron_iriv_io_controller.uf2\` to the drive that appears."
             echo
             echo "| Board | Chip | \`<board>\` in file names |"
             echo "|---|---|---|"
             echo "| Adafruit Feather ESP32-S3 | ESP32-S3 | \`adafruit_feather_esp32s3\` |"
             echo "| Cytron Maker ESP32 | ESP32 | \`cytron_maker_esp32\` |"
+            echo "| Cytron IRIV IO Controller | RP2350A | \`cytron_iriv_io_controller\` (.uf2) |"
             echo
             echo "Guide and troubleshooting: [installing-firmware.md](https://github.com/$GH_REPO/blob/$RELEASE_TAG/docs/installing-firmware.md)"
           } > install-notes.md
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes \
             --notes "$(cat install-notes.md)" "${flags[@]}"
-          gh release upload "$RELEASE_TAG" firmware-*.bin web-installer-*.zip factory-*.bin --clobber
+          gh release upload "$RELEASE_TAG" firmware-*.bin firmware-*.uf2 web-installer-*.zip factory-*.bin --clobber
   installer:
     needs: release
     permissions:

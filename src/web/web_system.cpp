@@ -112,7 +112,7 @@ void handleSaveTimeSettings() {
     preferences.putLong("tz_offset", offset);
     preferences.end();
     server.send(200, "text/plain", "Saved.");
-    delay(500); ESP.restart();
+    delay(500); gw::restart();
 }
 
 void handleSetManualTime() {
@@ -140,14 +140,14 @@ void handleDeviceInfo() {
     if (server.hasArg("format") && server.arg("format") == "json") {
         DynamicJsonDocument doc(1024);
         
-        bool internetConnected = (WiFi.status() == WL_CONNECTED);
-        String ipAddr = internetConnected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-        String rssiVal = internetConnected ? String(WiFi.RSSI()) + " dBm" : "N/A";
+        bool internetConnected = gw::netConnected();
+        String ipAddr = gw::netIP().toString();
+        String rssiVal = gw::netSignal();
         String statusText = internetConnected ? "Connected to Internet" : "No Internet (AP Mode)";
         
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
             doc["uptime"] = formatUptime(millis());
-            doc["ram"] = String(ESP.getFreeHeap()) + " bytes";
+            doc["ram"] = String(gw::freeHeap()) + " bytes";
             doc["log"] = globalLogBuffer;
             xSemaphoreGive(dataMutex);
         } else {
@@ -184,9 +184,9 @@ void handleDeviceInfo() {
     }
     localLog.replace("\n", "<br>");
 
-    bool internetConnected = (WiFi.status() == WL_CONNECTED);
-    String ipAddr = internetConnected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
-    String rssiVal = internetConnected ? String(WiFi.RSSI()) + " dBm" : "N/A";
+    bool internetConnected = gw::netConnected();
+    String ipAddr = gw::netIP().toString();
+    String rssiVal = gw::netSignal();
 
     // Streamed in pieces: building the whole page as one String needs a large contiguous
     // heap block, which the original ESP32 may not have.
@@ -278,7 +278,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     sendPageText(uptime);
     server.sendContent_P(R"rawliteral(</span></div>
 <div class="info-item"><span class="info-label">Free RAM</span><span class="info-value" id="val-ram">)rawliteral");
-    sendPageText(String(ESP.getFreeHeap()));
+    sendPageText(String(gw::freeHeap()));
     server.sendContent_P(R"rawliteral( bytes</span></div>
 <div class="info-item"><span class="info-label">Firmware</span><span class="info-value">)rawliteral");
     sendPageText(String(FIRMWARE_VERSION));

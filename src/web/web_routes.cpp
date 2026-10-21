@@ -19,7 +19,11 @@ void registerWebRoutes() {
     server.on("/monitoring", HTTP_GET, handleMonitoring);
     server.on("/monitoring_ui.js", HTTP_GET, handleMonitoringScript);
     server.on("/alarm_settings", HTTP_POST, handleAlarmSettings);
+#if GATEWAY_ETHERNET
+    server.on("/wifi_settings", HTTP_GET, handleNetworkSettings);
+#else
     server.on("/wifi_settings", HTTP_GET, handleWifiSettings);
+#endif
     server.on("/savewifi", HTTP_GET, handleSaveWifi);
     server.on("/mqtt_settings", HTTP_GET, handleMqttSettings);
     server.on("/save_mqtt", HTTP_GET, handleSaveMqtt);

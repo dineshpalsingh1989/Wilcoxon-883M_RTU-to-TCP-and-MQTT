@@ -5,9 +5,10 @@ void setup() {
     delay(1000);
     
     // 1. Initialize Mutex
+    gw::platformBegin();
     dataMutex = xSemaphoreCreateMutex();
-    if (dataMutex == NULL) { ESP.restart(); }
-    if (!allocateCaptureBuffers() || !allocateModbusTCPBuffers()) { ESP.restart(); }
+    if (dataMutex == NULL) { gw::restart(); }
+    if (!allocateCaptureBuffers() || !allocateModbusTCPBuffers()) { gw::restart(); }
 
     // 2. Capture Reset Reason immediately
     lastResetReason = getResetReasonString();
@@ -26,9 +27,11 @@ void setup() {
 
     pinMode(USER_BUTTON_PIN, INPUT_PULLUP);
 
-    // --- MAX485 Control Pin Setup ---
-    pinMode(RS485_CTRL_PIN, OUTPUT);
-    digitalWrite(RS485_CTRL_PIN, LOW); // Default to Receive Mode
+    // --- MAX485 Control Pin Setup (none on transceivers that switch direction themselves) ---
+    if (RS485_CTRL_PIN >= 0) {
+        pinMode(RS485_CTRL_PIN, OUTPUT);
+        digitalWrite(RS485_CTRL_PIN, LOW); // Default to Receive Mode
+    }
 
     logMessage("--- System Starting ---");
     logMessage("Reset Reason: " + lastResetReason);
@@ -62,7 +65,15 @@ void setup() {
     modbusTcpPort = preferences.getUShort("port", 502);
     preferences.end();
     
-    // 5. Connect WiFi
+    // 5. Connect the network
+#if GATEWAY_ETHERNET
+    logMessage("Starting Ethernet (DHCP)...");
+    if (gw::ethernetBegin()) logMessage("Ethernet connected. IP: " + gw::netIP().toString());
+    else logMessage("No DHCP answer. Ethernet uses fixed address " ETHERNET_FALLBACK_IP);
+    gw::startTimeSync(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    // Wired: start the servers now; they answer as soon as the cable is connected.
+    bool connected_to_wifi = true;
+#else
     String saved_ssid = "", saved_pass = "";
     preferences.begin("wifi-creds", true); saved_ssid = preferences.getString("ssid", ""); saved_pass = preferences.getString("password", ""); preferences.end();
     bool connected_to_wifi = false;
@@ -76,7 +87,7 @@ void setup() {
         if (WiFi.status() == WL_CONNECTED) { 
             connected_to_wifi = true; 
             logMessage("Wi-Fi Connected! IP: " + WiFi.localIP().toString());
-            configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+            gw::startTimeSync(gmtOffset_sec, daylightOffset_sec, ntpServer);
         } else { 
             logMessage("Wi-Fi Connect Failed. Starting AP Mode.");
             WiFi.disconnect(true); 
@@ -87,8 +98,9 @@ void setup() {
         WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS); 
         logMessage("AP Mode Started: " + String(WIFI_AP_SSID));
     }
+#endif
 
-    wasWifiConnected = (WiFi.status() == WL_CONNECTED);
+    wasWifiConnected = gw::netConnected();
 
     // 5.1 Initialize OTA
     setupOTA();
@@ -130,8 +142,12 @@ void setup() {
         }
     }
     
-    xTaskCreatePinnedToCore(webServerLoop, "WebServerTask", 12000, NULL, 1, NULL, 0);
-    xTaskCreatePinnedToCore(backgroundLoop, "BackgroundTask", 16384, NULL, 1, NULL, 1);
+    gw::startTask(webServerLoop, "WebServerTask", 12000, 1, 0);
+    gw::startTask(backgroundLoop, "BackgroundTask", 16384, 1, 1);
 }
 
-void loop() { vTaskDelete(NULL); }// End of Part 1. Handlers are in Part 2. 
+#if GATEWAY_ETHERNET
+void loop() { vTaskDelay(portMAX_DELAY); } // all work runs in the tasks started above
+#else
+void loop() { vTaskDelete(NULL); }
+#endif

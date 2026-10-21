@@ -1,7 +1,7 @@
 #include "core/modules.h"
 
 void handleModbusTcpSettings() {
-    String ipAddress = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+    String ipAddress = gw::netIP().toString();
     
     // Streamed in pieces: building the whole page as one String needs a large contiguous
     // heap block, which the original ESP32 may not have.
@@ -279,5 +279,5 @@ void handleSaveModbusTcp() {
     preferences.end();
     server.send(200, "text/plain", "Settings saved. Rebooting now...");
     delay(1000);
-    ESP.restart();
+    gw::restart();
 }
