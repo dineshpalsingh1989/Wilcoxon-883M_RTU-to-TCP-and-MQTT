@@ -1,4 +1,15 @@
 #include "core/modules.h"
+
+#if GATEWAY_ETHERNET
+// Direct GitHub installation is not available on the IRIV IO Controller yet: its 2 MB flash
+// stages updates in LittleFS. Use the manual firmware upload or the .uf2 file instead.
+void handleGithubInstall() {
+    server.send(501, "text/plain", "Direct install is not available on this board yet. Download the firmware and upload it under Device Diagnostics, or install the .uf2 file over USB.");
+}
+void handleGithubUpdateStatus() {
+    server.send(200, "application/json", "{\"state\":\"idle\",\"message\":\"No update running\",\"progress\":0,\"active\":false}");
+}
+#else
 #include <HTTPClient.h>
 #include <esp_ota_ops.h>
 #include <esp_app_format.h>
@@ -177,3 +188,4 @@ void handleGithubUpdateStatus() {
     xSemaphoreGive(dataMutex);
     String json; serializeJson(doc, json); server.send(200, "application/json", json);
 }
+#endif

@@ -39,4 +39,20 @@ Power the ESP32 through its supported USB/power input. Use the sensor's specifie
 - Check A/B naming against both manufacturers' documentation; naming conventions can differ.
 - Check termination, biasing and cable routing if communication is intermittent.
 
-The RS485 wiring above is the same for every [supported board](../README.md#supported-boards). On the ESP32-S3 build the RGB LED, buzzer and user-button assignments are GPIO48, GPIO5 and GPIO0; verify whether these are already onboard before adding external components. On the Cytron Maker ESP32 build they are the board's onboard GPIO2 LED, GPIO26 piezo buzzer and GPIO4 user button, so nothing extra is wired. The Maker ESP32's onboard GPIO17 and GPIO18 LEDs flicker with RS485 traffic.
+The RS485 wiring above is the same for both ESP32 [supported boards](../README.md#supported-boards). On the ESP32-S3 build the RGB LED, buzzer and user-button assignments are GPIO48, GPIO5 and GPIO0; verify whether these are already onboard before adding external components. On the Cytron Maker ESP32 build they are the board's onboard GPIO2 LED, GPIO26 piezo buzzer and GPIO4 user button, so nothing extra is wired. The Maker ESP32's onboard GPIO17 and GPIO18 LEDs flicker with RS485 traffic.
+
+## Cytron IRIV IO Controller
+
+The IRIV IO Controller has an **isolated RS485 transceiver built in**, with automatic direction control, so no external module or DE/RE wire is needed. Wire it from the IRIV's datasheet (Terminal 1) and the [883M manual](../883M-User-Manual-Rev.1.0_20241206-EN.pdf):
+
+| IRIV Terminal 1 | To |
+| --- | --- |
+| RS485 **A** | Sensor RS485 A terminal |
+| RS485 **B** | Sensor RS485 B terminal |
+| RS485 **G** | Sensor RS485 signal ground/common, if the sensor provides one (recommended by Cytron for noise immunity) |
+| **V+ (10-30V)** and **V-** | The IRIV's DC supply, 10–30 V DC |
+
+- **Termination:** turn on the **RS485 R-Term** switch under the IRIV when it is at the end of the RS485 bus.
+- **Sensor power:** power the 883M as its manual specifies. Only share the IRIV's supply if the sensor's supply range allows it.
+- **Network:** connect the **ETH** port to your network. See [IRIV IO Controller](../README.md#iriv-io-controller) for addresses.
+- **Front LEDs:** **485** flashes with RS485 traffic. **USR** (GP29) is the gateway status LED: on when the network is up, blinking during captures and recordings, off when offline or after a sensor error.

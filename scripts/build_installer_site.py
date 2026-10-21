@@ -6,7 +6,8 @@ Publishes the Latest stable release and, if newer, the most recent beta pre-rele
 Each board's bundle is unpacked into <channel>/<board>/ and their builds are merged into one
 manifest, so the installer picks the build that matches the connected chip. A board missing
 from a release (older releases are Feather-only) is left out of that channel; releases
-without any installer bundle are skipped.
+without any installer bundle are skipped. UF2_BOARDS are offered as a link to the release's
+.uf2 file, since their bootloader appears as a USB drive.
 """
 import json
 import re
@@ -18,6 +19,8 @@ import zipfile
 from pathlib import Path
 
 BOARDS = ("adafruit_feather_esp32s3", "cytron_maker_esp32")
+# Boards installed by copying a .uf2 file to their USB bootloader drive (no browser flashing).
+UF2_BOARDS = ("cytron_iriv_io_controller",)
 STABLE = re.compile(r"v\d+\.\d+\.\d+")
 BETA = re.compile(r"v\d+\.\d+\.\d+-beta\.\d+")
 
@@ -86,8 +89,11 @@ def main(out):
             continue
         manifest["version"] = tag
         (out / name / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        assets = {a["name"] for a in json.loads(gh("release", "view", tag, "--json", "assets"))["assets"]}
+        downloads = {board: f"{repo}/releases/download/{tag}/firmware-{board}.uf2"
+                     for board in UF2_BOARDS if f"firmware-{board}.uf2" in assets}
         channels.append({"channel": name, "tag": tag, "manifest": f"{name}/manifest.json",
-                         "notes": f"{repo}/releases/tag/{tag}"})
+                         "notes": f"{repo}/releases/tag/{tag}", "uf2": downloads})
         print(f"{name}: {tag}")
     (out / "channels.json").write_text(json.dumps({"repo": repo, "channels": channels}, indent=2) + "\n")
     if not channels:

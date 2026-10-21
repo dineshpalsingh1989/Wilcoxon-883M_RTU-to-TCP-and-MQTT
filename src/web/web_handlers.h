@@ -8,6 +8,9 @@ void handleMonitoringScript();
 inline void sendPageText(const String& text) { if (text.length()) server.sendContent(text); }
 
 void registerWebRoutes();
+#if GATEWAY_ETHERNET
+void handleNetworkSettings();
+#endif
 
 void handleRoot(); void handleMetrics(); void handleFullWaveform(); void handleFullSpectrum();
 void handleSettings(); void handleWifiSettings(); void handleSaveWifi();

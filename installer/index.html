@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wilcoxon 883M Gateway Installer</title>
-<meta name="description" content="Install the Wilcoxon 883M gateway firmware on an Adafruit Feather ESP32-S3 or Cytron Maker ESP32 from your browser.">
+<meta name="description" content="Install the Wilcoxon 883M gateway firmware on a Cytron Maker ESP32, Adafruit Feather ESP32-S3 or Cytron IRIV IO Controller.">
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 <style>
 :root {
@@ -34,6 +34,16 @@ a { color: var(--accent); }
 .badge.beta { background: var(--warn-bg); border-color: var(--warn-line); }
 button.install { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
 button.install:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+a.install { display: inline-block; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 10px 20px; font-weight: 600; text-decoration: none; }
+a.install:focus-visible, .board:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+.boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.board { text-align: left; background: var(--card); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; font: inherit; cursor: pointer; }
+.board strong { display: block; font-size: 1.05rem; }
+.board span { display: block; color: var(--muted); font-size: .9rem; margin-top: 2px; }
+.board[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+h3 { font-size: 1.02rem; margin: 22px 0 8px; }
+.channel h3 { margin: 0; }
+.small { color: var(--muted); font-size: .85rem; }
 .notice { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 10px 14px; font-size: .93rem; }
 ol { padding-left: 22px; } li { margin: 6px 0; }
 code { font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
@@ -45,65 +55,130 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
   <h1>Wilcoxon 883M Gateway Installer</h1>
   <p class="lead">Install the gateway firmware straight from this page. No software to install.</p>
 
-  <h2>Supported boards</h2>
-  <p>The installer reads the chip on the connected board and installs the matching build automatically.</p>
-  <ul>
-    <li><strong>Adafruit Feather ESP32-S3</strong> (ESP32-S3 chip)</li>
-    <li><strong><a href="https://my.cytron.io/p-maker-esp32-bundle">Cytron Maker ESP32</a></strong> (original ESP32 chip, ESP32-WROOM-32E). Status is shown on the onboard GPIO2 LED, the buzzer is GPIO26 and the user button is GPIO4.</li>
-  </ul>
-  <p class="notice">Other boards are not tested. An ESP32-S3 board with at least 4 MB flash receives the Feather build and may work; another original-ESP32 board receives the Maker ESP32 build, which needs 8 MB flash. ESP32-S2, C3 and C6 boards are not supported; the installer will say so.</p>
+  <h2>Choose your board</h2>
+  <div class="boards" role="group" aria-label="Board">
+    <button type="button" class="board" data-board="esp32" aria-pressed="true">
+      <strong>ESP32 board</strong><span>Cytron Maker ESP32 or Adafruit Feather ESP32-S3. One-click install, Wi-Fi.</span>
+    </button>
+    <button type="button" class="board" data-board="ioc" aria-pressed="false">
+      <strong>IRIV IO Controller</strong><span>Cytron industrial controller (RP2350A). Install by USB drive, wired Ethernet.</span>
+    </button>
+  </div>
 
-  <h2>1. Before you start</h2>
-  <ol>
-    <li>Use <strong>Chrome or Edge on a computer</strong> (Windows, macOS, Linux or ChromeOS). Phones and Firefox/Safari cannot flash over USB.</li>
-    <li>Connect the board to the computer with a <strong>USB-C data cable</strong>. Charge-only cables will not show a port.</li>
-    <li><strong>Cytron Maker ESP32 on Windows or macOS:</strong> if no port appears, install the WCH USB-serial driver (CH9102/CH343) for the board's USB chip, then reconnect.</li>
-  </ol>
+  <section id="esp32-section">
+    <h2>ESP32 boards</h2>
+    <p>The installer reads the chip on the connected board and installs the matching build automatically.</p>
+    <ul>
+      <li><strong>Adafruit Feather ESP32-S3</strong> (ESP32-S3 chip)</li>
+      <li><strong><a href="https://my.cytron.io/p-maker-esp32-bundle">Cytron Maker ESP32</a></strong> (original ESP32 chip, ESP32-WROOM-32E). Status is shown on the onboard GPIO2 LED, the buzzer is GPIO26 and the user button is GPIO4.</li>
+    </ul>
+    <p class="notice">Other boards are not tested. An ESP32-S3 board with at least 4 MB flash receives the Feather build and may work; another original-ESP32 board receives the Maker ESP32 build, which needs 8 MB flash. ESP32-S2, C3 and C6 boards are not supported; the installer will say so.</p>
 
-  <h2>2. Install</h2>
-  <div id="channels"><div class="card">Loading available versions…</div></div>
-  <p class="notice"><strong>Board not listed in the port window?</strong> Put it into download mode: hold <strong>BOOT</strong>, tap <strong>RESET</strong> (labelled <strong>EN</strong> on the Maker ESP32), release <strong>BOOT</strong>, then click Install again. After installing, press <strong>RESET</strong>/<strong>EN</strong> once to start the new firmware.</p>
+    <h3>1. Before you start</h3>
+    <ol>
+      <li>Use <strong>Chrome or Edge on a computer</strong> (Windows, macOS, Linux or ChromeOS). Phones and Firefox/Safari cannot flash over USB.</li>
+      <li>Connect the board to the computer with a <strong>USB-C data cable</strong>. Charge-only cables will not show a port.</li>
+      <li><strong>Cytron Maker ESP32 on Windows or macOS:</strong> if no port appears, install the WCH USB-serial driver (CH9102/CH343) for the board's USB chip, then reconnect.</li>
+    </ol>
 
-  <h2>3. First-time setup</h2>
-  <ol>
-    <li>On your phone or laptop, join the Wi-Fi network <code>ILA_Sensor_AP</code> (password <code>12345678</code>).</li>
-    <li>Open <a href="http://192.168.4.1">http://192.168.4.1</a>.</li>
-    <li>Go to <strong>Settings &gt; Wi-Fi</strong>, save your network, then open the gateway at its new local IP address.</li>
-    <li>Wire the RS485 module and sensor as shown in the <a id="wiring" href="#">wiring guide</a>.</li>
-  </ol>
-  <p>Already installed? Later updates can be done from the gateway itself under <strong>Settings &gt; GitHub Firmware Updates</strong>, which keeps your settings.</p>
+    <h3>2. Install</h3>
+    <div id="channels"><div class="card">Loading available versions…</div></div>
+    <p class="notice"><strong>Board not listed in the port window?</strong> Put it into download mode: hold <strong>BOOT</strong>, tap <strong>RESET</strong> (labelled <strong>EN</strong> on the Maker ESP32), release <strong>BOOT</strong>, then click Install again. After installing, press <strong>RESET</strong>/<strong>EN</strong> once to start the new firmware.</p>
 
-  <h2>Trouble installing?</h2>
-  <p>Trying again is always safe: the board's built-in loader cannot be erased.</p>
-  <ul>
-    <li><strong>No port appears:</strong> use a USB-C data cable and another USB socket (no hub), then hold BOOT, tap RESET, release BOOT.</li>
-    <li><strong>"Failed to connect" or timeout:</strong> close the Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET.</li>
-    <li><strong>Stops halfway:</strong> change the cable and install again.</li>
-    <li><strong>Finished but nothing happens:</strong> press RESET. Still no <code>ILA_Sensor_AP</code>? Install again with <em>Erase device</em> ticked.</li>
-    <li><strong>"This device is not supported":</strong> the board's chip is not one of the supported boards above, or the release predates support for it.</li>
-  </ul>
-  <p><strong>Other ways:</strong> download <code>factory-adafruit_feather_esp32s3.bin</code> (Feather) or <code>factory-cytron_maker_esp32.bin</code> (Maker ESP32) from the <a id="releases" href="#">releases page</a> and write it at address <code>0x0</code> with <a href="https://espressif.github.io/esptool-js/">Espressif's browser flasher</a>, esptool or Espressif's Flash Download Tool. This clears saved settings. Step-by-step instructions: <a id="guide" href="#">installation guide</a>.</p>
+    <h3>3. First-time setup</h3>
+    <ol>
+      <li>On your phone or laptop, join the Wi-Fi network <code>ILA_Sensor_AP</code> (password <code>12345678</code>).</li>
+      <li>Open <a href="http://192.168.4.1">http://192.168.4.1</a>.</li>
+      <li>Go to <strong>Settings &gt; Wi-Fi</strong>, save your network, then open the gateway at its new local IP address.</li>
+      <li>Wire the RS485 module and sensor as shown in the <a class="wiring" href="#">wiring guide</a>.</li>
+    </ol>
+    <p>Already installed? Later updates can be done from the gateway itself under <strong>Settings &gt; GitHub Firmware Updates</strong>, which keeps your settings.</p>
+
+    <h3>Trouble installing?</h3>
+    <p>Trying again is always safe: the board's built-in loader cannot be erased.</p>
+    <ul>
+      <li><strong>No port appears:</strong> use a USB-C data cable and another USB socket (no hub), then hold BOOT, tap RESET, release BOOT.</li>
+      <li><strong>"Failed to connect" or timeout:</strong> close the Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET.</li>
+      <li><strong>Stops halfway:</strong> change the cable and install again.</li>
+      <li><strong>Finished but nothing happens:</strong> press RESET. Still no <code>ILA_Sensor_AP</code>? Install again with <em>Erase device</em> ticked.</li>
+      <li><strong>"This device is not supported":</strong> the board's chip is not one of the supported boards above, or the release predates support for it. For an IRIV IO Controller, choose <em>IRIV IO Controller</em> at the top instead.</li>
+    </ul>
+    <p><strong>Other ways:</strong> download <code>factory-adafruit_feather_esp32s3.bin</code> (Feather) or <code>factory-cytron_maker_esp32.bin</code> (Maker ESP32) from the <a class="releases" href="#">releases page</a> and write it at address <code>0x0</code> with <a href="https://espressif.github.io/esptool-js/">Espressif's browser flasher</a>, esptool or Espressif's Flash Download Tool. This clears saved settings. Step-by-step instructions: <a class="guide" href="#">installation guide</a>.</p>
+    <p class="small">Choosing <em>Erase device</em> during install clears saved Wi-Fi, MQTT and alarm settings. Leave it unticked to keep them.</p>
+  </section>
+
+  <section id="ioc-section" hidden>
+    <h2>IRIV IO Controller</h2>
+    <p>The <strong>Cytron IRIV IO Controller</strong> uses a Raspberry Pi RP2350A chip, isolated RS485 and wired Ethernet. Its bootloader shows up on your computer as a USB drive, so you install by copying one file. This works in any browser on any computer.</p>
+
+    <h3>1. Download</h3>
+    <div id="ioc-channels"><div class="card">Loading available versions…</div></div>
+
+    <h3>2. Install</h3>
+    <ol>
+      <li>Connect the IRIV's <strong>USB-C (PROG)</strong> port to the computer with a data cable.</li>
+      <li>With a paperclip, <strong>hold the BOOT pinhole button</strong>, press and release <strong>RESET</strong>, then release <strong>BOOT</strong>.</li>
+      <li>A drive named <strong>RP2350</strong> appears. Copy the downloaded <code>.uf2</code> file onto it.</li>
+      <li>The drive disappears and the IRIV restarts with the gateway firmware.</li>
+    </ol>
+
+    <h3>3. First-time setup</h3>
+    <ol>
+      <li>Plug the IRIV's <strong>Ethernet</strong> port into your network and power it (10–30 V DC, or USB-C).</li>
+      <li>Open <a href="http://ila-gateway-883m.local">http://ila-gateway-883m.local</a>, or the address your router lists for <code>ila-gateway-883m</code>.</li>
+      <li>No DHCP server, or a laptop plugged in directly? After 10 seconds without DHCP the gateway uses <code>192.168.4.1</code>. Set your laptop to <code>192.168.4.2</code>, mask <code>255.255.255.0</code>, and open <a href="http://192.168.4.1">http://192.168.4.1</a>. Holding the <strong>USER</strong> button for 5 seconds also switches to this address.</li>
+      <li>Wire the sensor's RS485 A, B and ground to the IRIV's <strong>RS485 A, B, G</strong> terminals, as in the <a class="wiring" href="#">wiring guide</a>. Turn on the RS485 termination switch underneath if the IRIV is at the end of the bus.</li>
+    </ol>
+    <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
+  </section>
 
   <footer>
-    Choosing <em>Erase device</em> during install clears saved Wi-Fi, MQTT and alarm settings. Leave it unticked to keep them.
-    <br>Source, release notes and manual install files: <a id="repo" href="#">GitHub repository</a>.
+    Source, release notes and manual install files: <a class="repo" href="#">GitHub repository</a>.
   </footer>
 </main>
 <script>
+// Board choice: a per-viewer convenience, so storage failures are ignored.
+const boardButtons = document.querySelectorAll(".board");
+function showBoard(board) {
+  for (const b of boardButtons) b.setAttribute("aria-pressed", String(b.dataset.board === board));
+  document.getElementById("esp32-section").hidden = board !== "esp32";
+  document.getElementById("ioc-section").hidden = board !== "ioc";
+  try { localStorage.setItem("board", board); } catch (e) {}
+}
+for (const b of boardButtons) b.addEventListener("click", () => showBoard(b.dataset.board));
+let savedBoard = null;
+try { savedBoard = localStorage.getItem("board"); } catch (e) {}
+if (location.hash === "#iriv" || savedBoard === "ioc") showBoard("ioc");
+
+function channelHeader(card, c) {
+  const beta = c.channel === "beta";
+  const title = card.querySelector("h3");
+  title.textContent = c.tag;
+  const badge = document.createElement("span");
+  badge.className = "badge" + (beta ? " beta" : "");
+  badge.textContent = beta ? "Beta" : "Stable";
+  title.append(badge);
+  const note = card.querySelector("p");
+  note.textContent = beta ? "Pre-release for testing. Not recommended for production machines. " : "Recommended for most users. ";
+  const link = document.createElement("a");
+  link.href = c.notes;
+  link.textContent = "Release notes";
+  note.append(link);
+}
+
 (async () => {
   const box = document.getElementById("channels");
+  const iocBox = document.getElementById("ioc-channels");
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
                     guide: "/blob/main/docs/installing-firmware.md" };
-    for (const [id, path] of Object.entries(links)) document.getElementById(id).href = data.repo + path;
-    if (!data.channels.length) {
-      box.innerHTML = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
-      return;
-    }
-    box.textContent = "";
+    for (const [cls, path] of Object.entries(links))
+      for (const a of document.querySelectorAll("a." + cls)) a.href = data.repo + path;
+    const none = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
+    box.innerHTML = data.channels.length ? "" : none;
+    iocBox.textContent = "";
     for (const c of data.channels) {
-      const beta = c.channel === "beta";
       const card = document.createElement("div");
       card.className = "card channel";
       card.innerHTML =
@@ -113,24 +188,29 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
         '<span slot="unsupported">This browser cannot flash over USB. Use Chrome or Edge on a computer.</span>' +
         '<span slot="not-allowed">Open this page over HTTPS to install.</span>' +
         '</esp-web-install-button>';
-      const title = card.querySelector("h3");
-      title.textContent = c.tag;
-      const badge = document.createElement("span");
-      badge.className = "badge" + (beta ? " beta" : "");
-      badge.textContent = beta ? "Beta" : "Stable";
-      title.append(badge);
-      const note = card.querySelector("p");
-      note.textContent = beta ? "Pre-release for testing. Not recommended for production machines. " : "Recommended for most users. ";
-      const link = document.createElement("a");
-      link.href = c.notes;
-      link.textContent = "Release notes";
-      note.append(link);
+      channelHeader(card, c);
       card.querySelector("esp-web-install-button").setAttribute("manifest", c.manifest);
       card.querySelector("button").setAttribute("aria-label", "Install " + c.tag);
       box.append(card);
+
+      const uf2 = c.uf2 && c.uf2.cytron_iriv_io_controller;
+      if (!uf2) continue;
+      const iocCard = document.createElement("div");
+      iocCard.className = "card channel";
+      iocCard.innerHTML = '<div><h3></h3><p></p></div><a class="install"></a>';
+      channelHeader(iocCard, c);
+      const download = iocCard.querySelector("a.install");
+      download.href = uf2;
+      download.textContent = "Download .uf2";
+      download.setAttribute("aria-label", "Download " + c.tag + " for IRIV IO Controller");
+      iocBox.append(iocCard);
     }
+    if (!iocBox.children.length)
+      iocBox.innerHTML = '<div class="card">No release with IRIV IO Controller firmware is published yet. Check the <a href="' + data.repo + '/releases">releases page</a>.</div>';
   } catch (err) {
-    box.innerHTML = '<div class="card">Could not load the release list. Refresh the page, or download firmware from the GitHub releases page.</div>';
+    const failed = '<div class="card">Could not load the release list. Refresh the page, or download firmware from the GitHub releases page.</div>';
+    box.innerHTML = failed;
+    iocBox.innerHTML = failed;
   }
 })();
 </script>

@@ -6,8 +6,9 @@ The firmware is built for two boards and already contains everything the gateway
 | --- | --- | --- |
 | Adafruit Feather ESP32-S3 | ESP32-S3 | `adafruit_feather_esp32s3` |
 | [Cytron Maker ESP32](https://my.cytron.io/p-maker-esp32-bundle) | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` |
+| Cytron IRIV IO Controller | RP2350A (2 MB flash) | `cytron_iriv_io_controller` |
 
-The web installer detects the chip and picks the matching build itself. For the other methods, use the files for your board. See [Supported boards](../README.md#supported-boards).
+For ESP32 boards the web installer detects the chip and picks the matching build itself. The IRIV IO Controller installs from a `.uf2` file instead; see [7. IRIV IO Controller](#7-iriv-io-controller-uf2). For the other methods, use the files for your board. See [Supported boards](../README.md#supported-boards).
 
 | Method | Needs | Keeps settings |
 | --- | --- | --- |
@@ -123,6 +124,22 @@ A gateway already on Wi-Fi does not need USB:
 - **Settings > Device Diagnostics > Firmware Update (OTA)** accepts the `firmware-<board>.bin` for your board, uploaded from your computer, for example to try a beta.
 
 Both keep saved settings. See [Firmware updates](../README.md#firmware-updates).
+
+## 7. IRIV IO Controller (.uf2)
+
+The IRIV IO Controller's RP2350A bootloader appears as a USB drive, so no flashing tool is needed. Each release has two IRIV files:
+
+| File | Use it for |
+| --- | --- |
+| `firmware-cytron_iriv_io_controller.uf2` | Install over USB by copying it to the bootloader drive. Keeps saved settings. |
+| `firmware-cytron_iriv_io_controller.bin` | Update a running gateway under **Settings > Device Diagnostics > Firmware Update (OTA)**. It is stored in the gateway's file system and installed at the next restart. |
+
+1. On the web installer choose **IRIV IO Controller** and click **Download .uf2**, or download the file from the release.
+2. Connect the IRIV's **USB-C (PROG)** port to the computer.
+3. With a paperclip, hold the **BOOT** pinhole button, press and release **RESET**, then release **BOOT**.
+4. Copy the `.uf2` file to the **RP2350** drive. The drive disappears and the IRIV restarts.
+
+Saved settings live in a separate 1 MB area that copying a `.uf2` does not erase.
 
 ## Troubleshooting
 

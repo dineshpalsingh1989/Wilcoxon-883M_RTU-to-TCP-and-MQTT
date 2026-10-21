@@ -1,5 +1,4 @@
 #include "core/modules.h"
-#include <esp_idf_version.h>
 
 // =================================================================
 // --- RTOS TASKS ---
@@ -18,21 +17,11 @@ void webServerLoop(void * pvParameters) {
 }
 
 void backgroundLoop(void * pvParameters) {
-#if ESP_IDF_VERSION_MAJOR >= 5
-    esp_task_wdt_config_t twdt_config = {
-        .timeout_ms = 60000,
-        .idle_core_mask = (1 << 1), 
-        .trigger_panic = true
-    };
-    esp_task_wdt_init(&twdt_config);
-#else
-    esp_task_wdt_init(60, true);
-#endif
-    esp_task_wdt_add(NULL); 
+    gw::watchdogStart();
     
     for(;;) {
         // --- FIX: Feed watchdog every loop iteration ---
-        esp_task_wdt_reset(); 
+        gw::watchdogFeed();
         bool updating = false;
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) != pdTRUE) { vTaskDelay(10); continue; }
         updating = firmwareUpdateActive;
@@ -43,11 +32,11 @@ void backgroundLoop(void * pvParameters) {
         // --- NEW: Safe Reboot Handler ---
         if (shouldReboot) {
             vTaskDelay(pdMS_TO_TICKS(500));
-            ESP.restart();
+            gw::restart();
         }
         // --------------------------------
 
-        bool isWifiConnected = (WiFi.status() == WL_CONNECTED);
+        bool isWifiConnected = gw::netConnected();
 
         if (digitalRead(USER_BUTTON_PIN) == LOW) { 
             if (buttonPressStartTime == 0) {
@@ -55,10 +44,15 @@ void backgroundLoop(void * pvParameters) {
             }
             if (millis() - buttonPressStartTime > 5000 && !apModeTriggeredByButton) {
                 apModeTriggeredByButton = true;
+#if GATEWAY_ETHERNET
+                logMessage("Fixed address " ETHERNET_FALLBACK_IP " forced by button press");
+                gw::ethernetUseFallback();
+#else
                 logMessage("AP Mode Forced by Button Press");
                 WiFi.disconnect(true);
                 WiFi.mode(WIFI_AP_STA); // keeps Wi-Fi scans from dropping the access point
                 WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS);
+#endif
                 tone(BUZZER_PIN, 2000, 500);
             }
         } else {
@@ -71,13 +65,18 @@ void backgroundLoop(void * pvParameters) {
             lastAlarmActionTime = millis();
             isAlarmBeeping = true;
             tone(BUZZER_PIN, 1200);
+#if GATEWAY_ETHERNET
+            snprintf(systemStatus, sizeof(systemStatus), "Ethernet Disconnected!");
+            logMessage("[Ethernet] Warning: Connection Lost!");
+#else
             snprintf(systemStatus, sizeof(systemStatus), "Wi-Fi Disconnected!");
             logMessage("[WiFi] Warning: Connection Lost!");
+#endif
         } else if (!wasWifiConnected && isWifiConnected) {
             wifiDisconnectAlarmActive = false;
             noTone(BUZZER_PIN);
-            logMessage("[WiFi] Reconnected. IP: " + WiFi.localIP().toString());
-            configTime(gmtOffset_sec, daylightOffset_sec, ntpServer); // Resync time
+            logMessage("[Network] Reconnected. IP: " + gw::netIP().toString());
+            gw::startTimeSync(gmtOffset_sec, daylightOffset_sec, ntpServer); // Resync time
         }
         wasWifiConnected = isWifiConnected;
         
@@ -103,10 +102,9 @@ void backgroundLoop(void * pvParameters) {
                         xSemaphoreGive(dataMutex);
                     }
                     
-                    esp_task_wdt_reset(); 
+                    gw::watchdogFeed();
 
-                    String mac = WiFi.macAddress(); mac.replace(":", "");
-                    String clientId = "esp32-ila-" + mac; // unique per device so gateways don't kick each other off
+                    String clientId = "esp32-ila-" + gw::deviceId(); // unique per device so gateways don't kick each other off
                     if (mqttClient->connect(clientId.c_str(), mqtt_user_str.c_str(), mqtt_pass_str.c_str())) {
                          logMessage("[MQTT] Connected to " + mqtt_server_str);
                          if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {

@@ -26,11 +26,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 </style></head><body><div class="container"><div class="header"><h2>Device Settings</h2></div><div class="settings-list">
 )rawliteral");
 
-    // 3. Send Part 2: Wi-Fi Status (Dynamic)
-    String wifiClass = (WiFi.status() == WL_CONNECTED) ? "connected" : "disconnected";
-    String wifiText = (WiFi.status() == WL_CONNECTED) ? "Connected to " + WiFi.SSID() : "AP Mode";
+    // 3. Send Part 2: Network Status (Dynamic). The IRIV IO Controller is wired, so its row says Network.
+    String wifiClass = gw::netConnected() ? "connected" : "disconnected";
+    String wifiText = gw::netDescription();
+    String netTitle = GATEWAY_ETHERNET ? "Network" : "Wi-Fi";
     
-    String chunk1 = R"rawliteral(<a href="/wifi_settings" class="settings-item"><div class="icon"><i data-lucide="wifi"></i></div><div class="content"><h3>Wi-Fi</h3><p><span class="status-dot )rawliteral";
+    String chunk1 = R"rawliteral(<a href="/wifi_settings" class="settings-item"><div class="icon"><i data-lucide="wifi"></i></div><div class="content"><h3>)rawliteral" + netTitle + R"rawliteral(</h3><p><span class="status-dot )rawliteral";
     chunk1 += wifiClass + R"rawliteral("></span>)rawliteral" + wifiText + R"rawliteral(</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>)rawliteral";
     server.sendContent(chunk1);
 
@@ -90,8 +91,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 )rawliteral");
 
     // 3. Send Dynamic Status Bar
-    String statusMsg = (WiFi.status() == WL_CONNECTED ? "Connected to " + WiFi.SSID() : "AP Mode active");
-    String ipMsg = (WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : WiFi.softAPIP().toString());
+    String statusMsg = gw::netConnected() ? gw::netDescription() : String("AP Mode active");
+    String ipMsg = gw::netIP().toString();
     
     server.sendContent(R"rawliteral(<div class="status-bar">Current Status: )rawliteral" + statusMsg + R"rawliteral(<br>IP Address: )rawliteral" + ipMsg + R"rawliteral(</div>)rawliteral");
 
@@ -104,14 +105,36 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     server.sendContent("");
 }
 
+#if GATEWAY_ETHERNET
+// Wired gateways get their address from DHCP, so this page shows status instead of a Wi-Fi form.
+void handleNetworkSettings() {
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(<!DOCTYPE html><html lang="en"><head><title>Network</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f2f5f7;color:#192f3d;line-height:1.5;display:flex;justify-content:center;padding:20px}.container{width:100%;max-width:500px;background:white;border:1px solid #dfe8ed;border-radius:16px;overflow:hidden}.header{background:linear-gradient(115deg,#102c3b,#194655);color:#f8fafc;text-align:center;padding:20px}.header h2{margin:0}table{width:100%;border-collapse:collapse}td{padding:12px 20px;border-bottom:1px solid #e9ecef}td:first-child{color:#536e7d;width:40%}p{padding:0 20px;color:#536e7d;font-size:14px}a{display:block;text-align:center;padding:16px;color:#147d78;font-weight:600}a:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}</style>
+</head><body><div class="container"><div class="header"><h2>Network (Ethernet)</h2></div><table>)rawliteral");
+    server.sendContent("<tr><td>Status</td><td>" + String(gw::netConnected() ? "Cable connected" : "No link: check the Ethernet cable") + "</td></tr>");
+    server.sendContent("<tr><td>Address mode</td><td>" + gw::netDescription() + "</td></tr>");
+    server.sendContent("<tr><td>IP address</td><td>" + gw::netIP().toString() + "</td></tr>");
+    server.sendContent("<tr><td>MAC address</td><td>" + gw::ethernetMac() + "</td></tr>");
+    server.sendContent_P(R"rawliteral(<tr><td>Name</td><td>)rawliteral" ETHERNET_HOSTNAME R"rawliteral(.local</td></tr></table>
+<p>The address comes from your network's DHCP server. If none answers within 10 seconds after power-up, the gateway uses )rawliteral" ETHERNET_FALLBACK_IP R"rawliteral(. Hold the USER button for 5 seconds to switch to )rawliteral" ETHERNET_FALLBACK_IP R"rawliteral( at any time, for example to connect a laptop directly. Restart to use DHCP again.</p>
+<a href="/settings">&larr; Back to Settings</a></div></body></html>)rawliteral");
+    server.sendContent("");
+}
+#endif
+
 void handleSaveWifi() { 
+#if GATEWAY_ETHERNET
+    server.send(404, "text/plain", "This gateway uses wired Ethernet; there are no Wi-Fi settings."); return;
+#endif
     preferences.begin("wifi-creds", false); 
     preferences.putString("ssid", server.arg("ssid")); 
     preferences.putString("password", server.arg("pass")); 
     preferences.end(); 
     server.send(200, "text/plain", "Credentials saved. Device will reboot."); 
     delay(1000); 
-    ESP.restart(); 
+    gw::restart();
 }
 
 // --- SAFE CHUNKED MQTT SETTINGS ---
@@ -262,7 +285,7 @@ void handleSaveMqtt() {
     preferences.end();
     server.send(200, "text/plain", "MQTT settings saved. Device will reboot.");
     delay(1000);
-    ESP.restart();
+    gw::restart();
 }
 
 void handleRs485Settings() {
@@ -313,7 +336,7 @@ void handleSaveRs485() {
     preferences.end();
     server.send(200, "text/plain", "RS485 settings saved. Device will reboot.");
     delay(1000);
-    ESP.restart();
+    gw::restart();
 }
 
 void handleSetIntervals() {
@@ -342,6 +365,9 @@ void handleGetIntervals() {
 // Scans run in the background so the access point keeps serving the page, which polls:
 // 202 while scanning, then 200 with the last result list. ?start=1 begins a fresh scan.
 void handleScanWifi() {
+#if GATEWAY_ETHERNET
+    server.send(200, "application/json", "[]"); return; // wired: nothing to scan
+#else
     int n = WiFi.scanComplete();
     if (n == WIFI_SCAN_FAILED || (server.hasArg("start") && n != WIFI_SCAN_RUNNING)) {
         WiFi.scanDelete();
@@ -357,6 +383,7 @@ void handleScanWifi() {
     }
     json += "]";
     server.send(200, "application/json", json);
+#endif
 }
 
 void handleGetMetricsLogData() {
@@ -446,7 +473,7 @@ void handleClearDynamicData() {
 void handleReboot() {
     server.send(200, "text/plain", "Rebooting...");
     delay(1000);
-    ESP.restart();
+    gw::restart();
 }
 
 void handleNotFound() {

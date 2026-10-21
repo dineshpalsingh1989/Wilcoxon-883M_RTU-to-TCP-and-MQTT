@@ -35,10 +35,15 @@ jobs:
             cp .pio/build/$board/factory.bin factory-$board.bin
             (cd .pio/build/$board/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-$board.zip" *)
           done
+          # RP2350: .uf2 for USB drag-and-drop install, .bin for the gateway's firmware upload.
+          board=cytron_iriv_io_controller
+          cp .pio/build/$board/firmware.bin firmware-$board.bin
+          cp .pio/build/$board/firmware.uf2 firmware-$board.uf2
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
           path: |
             firmware-*.bin
+            firmware-*.uf2
             web-installer-*.zip
             factory-*.bin

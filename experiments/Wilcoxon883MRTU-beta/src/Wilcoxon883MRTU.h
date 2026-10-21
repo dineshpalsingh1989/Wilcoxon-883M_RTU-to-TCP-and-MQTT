@@ -5,12 +5,17 @@
 #include "detail/RtuClient.h"
 #include "detail/Discovery.h"
 
-#if !defined(ARDUINO_ARCH_ESP32)
-#error "Wilcoxon883MRTU beta supports Arduino on ESP32 only."
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_RP2040)
+#error "Wilcoxon883MRTU beta supports Arduino on ESP32 and RP2040/RP2350 only."
 #endif
 
 class Wilcoxon883MRTU {
 public:
+#if defined(ARDUINO_ARCH_RP2040)
+    using Uart = SerialUART; // pins are assigned through SerialUART::setRX/setTX
+#else
+    using Uart = HardwareSerial;
+#endif
     using Result = wilcoxon883m::Result;
     using Metrics = wilcoxon883m::Metrics;
     using Identity = wilcoxon883m::Identity;
@@ -20,8 +25,9 @@ public:
     using DiscoveryResult = wilcoxon883m::DiscoveryResult;
     using DiscoveryProgress = wilcoxon883m::DiscoveryProgress;
     static const uint16_t MaxRegisters = 125;
-    explicit Wilcoxon883MRTU(HardwareSerial& serial);
-    // Configure the ESP32 UART only; this does not change sensor settings.
+    explicit Wilcoxon883MRTU(Uart& serial);
+    // Configure the UART only; this does not change sensor settings.
+    // directionPin -1 suits transceivers that switch direction themselves.
     bool begin(int rxPin, int txPin, int directionPin, uint32_t baud = 9600,
                uint8_t unit = 1, uint32_t serialFormat = SERIAL_8N1);
     Result readInputRegisters(uint16_t address, uint16_t count, uint16_t* values,
@@ -44,17 +50,21 @@ public:
     static const char* resultText(Result result);
 private:
     struct SerialTransport {
-        HardwareSerial& serial;
+        Uart& serial;
         int direction = -1;
-        explicit SerialTransport(HardwareSerial& value) : serial(value) {}
+        explicit SerialTransport(Uart& value) : serial(value) {}
         uint32_t ms() { return millis(); }
         uint32_t us() { return micros(); }
         void idle() { yield(); delayMicroseconds(50); }
         int available() { return serial.available(); }
         int read() { return serial.read(); }
         size_t write(const uint8_t* data, size_t count) { return serial.write(data, count); }
+#if defined(ARDUINO_ARCH_RP2040)
+        void flush() { serial.flush(); }
+#else
         void flush() { serial.flush(true); }
-        void tx(bool enabled) { digitalWrite(direction, enabled ? HIGH : LOW); }
+#endif
+        void tx(bool enabled) { if (direction >= 0) digitalWrite(direction, enabled ? HIGH : LOW); }
     } transport_;
     wilcoxon883m::Client<SerialTransport> client_;
     struct DiscoveryProbe {
