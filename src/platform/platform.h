@@ -25,15 +25,9 @@ void restart();
 uint32_t freeHeap();
 String resetReason();
 // Background task watchdog: start once from that task, then feed it in long loops.
+// The chip restarts if the background task does not feed it for 60 s, on every board.
 void watchdogStart();
 void watchdogFeed();
-// For one bounded blocking call (MQTT/TLS connect) that can outlast the RP2350's 16 s hardware
-// watchdog: until watchdogBlockingEnd() or the limit passes, watchdogService() keeps it fed.
-// If the call hangs past the limit, feeding stops and the watchdog resets the chip as before.
-void watchdogBlockingBegin(uint32_t limitMs);
-void watchdogBlockingEnd();
-// Call regularly from a task other than the one that blocks (the web server task).
-void watchdogService();
 // stackBytes is in bytes on every chip; core is a hint where tasks can be pinned.
 bool startTask(TaskFunction_t task, const char* name, uint32_t stackBytes, UBaseType_t priority, int core);
 // Unique hardware ID without separators (Wi-Fi MAC or RP2350 board ID).
