@@ -5,7 +5,7 @@ The firmware is built for two boards and already contains everything the gateway
 | Board | Chip | `<board>` in file names |
 | --- | --- | --- |
 | Adafruit Feather ESP32-S3 | ESP32-S3 | `adafruit_feather_esp32s3` |
-| Cytron Maker ESP32 | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` |
+| [Cytron Maker ESP32](https://my.cytron.io/p-maker-esp32-bundle) | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` |
 
 The web installer detects the chip and picks the matching build itself. For the other methods, use the files for your board. The Maker ESP32 build has not yet been tested on hardware; see [Supported boards](../README.md#supported-boards).
 
