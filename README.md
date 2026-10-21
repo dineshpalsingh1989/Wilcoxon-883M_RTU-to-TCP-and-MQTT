@@ -56,7 +56,7 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 ### IRIV IO Controller
 
-> **New and not yet tested on hardware.** The IRIV build compiles and runs the same gateway (dashboard, Modbus TCP, MQTT, captures), but it has not yet been run on a real IRIV with an 883M sensor.
+> **Supported from v4.11.0.** The IRIV build runs the same gateway (dashboard, Modbus TCP, MQTT, captures) and has been tested on an IRIV IO Controller with MQTT on port 1883. MQTT over TLS (port 8883) failed in the first beta; v4.11.0 allows the slower TLS handshake on this chip and is being rechecked. If TLS still fails, use port 1883 on a trusted network and check with [`scripts/mqtt_check.py`](scripts/mqtt_check.py).
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
 
