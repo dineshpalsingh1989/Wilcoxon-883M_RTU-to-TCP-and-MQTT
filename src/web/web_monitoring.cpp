@@ -1,7 +1,7 @@
 #include "core/modules.h"
 
 void handleMonitoringScript() {
-    server.send(200, "application/javascript", R"rawliteral(
+    server.send_P(200, "application/javascript", R"rawliteral(
 let monitoringSnapshot = null, monitoringPending = false, alarmFormLoaded = false;
 function drawTrend(id, series, colors) {
  const canvas=document.getElementById(id), rect=canvas.getBoundingClientRect();

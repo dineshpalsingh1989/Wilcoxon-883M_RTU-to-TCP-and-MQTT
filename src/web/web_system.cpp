@@ -6,7 +6,11 @@
 
 void handleTimeSettings() {
     int offsetHours = gmtOffset_sec / 3600;
-    String html = R"rawliteral(
+    // Streamed in pieces: building the whole page as one String needs a large contiguous
+    // heap block, which the original ESP32 may not have.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(
 <!DOCTYPE html><html><head><title>Time Settings</title><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;padding:20px 0;}
 .container{width:100%;max-width:500px;background-color:white;border-radius:12px;padding:30px;box-shadow:0 8px 20px rgba(0,0,0,.1);}
@@ -31,7 +35,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style></head><body><div class="container"><h2>Time Configuration</h2>
-<div class="current-time">Device Time:<br>)rawliteral" + getTimestamp() + R"rawliteral(</div>
+<div class="current-time">Device Time:<br>)rawliteral");
+    sendPageText(getTimestamp());
+    server.sendContent_P(R"rawliteral(</div>
 
 <div class="group">
 <h3>1. Timezone Settings</h3>
@@ -63,7 +69,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 </div>
 <script>
 window.onload = function() {
-    let currentOff = )rawliteral" + String(gmtOffset_sec) + R"rawliteral(;
+    let currentOff = )rawliteral");
+    sendPageText(String(gmtOffset_sec));
+    server.sendContent_P(R"rawliteral(;
     let sel = document.getElementById('offset');
     let found = false;
     for(let i=0; i<sel.options.length; i++){ if(sel.options[i].value == currentOff){ sel.selectedIndex = i; found=true; break; }}
@@ -94,8 +102,8 @@ function setManualTime() {
     const ts = Math.floor(new Date(val).getTime() / 1000);
     fetch('/set_manual_time?ts=' + ts).then(() => { alert('Clock Updated!'); location.reload(); });
 }
-</script></body></html>)rawliteral";
-    server.send(200, "text/html", html);
+</script></body></html>)rawliteral");
+    server.sendContent("");
 }
 
 void handleSaveTimeSettings() {
@@ -180,7 +188,11 @@ void handleDeviceInfo() {
     String ipAddr = internetConnected ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
     String rssiVal = internetConnected ? String(WiFi.RSSI()) + " dBm" : "N/A";
 
-    String html = R"rawliteral(
+    // Streamed in pieces: building the whole page as one String needs a large contiguous
+    // heap block, which the original ESP32 may not have.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(
 <!DOCTYPE html><html><head><title>Device Diagnostics</title><meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://unpkg.com/lucide@latest"></script>
 <style>
@@ -231,21 +243,49 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 </style></head><body><div class="container"><h2>Device Diagnostics</h2>
 <div class="info-grid">
 
-<div class="info-item"><span class="info-label">Sensor Model</span><span class="info-value">)rawliteral" + d_model + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Part Number</span><span class="info-value">)rawliteral" + d_pn + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Sensor Serial</span><span class="info-value">)rawliteral" + d_serial + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Vendor URL</span><span class="info-value">)rawliteral" + d_url + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Sensor Firmware</span><span class="info-value">)rawliteral" + d_fw + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Connection Status</span><span class="info-value" id="val-status">)rawliteral" + (internetConnected ? "Connected to Internet" : "No Internet (AP Mode)") + R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Sensor Model</span><span class="info-value">)rawliteral");
+    sendPageText(d_model);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Part Number</span><span class="info-value">)rawliteral");
+    sendPageText(d_pn);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Sensor Serial</span><span class="info-value">)rawliteral");
+    sendPageText(d_serial);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Vendor URL</span><span class="info-value">)rawliteral");
+    sendPageText(d_url);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Sensor Firmware</span><span class="info-value">)rawliteral");
+    sendPageText(d_fw);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Connection Status</span><span class="info-value" id="val-status">)rawliteral");
+    sendPageText((internetConnected ? "Connected to Internet" : "No Internet (AP Mode)"));
+    server.sendContent_P(R"rawliteral(</span></div>
 
-<div class="info-item"><span class="info-label">Last Reset Reason</span><span class="info-value" style="color:#d63031">)rawliteral" + lastResetReason + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">IP Address</span><span class="info-value" id="val-ip">)rawliteral" + ipAddr + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Signal Strength (RSSI)</span><span class="info-value" id="val-rssi">)rawliteral" + rssiVal + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">System Time</span><span class="info-value" id="val-time">)rawliteral" + getTimestamp() + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">System Uptime</span><span class="info-value" id="val-uptime">)rawliteral" + uptime + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Free RAM</span><span class="info-value" id="val-ram">)rawliteral" + String(ESP.getFreeHeap()) + R"rawliteral( bytes</span></div>
-<div class="info-item"><span class="info-label">Firmware</span><span class="info-value">)rawliteral" + String(FIRMWARE_VERSION) + R"rawliteral(</span></div>
-<div class="info-item"><span class="info-label">Modbus Library</span><span class="info-value" id="val-modbus-lib">Wilcoxon883MRTU )rawliteral" + String(WILCOXON883M_LIBRARY_VERSION) + R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Last Reset Reason</span><span class="info-value" style="color:#d63031">)rawliteral");
+    sendPageText(lastResetReason);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">IP Address</span><span class="info-value" id="val-ip">)rawliteral");
+    sendPageText(ipAddr);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Signal Strength (RSSI)</span><span class="info-value" id="val-rssi">)rawliteral");
+    sendPageText(rssiVal);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">System Time</span><span class="info-value" id="val-time">)rawliteral");
+    sendPageText(getTimestamp());
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">System Uptime</span><span class="info-value" id="val-uptime">)rawliteral");
+    sendPageText(uptime);
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Free RAM</span><span class="info-value" id="val-ram">)rawliteral");
+    sendPageText(String(ESP.getFreeHeap()));
+    server.sendContent_P(R"rawliteral( bytes</span></div>
+<div class="info-item"><span class="info-label">Firmware</span><span class="info-value">)rawliteral");
+    sendPageText(String(FIRMWARE_VERSION));
+    server.sendContent_P(R"rawliteral(</span></div>
+<div class="info-item"><span class="info-label">Modbus Library</span><span class="info-value" id="val-modbus-lib">Wilcoxon883MRTU )rawliteral");
+    sendPageText(String(WILCOXON883M_LIBRARY_VERSION));
+    server.sendContent_P(R"rawliteral(</span></div>
 </div>
 
 <div class="ota-box">
@@ -268,7 +308,9 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     <h3>System Event Log</h3>
     <button class="btn-clear" onclick="clearLog()"><i data-lucide="trash-2" style="width:14px;"></i> Clear Log</button>
   </div>
-  <div class="log-content" id="logContent">)rawliteral" + localLog + R"rawliteral(</div>
+  <div class="log-content" id="logContent">)rawliteral");
+    sendPageText(localLog);
+    server.sendContent_P(R"rawliteral(</div>
 </div>
 <a href="/settings" class="nav-link">&larr; Back to Settings</a></div>
 <script>
@@ -422,7 +464,7 @@ function performOTA() {
     xhr.send(formData);
 }
 </script>
-</body></html>)rawliteral";
-    server.send(200, "text/html", html);
+</body></html>)rawliteral");
+    server.sendContent("");
 }
 

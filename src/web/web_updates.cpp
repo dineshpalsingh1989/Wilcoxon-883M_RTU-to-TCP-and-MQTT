@@ -2,7 +2,7 @@
 
 // Public release metadata is fetched by the browser; no GitHub credential is stored.
 void handleGithubUpdates() {
-    server.send(200, "text/html", R"rawliteral(
+    server.send_P(200, "text/html", R"rawliteral(
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GitHub firmware updates</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f2f5f7;color:#192f3d;font:14px/1.6 system-ui,sans-serif;padding:32px 16px}main{max-width:720px;margin:auto;background:white;padding:28px;border:1px solid #e2e9ed;border-radius:14px}h1{font-size:26px;line-height:1.2}h2{font-size:17px}a{color:#147d78}button,.button{display:inline-block;background:#147d78;color:white;padding:11px 16px;border:0;border-radius:7px;text-decoration:none;font:inherit;cursor:pointer}button:disabled{opacity:.5;cursor:wait}section{padding:18px;background:#f4f8fa;border-radius:8px;margin:18px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}#message{color:#536e7d}small{color:#647e8d}button:focus-visible,a:focus-visible{outline:3px solid #51b4c2;outline-offset:3px}</style></head><body><main>
 <a href="/settings">&larr; Settings</a><h1>GitHub firmware updates</h1>

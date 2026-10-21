@@ -4,6 +4,9 @@ void handleFirmwareInfo();
 void handleMonitoringScript();
 #include "core/globals.h"
 
+// Sends one dynamic piece of a chunked page. An empty chunk would end the response early, so it is skipped.
+inline void sendPageText(const String& text) { if (text.length()) server.sendContent(text); }
+
 void registerWebRoutes();
 
 void handleRoot(); void handleMetrics(); void handleFullWaveform(); void handleFullSpectrum();

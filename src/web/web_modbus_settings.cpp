@@ -3,7 +3,11 @@
 void handleModbusTcpSettings() {
     String ipAddress = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
     
-    String html = R"rawliteral(
+    // Streamed in pieces: building the whole page as one String needs a large contiguous
+    // heap block, which the original ESP32 may not have.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,8 +70,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     
     <div class="config-box">
         <div class="info-row">
-            <span><strong>IP Address:</strong> <span style="color:var(--primary)">)rawliteral" + ipAddress + R"rawliteral(</span></span>
-            <span><strong>Status:</strong> <span id="server-status" style="font-weight:bold;">)rawliteral" + String(modbusTcpEnabled ? "RUNNING" : "STOPPED") + R"rawliteral(</span></span>
+            <span><strong>IP Address:</strong> <span style="color:var(--primary)">)rawliteral");
+    sendPageText(ipAddress);
+    server.sendContent_P(R"rawliteral(</span></span>
+            <span><strong>Status:</strong> <span id="server-status" style="font-weight:bold;">)rawliteral");
+    sendPageText(String(modbusTcpEnabled ? "RUNNING" : "STOPPED"));
+    server.sendContent_P(R"rawliteral(</span></span>
             <span><strong>Slave ID:</strong> 1</span>
         </div>
         
@@ -244,8 +252,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     }
 
     window.onload=function(){
-        document.getElementById('enabled').checked = )rawliteral" + String(modbusTcpEnabled ? "true" : "false") + R"rawliteral(;
-        document.getElementById('port').value = )rawliteral" + String(modbusTcpPort) + R"rawliteral(;
+        document.getElementById('enabled').checked = )rawliteral");
+    sendPageText(String(modbusTcpEnabled ? "true" : "false"));
+    server.sendContent_P(R"rawliteral(;
+        document.getElementById('port').value = )rawliteral");
+    sendPageText(String(modbusTcpPort));
+    server.sendContent_P(R"rawliteral(;
         
         generateLiveTable();
         setInterval(updateLiveValues, 2000); // Poll every 2s
@@ -254,8 +266,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 </script>
 </body>
 </html>
-)rawliteral";
-    server.send(200, "text/html", html);
+)rawliteral");
+    server.sendContent("");
 }
 
 void handleSaveModbusTcp() {
