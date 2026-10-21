@@ -43,8 +43,10 @@ module.exports = function renderPage(file, handler) {
       const gap = body.slice(previous.index + previous[0].length, segment.index);
       const inline = gap.match(/^\s*\+\s*([\s\S]*?)\s*\+\s*$/);
       const chunk = gap.match(/\+=\s*(\w+)\s*\+\s*$/);
+      const streamed = gap.match(/^\);\s*sendPageText\(([\s\S]*?)\);\s*server\.sendContent_P\($/);
       if (inline) html += expression(inline[1]);
       else if (chunk) html += expression(chunk[1]);
+      else if (streamed) html += expression(streamed[1]);
     }
     html += segment[1];
   });

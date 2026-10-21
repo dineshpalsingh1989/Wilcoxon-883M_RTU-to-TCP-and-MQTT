@@ -5,13 +5,18 @@
 // =================================================================
 
 void handleRoot() {
-    // We send the dashboard in one block because it is mostly static HTML.
-    // The browser fills in the data via Javascript fetching /data.
-    String html = R"rawliteral(
+    // Mostly static HTML; the browser fills in the data via Javascript fetching /data.
+    // Streamed in pieces: building the whole page as one String needs a large contiguous
+    // heap block, which the original ESP32 may not have.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Sensor Dashboard | )rawliteral" + sensor_model + R"rawliteral(</title>
+    <title>Sensor Dashboard | )rawliteral");
+    sendPageText(sensor_model);
+    server.sendContent_P(R"rawliteral(</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
@@ -152,8 +157,12 @@ void handleRoot() {
 <body>
     <div class="header">
         <div class="title-container">
-            <div class="title">)rawliteral" + sensor_model + R"rawliteral(</div>
-            <div class="subtitle">Serial: )rawliteral" + sensor_serial + R"rawliteral(</div>
+            <div class="title">)rawliteral");
+    sendPageText(sensor_model);
+    server.sendContent_P(R"rawliteral(</div>
+            <div class="subtitle">Serial: )rawliteral");
+    sendPageText(sensor_serial);
+    server.sendContent_P(R"rawliteral(</div>
         </div>
         <div class="time-container"><div class="time" id="clock">--:--:--</div></div>
         <div class="menu"><a href="/settings"><i data-lucide="settings"></i>Settings</a></div>
@@ -501,7 +510,9 @@ void handleRoot() {
                 if(data.accelRms) {
                     const previewData = {
                         timestamp: new Date().toISOString(),
-                        model: ")rawliteral" + sensor_model + R"rawliteral(",
+                        model: ")rawliteral");
+    sendPageText(sensor_model);
+    server.sendContent_P(R"rawliteral(",
                         type: "metrics",
                         data: {
                             accel: data.accelRms,
@@ -560,8 +571,8 @@ void handleRoot() {
     </script>
 <script src="/monitoring_ui.js"></script>
 </body>
-</html>)rawliteral";
-    server.send(200, "text/html", html);
+</html>)rawliteral");
+    server.sendContent("");
 }
 
 void handleMetrics() {
