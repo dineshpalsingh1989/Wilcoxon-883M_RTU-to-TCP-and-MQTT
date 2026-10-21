@@ -12,6 +12,7 @@ void webServerLoop(void * pvParameters) {
             xSemaphoreGive(dataMutex);
         }
         if (!updating) ArduinoOTA.handle();
+        gw::watchdogService();
         vTaskDelay(2); 
     }
 }
@@ -105,7 +106,12 @@ void backgroundLoop(void * pvParameters) {
                     gw::watchdogFeed();
 
                     String clientId = "esp32-ila-" + gw::deviceId(); // unique per device so gateways don't kick each other off
-                    if (mqttClient->connect(clientId.c_str(), mqtt_user_str.c_str(), mqtt_pass_str.c_str())) {
+                    // DNS, TCP, TLS (up to 10 s on the RP2350) and the CONNACK wait together can
+                    // exceed the RP2350 hardware watchdog, so the web task feeds it meanwhile.
+                    gw::watchdogBlockingBegin(45000);
+                    bool mqttConnected = mqttClient->connect(clientId.c_str(), mqtt_user_str.c_str(), mqtt_pass_str.c_str());
+                    gw::watchdogBlockingEnd();
+                    if (mqttConnected) {
                          logMessage("[MQTT] Connected to " + mqtt_server_str);
                          if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
                             snprintf(mqttStatus, sizeof(mqttStatus), "Connected");
