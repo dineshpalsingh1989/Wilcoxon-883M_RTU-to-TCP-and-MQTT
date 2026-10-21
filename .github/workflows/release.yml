@@ -28,6 +28,7 @@ jobs:
       - name: Prepare board binaries
         run: |
           cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+          cp .pio/build/adafruit_feather_esp32s3/factory.bin factory-adafruit_feather_esp32s3.bin
           (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
       - uses: actions/upload-artifact@v4
         with:
@@ -35,6 +36,7 @@ jobs:
           path: |
             firmware-adafruit_feather_esp32s3.bin
             web-installer-adafruit_feather_esp32s3.zip
+            factory-adafruit_feather_esp32s3.bin
   release:
     needs: firmware
     runs-on: ubuntu-24.04
@@ -57,9 +59,21 @@ jobs:
           else
             flags=()
           fi
-          gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes "${flags[@]}"
+          # Install instructions go above GitHub's generated change list.
+          pages="https://${GH_REPO%%/*}.github.io/${GH_REPO#*/}/"
+          {
+            echo "## Install"
+            echo
+            echo "- **Easiest:** open the [web installer]($pages) in Chrome or Edge, plug in the Feather ESP32-S3 and click **Install**."
+            echo "- **Manual, any flashing tool:** write \`factory-adafruit_feather_esp32s3.bin\` at address \`0x0\`. This clears saved settings."
+            echo "- **Gateway already running:** \`firmware-adafruit_feather_esp32s3.bin\` is the OTA update file."
+            echo
+            echo "Guide and troubleshooting: [installing-firmware.md](https://github.com/$GH_REPO/blob/$RELEASE_TAG/docs/installing-firmware.md)"
+          } > install-notes.md
+          gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes \
+            --notes "$(cat install-notes.md)" "${flags[@]}"
           gh release upload "$RELEASE_TAG" firmware-adafruit_feather_esp32s3.bin \
-            web-installer-adafruit_feather_esp32s3.zip --clobber
+            web-installer-adafruit_feather_esp32s3.zip factory-adafruit_feather_esp32s3.bin --clobber
   installer:
     needs: release
     permissions:

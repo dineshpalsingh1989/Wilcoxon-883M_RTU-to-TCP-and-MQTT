@@ -2,6 +2,7 @@
 
 Run with `pio run -t webinstaller`; normal builds are unaffected. Offsets come from the
 board's own upload layout, so the browser installs exactly what `pio run -t upload` writes.
+Also writes factory.bin, the same images merged into one file for manual flashing at 0x0.
 """
 import json
 import os
@@ -34,6 +35,18 @@ def bundle(target, source, env):
     print(f"Web installer bundle: {out}")
     for part in parts:
         print(f"  0x{part['offset']:06x}  {part['path']}")
+
+    # One-file image for manual tools: write at 0x0. esptool fills the gaps with 0xFF,
+    # so it also clears saved settings (NVS); the browser installer writes parts only.
+    esptool = Path(env.PioPlatform().get_package_dir("tool-esptoolpy")) / "esptool.py"
+    factory = Path(env.subst("$BUILD_DIR")) / "factory.bin"
+    regions = [arg for part in parts for arg in (hex(part["offset"]), str(out / part["path"]))]
+    if env.Execute(env.VerboseAction(
+            " ".join(['"$PYTHONEXE"', f'"{esptool}"', "--chip", "esp32s3", "merge_bin", "-o", f'"{factory}"']
+                     + [f'"{r}"' for r in regions]),
+            "Merging factory image")):
+        raise RuntimeError("esptool merge_bin failed")
+    print(f"Factory image: {factory} (write at 0x0)")
 
 
 env.AddCustomTarget(

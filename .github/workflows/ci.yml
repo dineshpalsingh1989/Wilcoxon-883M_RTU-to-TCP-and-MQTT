@@ -30,6 +30,7 @@ jobs:
       - name: Prepare board binaries
         run: |
           cp .pio/build/adafruit_feather_esp32s3/firmware.bin firmware-adafruit_feather_esp32s3.bin
+          cp .pio/build/adafruit_feather_esp32s3/factory.bin factory-adafruit_feather_esp32s3.bin
           (cd .pio/build/adafruit_feather_esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-adafruit_feather_esp32s3.zip" *)
       - uses: actions/upload-artifact@v4
         with:
@@ -37,3 +38,4 @@ jobs:
           path: |
             firmware-adafruit_feather_esp32s3.bin
             web-installer-adafruit_feather_esp32s3.zip
+            factory-adafruit_feather_esp32s3.bin

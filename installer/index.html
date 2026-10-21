@@ -64,6 +64,16 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
   </ol>
   <p>Already installed? Later updates can be done from the gateway itself under <strong>Settings &gt; GitHub Firmware Updates</strong>, which keeps your settings.</p>
 
+  <h2>Trouble installing?</h2>
+  <p>Trying again is always safe: the board's built-in loader cannot be erased.</p>
+  <ul>
+    <li><strong>No port appears:</strong> use a USB-C data cable and another USB socket (no hub), then hold BOOT, tap RESET, release BOOT.</li>
+    <li><strong>"Failed to connect" or timeout:</strong> close the Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET.</li>
+    <li><strong>Stops halfway:</strong> change the cable and install again.</li>
+    <li><strong>Finished but nothing happens:</strong> press RESET. Still no <code>ILA_Sensor_AP</code>? Install again with <em>Erase device</em> ticked.</li>
+  </ul>
+  <p><strong>Other ways:</strong> download <code>factory-adafruit_feather_esp32s3.bin</code> from the <a id="releases" href="#">releases page</a> and write it at address <code>0x0</code> with <a href="https://espressif.github.io/esptool-js/">Espressif's browser flasher</a>, esptool or Espressif's Flash Download Tool. This clears saved settings. Step-by-step instructions: <a id="guide" href="#">installation guide</a>.</p>
+
   <footer>
     Choosing <em>Erase device</em> during install clears saved Wi-Fi, MQTT and alarm settings. Leave it unticked to keep them.
     <br>Source, release notes and manual install files: <a id="repo" href="#">GitHub repository</a>.
@@ -74,9 +84,9 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
   const box = document.getElementById("channels");
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
-    for (const id of ["repo", "wiring"]) {
-      document.getElementById(id).href = data.repo + (id === "wiring" ? "/blob/main/docs/wiring.md" : "");
-    }
+    const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
+                    guide: "/blob/main/docs/installing-firmware.md" };
+    for (const [id, path] of Object.entries(links)) document.getElementById(id).href = data.repo + path;
     if (!data.channels.length) {
       box.innerHTML = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
       return;

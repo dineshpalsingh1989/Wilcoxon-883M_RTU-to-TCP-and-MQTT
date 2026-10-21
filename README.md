@@ -52,7 +52,30 @@ Firmware for an ESP32-S3 gateway connected to a **Wilcoxon 883M vibration sensor
 </tr>
 </table>
 
-After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring). Problems or manual flashing: see the [installation guide](docs/installing-firmware.md).
+After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring).
+
+### If the install does not work
+
+Re-installing is always safe: the ESP32-S3's built-in loader cannot be erased, so you can simply try again.
+
+| Problem | Fix |
+| --- | --- |
+| No port appears | Use a USB-C **data** cable, try another USB socket (no hub), then hold **BOOT**, tap **RESET**, release **BOOT** and try again |
+| "Failed to connect" or timeout | Close Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET as above |
+| Stops halfway | Change the cable, avoid hubs and install again |
+| Finished but nothing happens | Press **RESET**. Still no `ILA_Sensor_AP`? Install again with *Erase device* ticked |
+| Browser not supported | Use Chrome or Edge on a computer, or one of the other ways below |
+
+**Other ways to install the same firmware:**
+
+| Way | Use when |
+| --- | --- |
+| [Espressif browser flasher](docs/installing-firmware.md#2-espressif-browser-flasher): write `factory-adafruit_feather_esp32s3.bin` at `0x0` | The installer page fails but Chrome or Edge works |
+| [esptool command line](docs/installing-firmware.md#3-esptool-command-line): `python -m esptool --chip esp32s3 write_flash 0x0 factory-adafruit_feather_esp32s3.bin` | Any computer with Python, no browser needed |
+| [Espressif Flash Download Tool](docs/installing-firmware.md#4-espressif-flash-download-tool-windows) | Windows users who prefer a desktop app |
+| [Build from source](#build-and-flash-the-gateway) with PlatformIO | Developers |
+
+The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
 
 ## Beta: built on our own Modbus library
 
@@ -104,7 +127,8 @@ Most users only need the [web installer](#install-on-your-esp32-in-4-steps).
 
 | Download | For | Where |
 | --- | --- | --- |
-| Gateway firmware | Installing or updating the ESP32 gateway | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `firmware-adafruit_feather_esp32s3.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
+| Gateway firmware, new board | First install or recovery | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `factory-adafruit_feather_esp32s3.bin` at `0x0` from the [releases](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) |
+| Gateway firmware, update | A gateway that already runs this firmware | **Settings > GitHub Firmware Updates**, or `firmware-adafruit_feather_esp32s3.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
 | Wilcoxon883MRTU library | Using the Modbus RTU/TCP library in your own sketch | `Wilcoxon883MRTU-<version>.zip` on the newest `wilcoxon883mrtu-v*` [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases); in Arduino IDE use **Sketch > Include Library > Add .ZIP Library** |
 
 ### Try it without hardware
