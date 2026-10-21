@@ -12,7 +12,8 @@ String formatUptime(unsigned long ms) {
 
 String getTimestamp() {
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) { return "No Time Sync"; }
+  // Timeout 0: without NTP (AP mode) the default waits 5 s, often while dataMutex is held.
+  if (!getLocalTime(&timeinfo, 0)) { return "No Time Sync"; }
   char timeString[21];
   strftime(timeString, sizeof(timeString), "%Y-%m-%dT%H:%M:%S", &timeinfo); // local time (no 'Z': not UTC)
   return String(timeString);

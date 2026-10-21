@@ -97,7 +97,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 
     // 4. Send Form & Scripts
     server.sendContent(R"rawliteral(
-<div class="form-section"><button class="btn-primary btn-scan" onclick="scanWifi()">Scan for Networks</button><div class="wifi-list-container"><ul id="wifi-list"></ul></div><form onsubmit="return saveWifi()"><div class="form-group"><label for="ssid">Network Name (SSID)</label><input type="text" id="ssid" name="ssid" required></div><div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass"></div><button type="submit" class="btn-primary">Save and Connect</button></form></div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function scanWifi(){const t=document.getElementById("wifi-list");t.innerHTML="<li>Scanning...</li>",fetch("/scanwifi").then(t=>t.json()).then(e=>{t.innerHTML="",0===e.length?t.innerHTML="<li>No networks found.</li>":e.forEach(e=>{const n=document.createElement("li");n.innerHTML=`<span class="wifi-ssid">${e.ssid}</span><span class="wifi-rssi">${e.rssi} dBm</span>`,n.onclick=()=>{document.getElementById("ssid").value=e.ssid},t.appendChild(n)})})}function saveWifi(){const t=document.getElementById("ssid").value,e=document.getElementById("pass").value;return fetch("/savewifi?ssid="+encodeURIComponent(t)+"&pass="+encodeURIComponent(e)),alert("Saving credentials... The device will reboot."),!1}</script></body></html>
+<div class="form-section"><button class="btn-primary btn-scan" onclick="scanWifi()">Scan for Networks</button><div class="wifi-list-container"><ul id="wifi-list"></ul></div><form onsubmit="return saveWifi()"><div class="form-group"><label for="ssid">Network Name (SSID)</label><input type="text" id="ssid" name="ssid" required></div><div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass"></div><button type="submit" class="btn-primary">Save and Connect</button></form></div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function scanWifi(){const t=document.getElementById("wifi-list"),s=Date.now();let f=!0;t.innerHTML="<li>Scanning... Wi-Fi may pause for a few seconds; this page keeps trying.</li>";const p=()=>fetch("/scanwifi"+(f?"?start=1":""),{cache:"no-store"}).then(r=>{if(f=!1,202===r.status)throw 0;if(!r.ok)throw 0;return r.json()}).then(e=>{t.innerHTML="",0===e.length?t.innerHTML="<li>No networks found.</li>":e.forEach(e=>{const n=document.createElement("li"),a=document.createElement("span"),b=document.createElement("span");a.className="wifi-ssid",a.textContent=e.ssid,b.className="wifi-rssi",b.textContent=e.rssi+" dBm",n.append(a,b),n.onclick=()=>{document.getElementById("ssid").value=e.ssid},t.appendChild(n)})}).catch(()=>{Date.now()-s<45e3?setTimeout(p,1500):t.innerHTML="<li>Scan did not finish. Reconnect to ILA_Sensor_AP and press Scan again.</li>"});p()}function saveWifi(){const t=document.getElementById("ssid").value,e=document.getElementById("pass").value;return fetch("/savewifi?ssid="+encodeURIComponent(t)+"&pass="+encodeURIComponent(e)),alert("Saving credentials... The device will reboot."),!1}</script></body></html>
 )rawliteral");
 
     // 5. Close Stream
@@ -332,9 +332,16 @@ void handleGetIntervals() {
     server.send(200, "application/json", "{\"interval\":" + String(interval) + ", \"metrics_interval\":" + String(metrics_interval) + "}");
 }
 
+// Scans run in the background so the access point keeps serving the page, which polls:
+// 202 while scanning, then 200 with the last result list. ?start=1 begins a fresh scan.
 void handleScanWifi() {
+    int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_FAILED || (server.hasArg("start") && n != WIFI_SCAN_RUNNING)) {
+        WiFi.scanDelete();
+        n = WiFi.scanNetworks(true);
+    }
+    if (n == WIFI_SCAN_RUNNING) { server.send(202, "application/json", "{\"scanning\":true}"); return; }
     String json = "[";
-    int n = WiFi.scanNetworks();
     if (n > 0) {
         for (int i = 0; i < n; ++i) {
             json += "{\"ssid\":\"" + WiFi.SSID(i) + "\",\"rssi\":" + WiFi.RSSI(i) + "}";
