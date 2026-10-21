@@ -57,4 +57,4 @@ const long INTERVAL_NEVER = 2147483647L;
 const long dataPollInterval = 500;
 const int maxPollAttempts = 20;
 const long mqttReconnectInterval = 5000;
-const long healthPublishInterval = 300000; 
+const long healthPublishInterval = 300000; // also sent once right after MQTT connects

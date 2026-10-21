@@ -15,7 +15,7 @@
 
 </div>
 
-![System overview: Wilcoxon 883M sends Modbus RTU data through an ESP32-S3 gateway to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
+![System overview: the Wilcoxon 883M sends Modbus RTU data through an ESP32 board or an IRIV IO Controller to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
 
 Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
@@ -56,9 +56,25 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 ### IRIV IO Controller
 
-> **Supported from v4.11.0.** The IRIV build runs the same gateway (dashboard, Modbus TCP, MQTT, captures) and has been tested on an IRIV IO Controller with MQTT on port 1883. MQTT over TLS (port 8883) failed in the first beta; v4.11.0 allows the slower TLS handshake on this chip and is being rechecked. If TLS still fails, use port 1883 on a trusted network and check with [`scripts/mqtt_check.py`](scripts/mqtt_check.py).
+> **Supported from v4.11.0, tested on an IRIV IO Controller.** The IRIV build runs the same gateway: dashboard, Modbus TCP, MQTT and captures.
+>
+> **MQTT over TLS (port 8883) is not supported on the IRIV.** Use plain MQTT on **port 1883**, on a trusted network or through a local broker. The gateway's MQTT page shows this, the TLS switch is disabled, and a TLS setting saved earlier is ignored. Brokers that only accept TLS (for example HiveMQ Cloud and EMQX Cloud Serverless) need an ESP32 board.
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
+
+![IRIV IO Controller front panel: the gateway uses RS485 A, B and G, the V+ and V− supply terminals, Ethernet, USB-C, the USER button and the USR LED; the digital inputs, digital outputs and analog inputs are not used yet.](docs/images/iriv-io-controller.svg)
+
+| IRIV connection | RP2350A pin | Used by the gateway for |
+| --- | --- | --- |
+| RS485 **A / B / G** (Terminal 1) | UART1: TX GP24, RX GP25 | Wilcoxon 883M, Modbus RTU (direction is automatic) |
+| **V+ (10–30 V) / V−** (Terminal 1) | — | IRIV power. USB-C also powers it. |
+| **ETH** | W5500 on SPI0: MOSI GP19, MISO GP20, SCK GP22, CS GP21, INT GP18, RESET GP23 | Dashboard, Modbus TCP and MQTT |
+| **USER** button | GP28 | Hold 5 s for the fixed address 192.168.4.1 |
+| **USR** LED | GP29 | Status: on when online, blinking during captures |
+| Buzzer (inside) | GP11 | Start-up beep and network-loss alarm |
+| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | **Not used yet** |
+
+> **Coming soon: use the IRIV's own I/O.** The 11 isolated digital inputs, 4 isolated digital outputs and 2 analog inputs (0–10 V or 0–20 mA) are not used by the gateway yet. Planned: read them and switch the outputs from the dashboard, MQTT and Modbus TCP, for example to drive an alarm light from a vibration alarm. This is planned and not available in the current firmware.
 
 1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
 2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1.
@@ -232,7 +248,7 @@ Connect the sensor's RS485 pair to the module's A/B terminals according to the h
 
 ## MQTT
 
-The default base topic is **`883M`**, configurable in Settings. TLS is supported (TLS 1.2; the gateways cannot use TLS 1.3).
+The default base topic is **`883M`**, configurable in Settings. TLS is supported on the ESP32 boards (TLS 1.2; they cannot use TLS 1.3). The IRIV IO Controller supports plain MQTT on port 1883 only.
 
 To check a broker and watch a running gateway's messages from your computer (Python, no extra packages; password from the `MQTT_PASSWORD` environment variable):
 

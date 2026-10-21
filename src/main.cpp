@@ -1,7 +1,4 @@
 #include "core/modules.h"
-#if GATEWAY_ETHERNET
-#include "generated/github_roots.h" // public root CAs, reused for MQTT over TLS
-#endif
 
 void setup() {
     Serial.begin(115200);
@@ -52,11 +49,16 @@ void setup() {
     mqtt_skip_cert_validation = preferences.getBool("skip_val", true);
     mqtt_publish_progress = preferences.getBool("progress", true);
     mqtt_server_str = preferences.getString("server", mqtt_server_str); 
-    mqtt_port_val = preferences.getInt("port", mqtt_port_val); 
+    mqtt_port_val = preferences.getInt("port", GATEWAY_ETHERNET ? 1883 : mqtt_port_val); // IRIV: plain MQTT
     mqtt_user_str = preferences.getString("user", mqtt_user_str); 
     mqtt_pass_str = preferences.getString("pass", mqtt_pass_str); 
     mqtt_topic_str = preferences.getString("topic", mqtt_topic_str); 
     preferences.end();
+#if GATEWAY_ETHERNET
+    // The IRIV IO Controller does not support MQTT over TLS (port 8883): plain MQTT only.
+    if (mqtt_use_tls) logMessage("[MQTT] TLS is not supported on this board; using plain MQTT");
+    mqtt_use_tls = false;
+#endif
 
     preferences.begin("rs485-cfg", true); 
     modbus_slave_id_val = preferences.getUChar("slave_id", modbus_slave_id_val); 
@@ -128,12 +130,6 @@ void setup() {
 
     if(connected_to_wifi && mqttEnabled){
         if (mqtt_use_tls) {
-#if GATEWAY_ETHERNET
-            // BearSSL on the RP2350 can take several seconds per handshake; stay well inside
-            // the 16 s watchdog. With validation on, trust the embedded public root CAs.
-            WiFiClientSecure::setTLSConnectTimeout(10000);
-            if (!mqtt_skip_cert_validation) espClientSecure.setTrustAnchors(new BearSSL::X509List(GITHUB_ROOTS));
-#endif
             if (mqtt_skip_cert_validation) {
                 espClientSecure.setInsecure();
             } 
@@ -151,22 +147,12 @@ void setup() {
         }
     }
     
-#if GATEWAY_ETHERNET
-    // Arduino-Pico only allows networking from the setup()/loop() task, so the IRIV runs the
-    // web and background work from loop() instead of separate tasks.
-    gw::watchdogStart();
-#else
     gw::startTask(webServerLoop, "WebServerTask", 12000, 1, 0);
     gw::startTask(backgroundLoop, "BackgroundTask", 16384, 1, 1);
-#endif
 }
 
 #if GATEWAY_ETHERNET
-void loop() {
-    webServerStep();
-    backgroundStep();
-    delay(2);
-}
+void loop() { vTaskDelay(portMAX_DELAY); } // all work runs in the tasks started above
 #else
 void loop() { vTaskDelete(NULL); }
 #endif

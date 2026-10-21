@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#16364a"/></linearGradient></defs>
+<rect width="1200" height="560" rx="20" fill="url(#bg)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+<text x="48" y="54" fill="#38bdf8" font-size="15" letter-spacing="3">CYTRON IRIV IO CONTROLLER</text>
+<text x="48" y="94" fill="#f8fafc" font-size="30" font-weight="700">Front panel and gateway connections</text>
+<text x="48" y="122" fill="#a9c2d7" font-size="15">Simplified drawing, not to scale. Terminal layout from the IRIV IO Controller datasheet (Rev 1.0); check your unit's labels before wiring.</text>
+
+<!-- enclosure front -->
+<rect x="48" y="150" width="1104" height="260" rx="18" fill="#0b1220" stroke="#35516b" stroke-width="2"/>
+<rect x="72" y="172" width="230" height="44" rx="6" fill="#e2e8f0"/>
+<text x="86" y="200" fill="#0b1220" font-size="20" font-weight="700" font-style="italic">IRIV IO Controller</text>
+
+<!-- buttons, USB, LEDs -->
+<g font-size="12" fill="#a9c2d7">
+<text x="86" y="246">PROG</text><rect x="80" y="252" width="56" height="22" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+<text x="160" y="246">RESET</text><circle cx="176" cy="263" r="6" fill="#1e293b" stroke="#64748b"/>
+<text x="210" y="246">BOOT</text><circle cx="224" cy="263" r="6" fill="#1e293b" stroke="#64748b"/>
+<text x="256" y="246" fill="#f8fafc">USER</text><circle cx="272" cy="263" r="8" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+<text x="80" y="302">PWR</text><circle cx="90" cy="312" r="5" fill="#ef4444"/>
+<text x="116" y="302" fill="#f8fafc">USR</text><circle cx="126" cy="312" r="5" fill="#3b82f6" stroke="#38bdf8" stroke-width="2"/>
+<text x="152" y="302">485</text><circle cx="162" cy="312" r="5" fill="#3b82f6"/>
+<text x="196" y="302">DOUT 0–3</text><g fill="#ef4444"><circle cx="202" cy="312" r="4"/><circle cx="216" cy="312" r="4"/><circle cx="230" cy="312" r="4"/><circle cx="244" cy="312" r="4"/></g>
+<text x="80" y="346">DIN 0–10</text><g fill="#22c55e"><circle cx="86" cy="358" r="4"/><circle cx="100" cy="358" r="4"/><circle cx="114" cy="358" r="4"/><circle cx="128" cy="358" r="4"/><circle cx="142" cy="358" r="4"/><circle cx="156" cy="358" r="4"/><circle cx="170" cy="358" r="4"/><circle cx="184" cy="358" r="4"/><circle cx="198" cy="358" r="4"/><circle cx="212" cy="358" r="4"/><circle cx="226" cy="358" r="4"/></g>
+</g>
+
+<!-- terminal 1 -->
+<text x="330" y="176" fill="#a9c2d7" font-size="13">TERMINAL 1</text>
+<g font-size="12" text-anchor="middle">
+<g fill="#16283e" stroke="#35516b"><rect x="330" y="186" width="360" height="200" rx="8"/></g>
+<!-- top row: V+, A, B, G, AGND, AGND, AN0, AN1 -->
+<g>
+<rect x="340" y="196" width="40" height="80" rx="5" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/><text x="360" y="228" fill="#f8fafc">V+</text><text x="360" y="246" fill="#7dd3fc" font-size="10">10–30V</text>
+<rect x="384" y="196" width="40" height="80" rx="5" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/><text x="404" y="240" fill="#f8fafc" font-weight="700">A</text>
+<rect x="428" y="196" width="40" height="80" rx="5" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/><text x="448" y="240" fill="#f8fafc" font-weight="700">B</text>
+<rect x="472" y="196" width="40" height="80" rx="5" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/><text x="492" y="240" fill="#f8fafc" font-weight="700">G</text>
+<g fill="#1e293b" stroke="#475569"><rect x="516" y="196" width="40" height="80" rx="5"/><rect x="560" y="196" width="40" height="80" rx="5"/><rect x="604" y="196" width="40" height="80" rx="5"/><rect x="648" y="196" width="40" height="80" rx="5"/></g>
+<g fill="#94a3b8"><text x="536" y="240">AGND</text><text x="580" y="240">AGND</text><text x="624" y="240">AN0</text><text x="668" y="240">AN1</text></g>
+</g>
+<!-- bottom row: V-, DGND, S/S0..4, DI0..DI4 -->
+<g>
+<rect x="340" y="296" width="40" height="80" rx="5" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/><text x="360" y="340" fill="#f8fafc">V−</text>
+<g fill="#1e293b" stroke="#475569"><rect x="384" y="296" width="40" height="80" rx="5"/><rect x="428" y="296" width="40" height="80" rx="5"/><rect x="472" y="296" width="40" height="80" rx="5"/><rect x="516" y="296" width="40" height="80" rx="5"/><rect x="560" y="296" width="40" height="80" rx="5"/><rect x="604" y="296" width="40" height="80" rx="5"/><rect x="648" y="296" width="40" height="80" rx="5"/></g>
+<g fill="#94a3b8"><text x="404" y="340">DGND</text><text x="448" y="334">S/S</text><text x="448" y="348" font-size="10">0..4</text><text x="492" y="340">DI0</text><text x="536" y="340">DI1</text><text x="580" y="340">DI2</text><text x="624" y="340">DI3</text><text x="668" y="340">DI4</text></g>
+</g>
+
+<!-- terminal 2 -->
+<text x="712" y="176" fill="#a9c2d7" font-size="13" text-anchor="start">TERMINAL 2</text>
+<rect x="712" y="186" width="360" height="200" rx="8" fill="#16283e" stroke="#35516b"/>
+<g fill="#1e293b" stroke="#475569"><rect x="722" y="196" width="40" height="80" rx="5"/><rect x="766" y="196" width="40" height="80" rx="5"/><rect x="810" y="196" width="40" height="80" rx="5"/><rect x="854" y="196" width="40" height="80" rx="5"/><rect x="898" y="196" width="40" height="80" rx="5"/><rect x="942" y="196" width="40" height="80" rx="5"/><rect x="986" y="196" width="40" height="80" rx="5"/><rect x="1030" y="196" width="40" height="80" rx="5"/>
+<rect x="722" y="296" width="40" height="80" rx="5"/><rect x="766" y="296" width="40" height="80" rx="5"/><rect x="810" y="296" width="40" height="80" rx="5"/><rect x="854" y="296" width="40" height="80" rx="5"/><rect x="898" y="296" width="40" height="80" rx="5"/><rect x="942" y="296" width="40" height="80" rx="5"/><rect x="986" y="296" width="40" height="80" rx="5"/><rect x="1030" y="296" width="40" height="80" rx="5"/></g>
+<g fill="#94a3b8"><text x="764" y="240">DO0</text><text x="852" y="240">DO1</text><text x="940" y="240">DO2</text><text x="1028" y="240">DO3</text>
+<text x="742" y="340">DGND</text><text x="786" y="334">S/S</text><text x="786" y="348" font-size="10">5..10</text><text x="830" y="340">DI5</text><text x="874" y="340">DI6</text><text x="918" y="340">DI7</text><text x="962" y="340">DI8</text><text x="1006" y="340">DI9</text><text x="1050" y="340">DI10</text></g>
+<g stroke="#64748b" stroke-width="1.5" fill="none"><path d="M744 282 H784"/><path d="M832 282 H872"/><path d="M920 282 H960"/><path d="M1008 282 H1048"/></g>
+</g>
+
+<!-- ethernet -->
+<rect x="1088" y="246" width="48" height="56" rx="4" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/>
+<rect x="1098" y="258" width="28" height="20" rx="2" fill="#0b1220"/>
+<text x="1112" y="320" fill="#f8fafc" font-size="12" text-anchor="middle">ETH</text>
+
+<!-- legend -->
+<g font-size="15">
+<rect x="48" y="436" width="18" height="18" rx="4" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/>
+<text x="76" y="451" fill="#f8fafc">Used by the gateway: RS485 A / B / G to the 883M, V+ / V− supply, Ethernet, USB-C (PROG), USER button, USR status LED</text>
+<rect x="48" y="468" width="18" height="18" rx="4" fill="#1e293b" stroke="#475569"/>
+<text x="76" y="483" fill="#a9c2d7">Not used yet: 11 isolated digital inputs, 4 isolated digital outputs, 2 analog inputs (coming soon)</text>
+<text x="48" y="524" fill="#7dd3fc" font-size="14">Turn on the RS485 R-Term switch under the IRIV at the end of the bus • DO0–DO3 are isolated two-terminal outputs</text>
+</g>
+</g></svg>

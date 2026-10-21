@@ -43,6 +43,8 @@ The RS485 wiring above is the same for both ESP32 [supported boards](../README.m
 
 ## Cytron IRIV IO Controller
 
+![IRIV IO Controller front panel with the terminals the gateway uses highlighted](images/iriv-io-controller.svg)
+
 The IRIV IO Controller has an **isolated RS485 transceiver built in**, with automatic direction control, so no external module or DE/RE wire is needed. Wire it from the IRIV's datasheet (Terminal 1) and the [883M manual](../883M-User-Manual-Rev.1.0_20241206-EN.pdf):
 
 | IRIV Terminal 1 | To |

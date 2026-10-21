@@ -212,6 +212,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     
     server.sendContent(R"rawliteral(<div class="form-group"><label for="topic">Base Topic</label><input type="text" id="topic" name="topic" value=")rawliteral" + mqtt_topic_str + R"rawliteral(" required></div>)rawliteral");
 
+#if GATEWAY_ETHERNET
+    // Plain string, not a raw literal, so the demo (which renders the ESP32 page) ignores it.
+    server.sendContent("<p class=\"status-bar\" id=\"tls-note\"><strong>IRIV IO Controller:</strong> MQTT over TLS (port 8883) is not supported. "
+                       "Use port 1883 on a trusted network.</p><script>document.getElementById('tls').disabled=true;"
+                       "document.getElementById('skip_val').disabled=true;</script>");
+#endif
     // 6. Footer & Scripts (Dynamic JS Injection for Checkboxes)
     server.sendContent(R"rawliteral(
 <button type="submit" class="btn-primary">Save and Reboot</button></form>
