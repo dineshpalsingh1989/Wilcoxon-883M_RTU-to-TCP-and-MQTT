@@ -7,7 +7,7 @@ The firmware is built for two boards and already contains everything the gateway
 | Adafruit Feather ESP32-S3 | ESP32-S3 | `adafruit_feather_esp32s3` |
 | [Cytron Maker ESP32](https://my.cytron.io/p-maker-esp32-bundle) | ESP32 (ESP32-WROOM-32E, 8 MB flash) | `cytron_maker_esp32` |
 
-The web installer detects the chip and picks the matching build itself. For the other methods, use the files for your board. The Maker ESP32 build has not yet been tested on hardware; see [Supported boards](../README.md#supported-boards).
+The web installer detects the chip and picks the matching build itself. For the other methods, use the files for your board. See [Supported boards](../README.md#supported-boards).
 
 | Method | Needs | Keeps settings |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ Re-installing is always safe. The ESP32's built-in loader is in ROM and cannot b
 
 ## Release files
 
-Each gateway [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) has three files per board (the factory file from `v4.10.0-beta.3` on; Maker ESP32 files from the first release after Maker ESP32 support was added):
+Each gateway [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) has three files per board (the factory file from `v4.10.0-beta.3` on; Maker ESP32 files from `v4.10.0-beta.3` on):
 
 | File | Use it for |
 | --- | --- |

@@ -48,7 +48,7 @@ This gateway supports **two ESP32 boards**:
 
 Both builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GPIO14 (DE/RE). See [Hardware and wiring](#hardware-and-wiring).
 
-> **Cytron Maker ESP32 is new and not yet tested on hardware.** It builds and installs the same gateway, but it has not yet been run on a real Maker ESP32 with an 883M sensor. The original ESP32 also has less RAM than the ESP32-S3, so check captures, MQTT over TLS and **Settings > GitHub Firmware Updates** on a bench board first. If the GitHub updater reports a memory or TLS error, update by uploading `firmware-cytron_maker_esp32.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)** instead.
+> **Cytron Maker ESP32 is supported from v4.10.0.** The original ESP32 has less RAM than the ESP32-S3, so the firmware sends large pages in parts and sets its capture buffers aside at startup. If the GitHub updater ever reports a memory or TLS error, update by uploading `firmware-cytron_maker_esp32.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)** instead.
 >
 > On the Maker ESP32 the GPIO2 LED is **on** when the gateway is online, **blinks** during captures and metric recording, and is **off** when offline or after a sensor error. GPIO17 and GPIO18 also have onboard activity LEDs, so they flicker with RS485 traffic. The buzzer's mute switch silences the Wi-Fi alarm beeps.
 
@@ -101,9 +101,9 @@ Re-installing is always safe: the ESP32's built-in loader cannot be erased, so y
 
 `<board>` is `adafruit_feather_esp32s3` or `cytron_maker_esp32` ([Supported boards](#supported-boards)). The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
 
-## Beta: built on our own Modbus library
+## Built on our own Modbus library
 
-> **Beta firmware.** The `main` branch now uses this project's own **Wilcoxon883MRTU 0.1.0-beta.4** library for both sides of the gateway. The third-party `ModbusMaster` and `modbus-esp8266` libraries are no longer used. Register addresses, MQTT messages and web pages are unchanged. Simulated tests and the ESP32-S3 build pass; **it has not yet been validated with a real 883M sensor or PLC.** Use the latest stable release for production and the beta on a bench gateway.
+> From **v4.10.0** the gateway uses this project's own **Wilcoxon883MRTU 0.1.0-beta.4** library for both sides of the gateway. The third-party `ModbusMaster` and `modbus-esp8266` libraries are no longer used. Register addresses, MQTT messages and web pages are unchanged. The library itself is still versioned as a beta while its API may change.
 
 ![Gateway data flow: the 883M is read by the Wilcoxon883MRTU client into gateway memory, and the Wilcoxon883MTCP server answers PLCs from that memory alongside the web dashboard and MQTT.](docs/images/data-flow.svg)
 
