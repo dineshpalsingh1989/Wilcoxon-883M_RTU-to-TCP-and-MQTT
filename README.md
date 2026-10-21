@@ -232,7 +232,13 @@ Connect the sensor's RS485 pair to the module's A/B terminals according to the h
 
 ## MQTT
 
-The default base topic is **`883M`**, configurable in Settings. TLS is supported.
+The default base topic is **`883M`**, configurable in Settings. TLS is supported (TLS 1.2; the gateways cannot use TLS 1.3).
+
+To check a broker and watch a running gateway's messages from your computer (Python, no extra packages; password from the `MQTT_PASSWORD` environment variable):
+
+```sh
+python scripts/mqtt_check.py --host <broker> --port 8883 --tls --insecure --user <user> --command get_metrics --seconds 60
+```
 
 | Topic | Direction | Content |
 | --- | --- | --- |
