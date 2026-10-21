@@ -151,12 +151,22 @@ void setup() {
         }
     }
     
+#if GATEWAY_ETHERNET
+    // Arduino-Pico only allows networking from the setup()/loop() task, so the IRIV runs the
+    // web and background work from loop() instead of separate tasks.
+    gw::watchdogStart();
+#else
     gw::startTask(webServerLoop, "WebServerTask", 12000, 1, 0);
     gw::startTask(backgroundLoop, "BackgroundTask", 16384, 1, 1);
+#endif
 }
 
 #if GATEWAY_ETHERNET
-void loop() { vTaskDelay(portMAX_DELAY); } // all work runs in the tasks started above
+void loop() {
+    webServerStep();
+    backgroundStep();
+    delay(2);
+}
 #else
 void loop() { vTaskDelete(NULL); }
 #endif

@@ -78,7 +78,12 @@ void handleUpdateUpload() {
         firmwareUpdateActive = true; manualAccepted = true;
         xSemaphoreGive(dataMutex);
         const uint32_t start = millis(); bool paused = false;
-        while (millis() - start < 15000) {
+#if GATEWAY_ETHERNET
+        // IRIV: background work runs in this same loop() task and resumes only after this
+        // handler, where it sees firmwareUpdateActive and stays paused. Captures were refused above.
+        paused = true;
+#endif
+        while (!paused && millis() - start < 15000) {
             if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) { paused = backgroundPausedForUpdate; xSemaphoreGive(dataMutex); }
             if (paused) break;
             vTaskDelay(pdMS_TO_TICKS(50));
