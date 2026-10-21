@@ -114,6 +114,11 @@ void backgroundLoop(void * pvParameters) {
                         mqttClient->subscribe(mqtt_command_topic.c_str());
                     } else {
                          logMessage("[MQTT] Connect Failed rc=" + String(mqttClient->state()));
+#if GATEWAY_ETHERNET
+                         char tlsError[96];
+                         if (mqtt_use_tls && espClientSecure.getLastSSLError(tlsError, sizeof(tlsError)))
+                             logMessage(String("[MQTT] TLS: ") + tlsError);
+#endif
                     }
                 }
             }

@@ -42,8 +42,9 @@ String resetReason() {
         default: return "Unknown";
     }
 }
-// The RP2350 watchdog resets the whole chip, so its limit is seconds rather than the ESP32's 60 s.
-void watchdogStart() { rp2040.wdt_begin(8000); }
+// The RP2350 watchdog resets the whole chip and allows at most ~16.7 s (the ESP32 uses 60 s).
+// It must outlast the TLS handshake limit set in main.cpp, or MQTT over TLS would reset the chip.
+void watchdogStart() { rp2040.wdt_begin(16000); }
 void watchdogFeed() { rp2040.wdt_reset(); }
 bool startTask(TaskFunction_t task, const char* name, uint32_t stackBytes, UBaseType_t priority, int) {
     return xTaskCreate(task, name, stackBytes / sizeof(StackType_t), nullptr, priority, nullptr) == pdPASS;
