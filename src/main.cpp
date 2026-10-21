@@ -83,7 +83,7 @@ void setup() {
         }
     }
     if (!connected_to_wifi) { 
-        WiFi.mode(WIFI_AP); 
+        WiFi.mode(WIFI_AP_STA); // STA side lets Wi-Fi scans run without dropping the access point
         WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS); 
         logMessage("AP Mode Started: " + String(WIFI_AP_SSID));
     }

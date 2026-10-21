@@ -57,7 +57,7 @@ void backgroundLoop(void * pvParameters) {
                 apModeTriggeredByButton = true;
                 logMessage("AP Mode Forced by Button Press");
                 WiFi.disconnect(true);
-                WiFi.mode(WIFI_AP);
+                WiFi.mode(WIFI_AP_STA); // keeps Wi-Fi scans from dropping the access point
                 WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS);
                 tone(BUZZER_PIN, 2000, 500);
             }
