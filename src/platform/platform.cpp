@@ -61,8 +61,25 @@ void watchdogStart() {
     xTaskCreate(watchdogSupervisor, "Watchdog", 1024, nullptr, configMAX_PRIORITIES - 1, nullptr);
 }
 void watchdogFeed() { lastCheckIn = millis(); }
+// Task stacks live in static RAM, below the heap. BearSSL (MQTT over TLS) runs on its own stack
+// taken from the heap, and the RP2350's FreeRTOS port faults as soon as a task's stack pointer
+// goes below the task stack (PSPLIM). With the task stack at a lower address than the BearSSL
+// stack, that switch is allowed; with heap-allocated task stacks the TLS handshake froze the chip.
+// Both tasks stay on core 0, the only core Arduino-Pico allows for networking.
+namespace {
+constexpr size_t TaskSlots = 2, MaxTaskStackBytes = 16384;
+StackType_t taskStacks[TaskSlots][MaxTaskStackBytes / sizeof(StackType_t)];
+StaticTask_t taskBuffers[TaskSlots];
+size_t tasksUsed = 0;
+}
 bool startTask(TaskFunction_t task, const char* name, uint32_t stackBytes, UBaseType_t priority, int) {
-    return xTaskCreate(task, name, stackBytes / sizeof(StackType_t), nullptr, priority, nullptr) == pdPASS;
+    if (tasksUsed >= TaskSlots || stackBytes > MaxTaskStackBytes) return false;
+    const size_t slot = tasksUsed++;
+    TaskHandle_t handle = xTaskCreateStatic(task, name, stackBytes / sizeof(StackType_t), nullptr, priority,
+                                            taskStacks[slot], &taskBuffers[slot]);
+    if (!handle) return false;
+    vTaskCoreAffinitySet(handle, 1 << 0);
+    return true;
 }
 String deviceId() { return String(rp2040.getChipID()); }
 void startTimeSync(long gmtOffsetSec, int daylightOffsetSec, const char* server) {

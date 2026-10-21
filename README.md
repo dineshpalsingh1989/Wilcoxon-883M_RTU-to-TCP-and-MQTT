@@ -56,7 +56,9 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 ### IRIV IO Controller
 
-> **Supported from v4.11.0.** The IRIV build runs the same gateway (dashboard, Modbus TCP, MQTT, captures) and has been tested on an IRIV IO Controller with MQTT on port 1883. MQTT over TLS (port 8883) failed in the first beta; v4.11.0 allows the slower TLS handshake on this chip and is being rechecked. If TLS still fails, use port 1883 on a trusted network and check with [`scripts/mqtt_check.py`](scripts/mqtt_check.py).
+> **Supported from v4.11.0, tested on an IRIV IO Controller.** The IRIV build runs the same gateway: dashboard, Modbus TCP, MQTT and captures.
+>
+> **MQTT over TLS (port 8883) is not supported on the IRIV.** Use plain MQTT on **port 1883**, on a trusted network or through a local broker. The gateway's MQTT page shows this, the TLS switch is disabled, and a TLS setting saved earlier is ignored. Brokers that only accept TLS (for example HiveMQ Cloud and EMQX Cloud Serverless) need an ESP32 board.
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
 
@@ -232,7 +234,7 @@ Connect the sensor's RS485 pair to the module's A/B terminals according to the h
 
 ## MQTT
 
-The default base topic is **`883M`**, configurable in Settings. TLS is supported (TLS 1.2; the gateways cannot use TLS 1.3).
+The default base topic is **`883M`**, configurable in Settings. TLS is supported on the ESP32 boards (TLS 1.2; they cannot use TLS 1.3). The IRIV IO Controller supports plain MQTT on port 1883 only.
 
 To check a broker and watch a running gateway's messages from your computer (Python, no extra packages; password from the `MQTT_PASSWORD` environment variable):
 

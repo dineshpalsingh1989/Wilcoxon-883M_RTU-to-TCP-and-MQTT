@@ -129,6 +129,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li>No DHCP server, or a laptop plugged in directly? After 10 seconds without DHCP the gateway uses <code>192.168.4.1</code>. Set your laptop to <code>192.168.4.2</code>, mask <code>255.255.255.0</code>, and open <a href="http://192.168.4.1">http://192.168.4.1</a>. Holding the <strong>USER</strong> button for 5 seconds also switches to this address.</li>
       <li>Wire the sensor's RS485 A, B and ground to the IRIV's <strong>RS485 A, B, G</strong> terminals, as in the <a class="wiring" href="#">wiring guide</a>. Turn on the RS485 termination switch underneath if the IRIV is at the end of the bus.</li>
     </ol>
+    <p class="notice"><strong>MQTT:</strong> the IRIV IO Controller supports plain MQTT on port <code>1883</code> only. MQTT over TLS (port <code>8883</code>) is not supported, so cloud brokers that require TLS need an ESP32 board.</p>
     <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
   </section>
 

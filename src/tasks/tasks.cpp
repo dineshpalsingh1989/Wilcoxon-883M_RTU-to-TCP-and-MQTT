@@ -13,12 +13,6 @@ void webServerStep() {
     if (!updating) ArduinoOTA.handle();
 }
 
-void serviceWebDuringLongWork() {
-#if GATEWAY_ETHERNET
-    webServerStep();
-#endif
-}
-
 void webServerLoop(void * pvParameters) {
     for(;;) {
         webServerStep();
@@ -26,8 +20,7 @@ void webServerLoop(void * pvParameters) {
     }
 }
 
-// One pass of the sensor, MQTT, Modbus TCP and alarm work. ESP32 boards run it in its own task;
-// the IRIV IO Controller runs it from loop(), because its network stack may only be used there.
+// One pass of the sensor, MQTT, Modbus TCP and alarm work, run by backgroundLoop().
 void backgroundStep() {
     // --- FIX: Feed watchdog every loop iteration ---
     gw::watchdogFeed();
@@ -102,6 +95,12 @@ void backgroundStep() {
     }
 
     if (mqttEnabled && isWifiConnected && mqttClient) {
+        static bool mqttWasConnected = false;
+        static uint32_t mqttConnectedAt = 0;
+        if (mqttWasConnected && !mqttClient->connected()) {
+            mqttWasConnected = false;
+            logMessage("[MQTT] Connection lost after " + String((millis() - mqttConnectedAt) / 1000) + " s, state=" + String(mqttClient->state()));
+        }
         if (!mqttClient->connected()) {
             if (millis() - lastMqttAttemptTime > mqttReconnectInterval) {
                 lastMqttAttemptTime = millis();
@@ -122,13 +121,10 @@ void backgroundStep() {
                         xSemaphoreGive(dataMutex);
                      }
                     mqttClient->subscribe(mqtt_command_topic.c_str());
+                    mqttWasConnected = true; mqttConnectedAt = millis();
+                    lastHealthPublishTime = millis() - healthPublishInterval; // health status right after connecting
                 } else {
                      logMessage("[MQTT] Connect Failed rc=" + String(mqttClient->state()));
-#if GATEWAY_ETHERNET
-                     char tlsError[96];
-                     if (mqtt_use_tls && espClientSecure.getLastSSLError(tlsError, sizeof(tlsError)))
-                         logMessage(String("[MQTT] TLS: ") + tlsError);
-#endif
                 }
             }
         }
