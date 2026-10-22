@@ -57,3 +57,7 @@ AGENTS.md
 docs/agent-coordination.md
 docs/agent-report-template.md
 scripts/agent_bridge.js
+
+# Python validation caches
+__pycache__/
+*.pyc

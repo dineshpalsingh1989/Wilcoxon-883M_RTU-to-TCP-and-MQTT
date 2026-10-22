@@ -1,8 +1,8 @@
 # Wilcoxon ILA210 gateway
 
-[**? Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210)
+[**➜ Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210)
 
-Choose **Wilcoxon ILA210**, then **ESP32-S3** or **IRIV IO Controller**. Releases use separate `ila210-` assets. If no release is available yet, build from source below. Never flash the 883M images onto an ILA installation. The Explorer name is **Wilcoxon ILA210**; the source folder remains `ILA210/`.
+Choose **Wilcoxon ILA210**, then **ESP32-S3** or **IRIV IO Controller**. Releases use separate `ila210-` assets. The public test release is [v4.11.5-beta.1](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.1): install ESP32-S3 from the browser or download `firmware-ila210-cytron_iriv_io_controller.uf2` for IRIV. Factory ESP32 images flash at `0x0`; application `firmware-*.bin` files are not full-device images. Physical ILA hardware validation is pending. Never flash the 883M images onto an ILA installation. The Explorer name is **Wilcoxon ILA210**; the source folder remains `ILA210/`.
 
 Gateway firmware imported from [Wilcoxon-ILA200-DashboardESP32](https://github.com/dineshpalsingh1989/Wilcoxon-ILA200-DashboardESP32). The workspace entry is called **ILA210**, but the upstream repository says **ILA200** and the firmware identifies itself as **ILA**. Confirm the exact sensor and its register manual before using it on equipment.
 
@@ -64,7 +64,7 @@ Waveform publication sends one bounded chunk per background pass. Reconstruct ch
 
 ## Logging and checks
 
-The reusable Codex agent `ioc_readiness_review` is defined in [.codex/agents/ioc_readiness_review.toml](.codex/agents/ioc_readiness_review.toml). See the [current IOC deployment-readiness assessment](docs/ioc-readiness.md) for confirmed issues, software-check evidence and the pending physical bench checklist.
+The [IOC review procedure](docs/ioc-review-agent.md) describes the audit scope and required evidence. Local Codex agent definitions are kept outside the public repository. See the [current IOC deployment-readiness assessment](docs/ioc-readiness.md) for confirmed issues, software-check evidence and the pending physical bench checklist.
 
 RAM histories are bounded and lost at reboot. Each SD CSV rotates at approximately 1 MiB and retains one `.previous` file. CSV download endpoints return the current file. Long downloads may temporarily skip log writes when storage is busy. IRIV has no SD logging; LittleFS stores settings only.
 

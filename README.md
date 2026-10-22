@@ -1,36 +1,61 @@
 <div align="center">
 
-# Wilcoxon Sensor Gateways ? 883M and ILA210
+# Wilcoxon Sensor Gateways
 
-**Bring RS485 vibration data to your browser, PLC and MQTT broker.**
+### Wilcoxon 883M & Wilcoxon ILA210
 
-[![ESP32-S3, ESP32 and RP2350](https://img.shields.io/badge/ESP32--S3%20%7C%20ESP32%20%7C%20RP2350-Arduino-00979D)](#supported-boards)
-[![Modbus](https://img.shields.io/badge/Modbus-RTU%20%2B%20TCP-2563eb)](#modbus-tcp)
-[![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
+Vibration monitoring for your browser, PLC and MQTT broker.
+
+[![Web installer](https://img.shields.io/badge/Web_installer-Open-0b6bcb?style=for-the-badge)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+[![Downloads](https://img.shields.io/badge/Firmware-Downloads-198754?style=for-the-badge)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases)
+
+[![CI](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/actions/workflows/ci.yml/badge.svg)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/actions/workflows/ci.yml)
+[![Modbus RTU + TCP](https://img.shields.io/badge/Modbus-RTU_%2B_TCP-2563eb)](#modbus-tcp)
+[![MQTT](https://img.shields.io/badge/MQTT-Metrics_%26_alarms-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[![Install on your ESP32 from the browser](https://img.shields.io/badge/Install%20on%20your%20ESP32-from%20the%20browser-0b6bcb?style=for-the-badge)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
-
-[Install](#install-on-your-esp32-in-4-steps) · [Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
+[Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
 
 </div>
 
-![System overview: the Wilcoxon 883M sends Modbus RTU data through an ESP32 board or an IRIV IO Controller to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
-
-Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
-
 ## Choose your sensor
 
-[**? Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+[**➜ Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
 
-| Sensor | Source and setup | Supported firmware boards |
+Choose your sensor first, then your board. Each sensor has its own firmware and wiring.
+
+| | Wilcoxon 883M | Wilcoxon ILA210 |
 | --- | --- | --- |
-| **Wilcoxon 883M** | This README; firmware in `src/` | Adafruit Feather ESP32-S3, Cytron Maker ESP32, Cytron IRIV IO Controller |
-| **Wilcoxon ILA210** | [ILA210 setup and wiring](ILA210/README.md); firmware in `ILA210/src/` | ESP32-S3 DevKitC-1-N8 and Cytron IRIV IO Controller |
+| Monitor | X/Y/Z vibration, temperature, waveforms and sensor spectra | Vibration metrics, waveforms, sensor spectra and alarm outputs |
+| Connect | Web dashboard, Modbus TCP and MQTT | Web dashboard, Modbus TCP, MQTT and IOC I/O status |
+| Boards | Adafruit Feather ESP32-S3, Cytron Maker ESP32, IRIV IO Controller | ESP32-S3 DevKitC-1-N8, IRIV IO Controller |
+| Industrial I/O | See 883M integration notes below | Separate digital input, analog/4-20 mA and alarm-output pages on IRIV |
+| Start here | [883M setup](#install-on-your-esp32-in-4-steps) | [ILA210 setup and wiring](ILA210/README.md) |
+| Installer | [Select 883M](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/) | [Select ILA210](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) |
 
-Choose the sensor first, then its board. Sensor images and wiring differ; the installer never substitutes an 883M build for ILA210. ILA210 has separate IOC input, analog/4?20 mA and alarm-output pages, MQTT output-state reporting and configurable sensor-loss alarms. See [ILA210 readiness](ILA210/docs/ioc-readiness.md): software builds/tests passed, but physical ILA sensor/IOC acceptance is pending and the exact sensor manual still needs confirmation.
+### ILA210 public test release
 
-The installer offers published release assets only. If an ILA210 release is not yet published, its selection explains that no installable release is available. Open **Wilcoxon Sensors.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. The remaining instructions below describe the 883M firmware.
+**v4.11.5-beta.1** adds downloadable ILA210 images for both supported boards. Software builds and simulated tests pass; physical ILA sensor/IOC acceptance remains pending. Confirm your sensor model, register manual and board wiring before connecting equipment. See [readiness and bench checks](ILA210/docs/ioc-readiness.md).
+
+| Your board | Easiest installation | Manual download |
+| --- | --- | --- |
+| ESP32-S3 DevKitC-1-N8 | [Browser installer: choose ILA210, then ESP32-S3](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) | [Factory image (flash at 0x0)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.1/factory-ila210-esp32s3.bin) |
+| Cytron IRIV IO Controller | BOOT + RESET, then copy UF2 to the RP2350 drive | [Download ILA210 IRIV UF2](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.1/firmware-ila210-cytron_iriv_io_controller.uf2) |
+
+[Release notes and all files](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.1) include checksums. Original ESP32/Maker ESP32 is supported by the 883M firmware only. Never interchange the two sensors' images.
+
+### What you can do
+
+- View live vibration and temperature, inspect captures and download CSV logs.
+- Connect a PLC through Modbus TCP or publish metrics and alarms to MQTT.
+- On ILA210 IRIV, configure push-buttons, analog thresholds, beacons and sounders on separate pages. MQTT reports commanded output states; it does not confirm a physical load operated.
+- Configure ILA210 sensor-loss timeout and output behavior independently of vibration thresholds.
+
+Open **Wilcoxon Sensors.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Firmware lives in `src/` and `ILA210/src/` respectively.
+
+---
+
+The setup and integration sections below describe the **883M firmware**. For ILA210, use its [dedicated README](ILA210/README.md).
 
 ## Install on your ESP32 in 4 steps
 

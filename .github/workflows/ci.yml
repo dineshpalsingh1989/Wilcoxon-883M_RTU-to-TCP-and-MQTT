@@ -52,6 +52,8 @@ jobs:
           (cd ILA210/.pio/build/esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-ila210-esp32s3.zip" *)
           cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.bin firmware-ila210-cytron_iriv_io_controller.bin
           cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.uf2 firmware-ila210-cytron_iriv_io_controller.uf2
+      - name: Record firmware checksums
+        run: sha256sum firmware-*.bin firmware-*.uf2 factory-*.bin web-installer-*.zip > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
@@ -60,3 +62,4 @@ jobs:
             firmware-*.uf2
             web-installer-*.zip
             factory-*.bin
+            SHA256SUMS.txt

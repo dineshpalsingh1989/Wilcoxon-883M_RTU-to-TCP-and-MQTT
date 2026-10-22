@@ -110,7 +110,10 @@ File eventFile;
 const char* DEVICE_MODEL = "ILA";
 const char* DEVICE_SERIAL_NUMBER = ""; // Unknown until verified from the correct ILA manual.
 String gateway_id;
-const char* FIRMWARE_VERSION = "1.5.1-dev";
+#ifndef ILA_RELEASE_VERSION
+#define ILA_RELEASE_VERSION "1.5.1-dev"
+#endif
+const char* FIRMWARE_VERSION = ILA_RELEASE_VERSION;
 
 // --- NTP Configuration ---
 const char* ntpServer = "pool.ntp.org";

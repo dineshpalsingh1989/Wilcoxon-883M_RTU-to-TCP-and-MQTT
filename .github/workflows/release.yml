@@ -50,6 +50,8 @@ jobs:
           (cd ILA210/.pio/build/esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-ila210-esp32s3.zip" *)
           cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.bin firmware-ila210-cytron_iriv_io_controller.bin
           cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.uf2 firmware-ila210-cytron_iriv_io_controller.uf2
+      - name: Record firmware checksums
+        run: sha256sum firmware-*.bin firmware-*.uf2 factory-*.bin web-installer-*.zip > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware
@@ -58,12 +60,14 @@ jobs:
             firmware-*.uf2
             web-installer-*.zip
             factory-*.bin
+            SHA256SUMS.txt
   release:
     needs: firmware
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: gateway-firmware
@@ -80,29 +84,10 @@ jobs:
           else
             flags=(--latest)
           fi
-          # Install instructions go above GitHub's generated change list.
-          pages="https://${GH_REPO%%/*}.github.io/${GH_REPO#*/}/"
-          {
-            echo "## Install"
-            echo
-            echo "- **Easiest:** open the [web installer]($pages), choose **Wilcoxon 883M** or **Wilcoxon ILA210**, then choose your board. ESP32 installs use Chrome or Edge; IRIV installs use a UF2 download."
-            echo "- **Manual, any flashing tool:** write \`factory-<board>.bin\` for your board at address \`0x0\`. This clears saved settings."
-            echo "- **Gateway already running:** \`firmware-<board>.bin\` is the OTA update file."
-            echo "- **IRIV IO Controller:** hold BOOT, press RESET, then copy \`firmware-cytron_iriv_io_controller.uf2\` to the drive that appears."
-            echo
-            echo "ILA210 files use the \`ila210-\` prefix: ESP32-S3 DevKitC (\`esp32s3\`) or IRIV (\`cytron_iriv_io_controller\`). Never interchange 883M and ILA210 images."
-            echo
-            echo "| Board | Chip | \`<board>\` in file names |"
-            echo "|---|---|---|"
-            echo "| Adafruit Feather ESP32-S3 | ESP32-S3 | \`adafruit_feather_esp32s3\` |"
-            echo "| Cytron Maker ESP32 | ESP32 | \`cytron_maker_esp32\` |"
-            echo "| Cytron IRIV IO Controller | RP2350A | \`cytron_iriv_io_controller\` (.uf2) |"
-            echo
-            echo "Guide and troubleshooting: [installing-firmware.md](https://github.com/$GH_REPO/blob/$RELEASE_TAG/docs/installing-firmware.md)"
-          } > install-notes.md
+          python scripts/release_notes.py "$RELEASE_TAG" "$GH_REPO" > install-notes.md
           gh release view "$RELEASE_TAG" || gh release create "$RELEASE_TAG" --verify-tag --generate-notes \
-            --notes "$(cat install-notes.md)" "${flags[@]}"
-          gh release upload "$RELEASE_TAG" firmware-*.bin firmware-*.uf2 web-installer-*.zip factory-*.bin --clobber
+            --title "Wilcoxon Sensor Gateways $RELEASE_TAG" --notes-file install-notes.md "${flags[@]}"
+          gh release upload "$RELEASE_TAG" firmware-*.bin firmware-*.uf2 web-installer-*.zip factory-*.bin SHA256SUMS.txt --clobber
   installer:
     needs: release
     permissions:
