@@ -66,6 +66,8 @@ The imported README claimed SD SCK 18, MISO 19 and MOSI 23, while the firmware u
 
 ## MQTT
 
+The supplied ILA210 manual has now been checked: see the [register verification](docs/register-verification.md) for addresses, unsigned data corrections, capture sequencing and factory serial settings. Physical sensor validation remains pending.
+
 Address commands with the hardware-derived `gateway_id` shown in Device Info or [sensor communication settings](docs/sensor-communication.md). Example: `{"gateway_id":"<your gateway ID>","command":"get_status"}` on the configured commands topic. Legacy `serial_number` command targeting is rejected; update integrations when upgrading. The sensor serial is unverified and telemetry reports an empty value rather than the imported placeholder. Base topics and register mappings are unchanged.
 
 
@@ -73,7 +75,7 @@ The default base topic is `ILA`; the command and status topics follow the config
 
 Port **1883** explicitly selects plain MQTT on both boards. IRIV supports only this transport. On ESP32-S3, other ports use TLS with certificate verification. For TLS, create an **untracked** `src/local_mqtt_ca.h` containing `#define ILA_MQTT_ROOT_CA` with your broker's PEM root CA as a C++ string. Never commit that file or credentials. TLS MQTT stays disabled without a configured CA; plain MQTT is not selected automatically on failure. The clock must synchronize for certificate date checks.
 
-Waveform publication sends one bounded chunk per background pass. Reconstruct chunks using `capture_id`, `chunk_index` and `total_chunks`; check completeness because QoS 0 delivery is not guaranteed. Messages are not retained. A full waveform has 25,600 samples; the preview has 128 samples. Sensor register addresses, scaling and sample counts remain imported and require manual/bench confirmation.
+Waveform publication sends one bounded chunk per background pass. Reconstruct chunks using `capture_id`, `chunk_index` and `total_chunks`; check completeness because QoS 0 delivery is not guaranteed. Messages are not retained. A full waveform has 25,600 samples; the preview has 128 samples. Sensor register addresses, scaling and sample counts were checked against manual 97049 Rev.A1; connected-sensor validation remains required. See [register verification](docs/register-verification.md).
 
 ## Logging and checks
 

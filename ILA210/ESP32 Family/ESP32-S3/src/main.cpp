@@ -198,7 +198,7 @@ const uint16_t WAVEFORM_TOTAL_POINTS = wilcoxonila210::WaveformPoints;
 int16_t fullWaveform[WAVEFORM_TOTAL_POINTS];
 bool newWaveformAvailable = false;
 const uint16_t SPECTRUM_TOTAL_POINTS = wilcoxonila210::SpectrumPoints;
-int16_t spectrumData[SPECTRUM_TOTAL_POINTS];
+uint16_t spectrumData[SPECTRUM_TOTAL_POINTS];
 bool newSpectrumAvailable = false;
 
 // --- Spectrum Analysis & Peak Logger Variables ---
@@ -693,14 +693,14 @@ void analyzeSpectrum() {
         peak.amplitude = -1.0;
     }
 
-    int16_t* localSpectrumData = new (std::nothrow) int16_t[SPECTRUM_TOTAL_POINTS];
+    uint16_t* localSpectrumData = new (std::nothrow) uint16_t[SPECTRUM_TOTAL_POINTS];
     if (localSpectrumData == nullptr) {
       Serial.println("Failed to allocate memory for spectrum analysis!");
       return;
     }
 
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-        memcpy(localSpectrumData, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(int16_t));
+        memcpy(localSpectrumData, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(uint16_t));
         xSemaphoreGive(dataMutex);
     } else {
         Serial.println("AnalyzeSpectrum failed to get mutex");
@@ -2437,7 +2437,7 @@ void handleFullSpectrum() {
     const float scaleFactor = 0.001;
     const float freq_resolution = 1.5625;
     const int CHUNK_SIZE = 128;
-    int16_t buffer[CHUNK_SIZE];
+    uint16_t buffer[CHUNK_SIZE];
     char num_buffer[20];
 
     server.sendContent("{\"points\":[");
@@ -2446,7 +2446,7 @@ void handleFullSpectrum() {
         int pointsToCopy = min(CHUNK_SIZE, (int)(SPECTRUM_TOTAL_POINTS - i));
 
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            memcpy(buffer, &spectrumData[i], pointsToCopy * sizeof(int16_t));
+            memcpy(buffer, &spectrumData[i], pointsToCopy * sizeof(uint16_t));
             xSemaphoreGive(dataMutex);
         } else {
             server.client().stop();

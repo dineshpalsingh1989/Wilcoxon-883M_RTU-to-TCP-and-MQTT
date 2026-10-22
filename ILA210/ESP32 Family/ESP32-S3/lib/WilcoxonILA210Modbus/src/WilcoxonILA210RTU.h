@@ -30,7 +30,7 @@ public:
         if (index >= wilcoxonila210::MetricCount) { valid_ = 0; return status(Result::InvalidArgument); }
         const auto& metric = wilcoxonila210::MetricRegisters[index];
         const uint8_t code = readInputRegisters(metric.inputAddress, 1);
-        if (!code) value = static_cast<int16_t>(response_[0]) * metric.readScale;
+        if (!code) value = response_[0] * metric.readScale;
         return code;
     }
     uint8_t writeSingleRegister(uint16_t address, uint16_t value) {

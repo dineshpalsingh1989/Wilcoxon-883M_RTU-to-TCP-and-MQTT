@@ -4,7 +4,7 @@
 constexpr int RxPin = 16;
 constexpr int TxPin = 18;
 constexpr int DirectionPin = 10;
-constexpr uint32_t Baud = 115200; // Must match the sensor configuration.
+constexpr uint32_t Baud = 9600; // Manual factory default; match the configured sensor.
 WilcoxonILA210RTU sensor;
 bool ready = false;
 

@@ -79,7 +79,7 @@ Browser checks: `browser_test.js`, `ioc_browser_test.js`, `sensor_health_browser
 - Application network tasks and Ethernet initialization run on core 0. LittleFS uses the core's FreeRTOS peer-idling mechanism for flash writes. No unconditional boot fault or flash-context deadlock was established by source review.
 - Installed Arduino-Pico documentation requires LittleFS operations from one task. Current file operations across setup, web and background tasks use an external mutex. Inspection found no intrinsic task-owner check or reproduced crash; this remains a documented support caveat. A storage-owner task would comply with the documented contract.
 - The watchdog establishes background-task progress, not independent web/sampler health. Measure runtime heap, stack high-water marks, reset recovery and real output timing.
-- **The exact ILA200/ILA210 model and register manual remain missing.** The 883M manual cannot validate ILA register addresses, function codes, signedness, scaling, capture readiness or sample counts.
+- **ILA210 manual 97049 Rev.A1 has been supplied and checked.** Addresses, scaling, capture readiness and sample counts match; unsigned measurement/spectrum decoding has been corrected on both boards. See [register verification](register-verification.md). Connected-sensor acceptance and negative-temperature clarification remain pending.
 - HTTP controls have no authentication and need a trusted network. IRIV MQTT remains plain transport on port 1883.
 
 ## Pending bench acceptance
@@ -93,7 +93,7 @@ The following are pending physical actions. Uploading, resetting, interrupting p
 5. Apply known 4/12/20 mA and 0/5/10 V sources. Verify calibration, scaling, limits, hysteresis, delay and broken-loop indication.
 6. Check held-at-boot/released/pressed DI actions, capture rejection when busy, acknowledgement, simultaneous sources and re-alarm with benign indicator loads.
 7. Select each sensor-loss output policy deliberately. Disconnect/reconnect the sensor and verify timeout, combined fault indication and DO0–DO3 behavior at startup and recovery.
-8. With the correct ILA manual available, validate real readings/capture data and measure vibration alarm response during full captures at every intended baud rate.
+8. Using ILA210 manual 97049 Rev.A1, validate real readings/capture data and measure vibration alarm response during full captures at every intended baud rate.
 9. Test actual MQTT gateway targeting with two devices, broker/PLC/browser coexistence, sustained captures, stack/heap headroom and controlled watchdog recovery.
 
 Connected alarm equipment requires successful installation-specific hardware acceptance; software tests alone do not supply it.

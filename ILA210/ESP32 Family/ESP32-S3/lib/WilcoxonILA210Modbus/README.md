@@ -10,8 +10,8 @@ continues to use its existing communication stack.
   FC03/04 reads, FC06 writes, direction callbacks and validated response buffer.
   Reads are limited to 64 registers to preserve the gateway's capture chunks.
 - `WilcoxonILA210Registers.h`: imported 14-metric addresses/scales and capture
-  constants. These preserve the previous firmware's mapping; they still require
-  confirmation against the exact sensor manual and a connected sensor.
+  constants. Addresses, scaling and unsigned static data types were checked against
+  ILA210 manual 97049 Rev.A1. Connected-sensor validation remains required.
 - `WilcoxonILA210TCP.h`: bounded TCP sessions and a 50-word holding-register
   cache. Call `addHreg(0, 0, 50)`, `server(port)`, then `task()` frequently.
   Update cached values with `Hreg(address, value)`.

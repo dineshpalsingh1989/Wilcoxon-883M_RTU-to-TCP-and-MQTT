@@ -11,6 +11,8 @@ struct Fake {
     unsigned writes = 0;
     enum Mode { Normal, NoReply, BadCrc, WrongUnit, Exception, Partial, TooLong, WriteFail } mode = Normal;
     int failAddress = -1;
+    uint16_t sample = 0x8000;
+    bool fixedSample = false;
     uint32_t ms() { return uint32_t(clock / 1000); }
     uint32_t us() { return uint32_t(clock); }
     void idle() { clock += 100; }
@@ -31,7 +33,7 @@ struct Fake {
             memcpy(reply,bytes,8);length=8;
         } else {
             unsigned count=word(bytes+4);reply[2]=2*count;length=5+2*count;
-            for(unsigned i=0;i<count;++i)put(reply+3+2*i,word(bytes+2)==0x0050?0xff85:uint16_t(0x8000+i));
+            for(unsigned i=0;i<count;++i)put(reply+3+2*i,fixedSample?sample:(word(bytes+2)==0x0050?0xff85:uint16_t(0x8000+i)));
         }
         if (mode == WrongUnit) ++reply[0];
         seal();
@@ -67,11 +69,23 @@ int main() {
  assert(node.writeSingleRegister(0x0200,0xffff)==0);assert(io.request[1]==6&&word(io.request+4)==0xffff);
  assert(node.getResponseBuffer(0)==0);assert(node.readInputRegisters(65535,2)==0xe4);
  float metric=123;assert(node.readMetric(wilcoxonila210::MetricCount,metric)==0xe4&&metric==123);assert(node.exceptionCode()==0);
- assert(node.readMetric(11,metric)==0&&metric < -12.29f&&metric > -12.31f);assert(word(io.request+2)==0x0050);
+ assert(node.readMetric(11,metric)==0&&metric > 6541.29f&&metric < 6541.31f);assert(word(io.request+2)==0x0050);
  io.mode=Fake::BadCrc;metric=321;assert(node.readMetric(5,metric)==0xe3&&metric==321);
- io.mode=Fake::Normal;assert(node.readMetric(5,metric)==0&&metric < -3276.79f&&metric > -3276.81f);assert(word(io.request+2)==0x0024);
+ io.mode=Fake::Normal;assert(node.readMetric(5,metric)==0&&metric > 3276.79f&&metric < 3276.81f);assert(word(io.request+2)==0x0024);
+ assert(node.readMetric(0,metric)==0&&metric>327.67f&&metric<327.69f);
  const uint16_t expected[]={0x0000,0x0004,0x0010,0x0014,0x0020,0x0024,0x0030,0x0034,0x0040,0x0044,0x0048,0x0050,0x0060,0x007c};
  for(unsigned i=0;i<wilcoxonila210::MetricCount;i++)assert(wilcoxonila210::MetricRegisters[i].inputAddress==expected[i]);
+ // Manual pp.18-19: every published static metric is unsigned.
+ io.fixedSample=true;io.sample=0xffff;
+ const float scales[]={.01f,.01f,.01f,.01f,.1f,.1f,1,1,.01f,.01f,.01f,.1f,.01f,.1f};
+ for(unsigned i=0;i<MetricCount;i++) {
+  assert(node.readMetric(i,metric)==0);
+  const float expectedValue=65535.0f*scales[i];
+  assert(metric>=expectedValue-.01f&&metric<=expectedValue+.01f);
+  assert(word(io.request+2)==expected[i]&&io.request[1]==4);
+ }
+ assert(SpectrumStart+SpectrumPoints-1==0x1f00);
+ assert(WaveformStart+WaveformPoints-1==0x8300);
  HoldingCache bank;uint16_t out[50]={},values[2]={11,22};
  assert(bank.readRegisters(false,0,1,out)==IllegalAddress);assert(bank.add(0,0,50));assert(!bank.add(0,5,1));
  assert(bank.set(13,0xff85));assert(bank.readRegisters(false,13,1,out)==0&&out[0]==0xff85);

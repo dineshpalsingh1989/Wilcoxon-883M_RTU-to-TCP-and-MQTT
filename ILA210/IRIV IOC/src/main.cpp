@@ -185,7 +185,7 @@ const ModbusRegister registerMap[] = {
   { "Displ Peak",      "um",     1.0   }, // Address 7
   { "True Peak",       "g",      100.0 }, // Address 8
   { "Crest Factor",    "",       100.0 }, // Address 9
-  { "Std Deviation",   "g",      100.0 }, // Address 10
+  { "Std Deviation",   "",      100.0 }, // Address 10
   { "Temperature",     "C",      10.0  }, // Address 11
   { "Drive Voltage",   "V",      100.0 }, // Address 12
   { "Board Temp",      "C",      10.0  }  // Address 13
@@ -219,7 +219,7 @@ const uint16_t WAVEFORM_TOTAL_POINTS = 25600;
 int16_t fullWaveform[WAVEFORM_TOTAL_POINTS];
 bool newWaveformAvailable = false;
 const uint16_t SPECTRUM_TOTAL_POINTS = 6401;
-int16_t spectrumData[SPECTRUM_TOTAL_POINTS];
+uint16_t spectrumData[SPECTRUM_TOTAL_POINTS];
 bool newSpectrumAvailable = false;
 
 // --- Spectrum Analysis & Peak Logger Variables ---
@@ -686,7 +686,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 bool readSensorValue(const char* metricName, uint16_t address, float scale_factor, float& value) {
   uint8_t result = node.readInputRegisters(address, 1);
   if (result == node.ku8MBSuccess) {
-    value = (int16_t)node.getResponseBuffer(0) * scale_factor;
+    value = node.getResponseBuffer(0) * scale_factor;
     return true;
   } else {
     Serial.printf("DEBUG: FAILED - Reading %s. Error: 0x%X\n", metricName, result);
@@ -717,14 +717,14 @@ void analyzeSpectrum() {
         peak.amplitude = -1.0;
     }
 
-    int16_t* localSpectrumData = new (std::nothrow) int16_t[SPECTRUM_TOTAL_POINTS];
+    uint16_t* localSpectrumData = new (std::nothrow) uint16_t[SPECTRUM_TOTAL_POINTS];
     if (localSpectrumData == nullptr) {
       Serial.println("Failed to allocate memory for spectrum analysis!");
       return;
     }
 
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-        memcpy(localSpectrumData, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(int16_t));
+        memcpy(localSpectrumData, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(uint16_t));
         xSemaphoreGive(dataMutex);
     } else {
         Serial.println("AnalyzeSpectrum failed to get mutex");
@@ -2461,7 +2461,7 @@ void handleFullSpectrum() {
     const float scaleFactor = 0.001;
     const float freq_resolution = 1.5625;
     const int CHUNK_SIZE = 128;
-    int16_t buffer[CHUNK_SIZE];
+    uint16_t buffer[CHUNK_SIZE];
     char num_buffer[20];
 
     server.sendContent("{\"points\":[");
@@ -2470,7 +2470,7 @@ void handleFullSpectrum() {
         int pointsToCopy = min(CHUNK_SIZE, (int)(SPECTRUM_TOTAL_POINTS - i));
 
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            memcpy(buffer, &spectrumData[i], pointsToCopy * sizeof(int16_t));
+            memcpy(buffer, &spectrumData[i], pointsToCopy * sizeof(uint16_t));
             xSemaphoreGive(dataMutex);
         } else {
             server.client().stop();
