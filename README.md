@@ -51,11 +51,27 @@ Choose your sensor first, then your board. Each sensor has its own firmware and 
 - On ILA210 IRIV, configure push-buttons, analog thresholds, beacons and sounders on separate pages. MQTT reports commanded output states; it does not confirm a physical load operated.
 - Configure ILA210 sensor-loss timeout and output behavior independently of vibration thresholds.
 
-Open **Wilcoxon Sensors.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Firmware lives in `src/` and `ILA210/src/` respectively.
+Open **Wilcoxon.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Firmware lives in `src/` and `ILA210/src/` respectively.
 
 ---
 
 The setup and integration sections below describe the **883M firmware**. For ILA210, use its [dedicated README](ILA210/README.md).
+
+## Project folders
+
+Board-specific PlatformIO profiles are organized under `ESP32 Family/` and `IRIV IOC/`. Shared firmware stays in `src/`. Open the sensor project root in PlatformIO; its `platformio.ini` loads the board profiles automatically. Existing environment names and build/upload commands are unchanged.
+
+```text
+Wilcoxon 883M/
+  ESP32 Family/
+    ESP32-S3/              adafruit_feather_esp32s3
+    Cytron Maker ESP32/    cytron_maker_esp32
+  IRIV IOC/                cytron_iriv_io_controller
+  src/                     Shared firmware
+  platformio.ini           Project entry point
+```
+
+The Wilcoxon workspace shows ILA210 separately, with its own board profiles and shared firmware.
 
 ## Install on your ESP32 in 4 steps
 

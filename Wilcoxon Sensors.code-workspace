@@ -11,7 +11,16 @@
   ],
   "settings": {
     "files.exclude": {
-      "ILA210": true
+      "ILA210": true,
+      "**/.pio": true,
+      "**/.pio-core": true,
+      "**/.venv": true,
+      "**/.uv-cache": true,
+      "**/.tools": true,
+      "**/__pycache__": true,
+      "**/debug.log": true,
+      "Wilcoxon Sensors.code-workspace": true,
+      "Wilcoxon-883M_RTU-to-TCP-and-MQTT.code-workspace": true
     }
   }
 }

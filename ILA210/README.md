@@ -8,6 +8,21 @@ Gateway firmware imported from [Wilcoxon-ILA200-DashboardESP32](https://github.c
 
 The gateway reads sensor metrics, waveforms and spectra over Modbus RTU, serves a local dashboard and Modbus TCP cache, and publishes MQTT messages. It tracks spectrum peaks and learns a statistical amplitude baseline. It does **not** calculate an FFT on the ESP32; the spectrum is read from the sensor.
 
+## Project folders
+
+Board-specific PlatformIO profiles are organized under `ESP32 Family/` and `IRIV IOC/`. Shared firmware stays in `src/`. Open the sensor project root in PlatformIO; its `platformio.ini` loads the board profiles automatically. Existing environment names and build/upload commands are unchanged.
+
+```text
+Wilcoxon ILA210/
+  ESP32 Family/
+    ESP32-S3/              esp32s3
+  IRIV IOC/                cytron_iriv_io_controller
+  src/                     Shared firmware
+  platformio.ini           Project entry point
+```
+
+Original ESP32 / Cytron Maker ESP32 is not supported by ILA210.
+
 ## Supported boards
 
 | PlatformIO environment | Network | Sensor link | Logging | MQTT |
