@@ -49,9 +49,9 @@ def pick_channels():
     return [(name, tag) for name, tag in (("stable", stable), ("beta", beta)) if tag]
 
 
-def unpack_board(tag, board, target):
+def unpack_board(tag, board, target, prefix=""):
     """Extract one board's installer bundle into target; return its manifest, or None if absent."""
-    bundle = f"web-installer-{board}.zip"
+    bundle = f"web-installer-{prefix}{board}.zip"
     with tempfile.TemporaryDirectory() as tmp:
         try:
             gh("release", "download", tag, "--pattern", bundle, "--dir", tmp)
@@ -98,9 +98,29 @@ def main(out):
         assets = {a["name"] for a in json.loads(gh("release", "view", tag, "--json", "assets"))["assets"]}
         downloads = {board: f"{repo}/releases/download/{tag}/firmware-{board}.uf2"
                      for board in UF2_BOARDS if f"firmware-{board}.uf2" in assets}
-        channels.append({"channel": name, "tag": tag, "manifest": f"{name}/manifest.json",
+        channels.append({"sensor": "883m", "channel": name, "tag": tag, "manifest": f"{name}/manifest.json",
                          "notes": f"{repo}/releases/tag/{tag}", "uf2": downloads})
         print(f"{name}: {tag}")
+    # ILA images live in separate paths and assets: never reuse an 883M build.
+    for name, tag in pick_channels():
+        target = out / "ila210" / name
+        manifest = unpack_board(tag, "esp32s3", target / "esp32s3", "ila210-")
+        assets = {a["name"] for a in json.loads(gh("release", "view", tag, "--json", "assets"))["assets"]}
+        uf2_name = "firmware-ila210-cytron_iriv_io_controller.uf2"
+        downloads = {"cytron_iriv_io_controller": f"{repo}/releases/download/{tag}/{uf2_name}"} if uf2_name in assets else {}
+        if manifest:
+            manifest["name"] = "Wilcoxon ILA210 Gateway"
+            manifest["version"] = tag
+            for build in manifest["builds"]:
+                if build["chipFamily"] != "ESP32-S3":
+                    raise RuntimeError(f"{tag}: unexpected ILA chip family")
+                for part in build["parts"]:
+                    part["path"] = f"esp32s3/{part['path']}"
+            (target / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        if manifest or downloads:
+            channels.append({"sensor": "ila210", "channel": name, "tag": tag,
+                             "manifest": f"ila210/{name}/manifest.json" if manifest else None,
+                             "notes": f"{repo}/releases/tag/{tag}", "uf2": downloads})
     (out / "channels.json").write_text(json.dumps({"repo": repo, "channels": channels}, indent=2) + "\n")
     if not channels:
         print("No release has an installer bundle yet; the page will say so.")

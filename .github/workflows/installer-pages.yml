@@ -2,6 +2,9 @@ name: Web installer
 # Publishes the browser installer (GitHub Pages) from the Latest stable release and any newer beta.
 # Called by the Release workflow after each gateway release; can also be run manually.
 on:
+  push:
+    branches: [main]
+    paths: ['installer/**', 'scripts/build_installer_site.py', '.github/workflows/installer-pages.yml']
   workflow_call:
   workflow_dispatch:
 permissions:

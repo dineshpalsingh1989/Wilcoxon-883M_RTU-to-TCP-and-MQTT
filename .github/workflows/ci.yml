@@ -15,6 +15,10 @@ jobs:
         with:
           node-version: '22'
       - run: node demo/smoke_test.js
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -p "test_installer*.py"
   firmware:
     needs: tests
     runs-on: ubuntu-24.04
@@ -39,6 +43,15 @@ jobs:
           board=cytron_iriv_io_controller
           cp .pio/build/$board/firmware.bin firmware-$board.bin
           cp .pio/build/$board/firmware.uf2 firmware-$board.uf2
+      - name: Build Wilcoxon ILA210 firmware and installer
+        run: |
+          pio run -d ILA210 -e esp32s3 -e cytron_iriv_io_controller
+          pio run -d ILA210 -e esp32s3 -t webinstaller
+          cp ILA210/.pio/build/esp32s3/firmware.bin firmware-ila210-esp32s3.bin
+          cp ILA210/.pio/build/esp32s3/factory.bin factory-ila210-esp32s3.bin
+          (cd ILA210/.pio/build/esp32s3/web-installer && zip -q "$GITHUB_WORKSPACE/web-installer-ila210-esp32s3.zip" *)
+          cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.bin firmware-ila210-cytron_iriv_io_controller.bin
+          cp ILA210/.pio/build/cytron_iriv_io_controller/firmware.uf2 firmware-ila210-cytron_iriv_io_controller.uf2
       - uses: actions/upload-artifact@v4
         with:
           name: gateway-firmware

@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wilcoxon 883M Gateway Installer</title>
-<meta name="description" content="Install the Wilcoxon 883M gateway firmware on a Cytron Maker ESP32, Adafruit Feather ESP32-S3 or Cytron IRIV IO Controller.">
+<title>Wilcoxon Gateway Installer</title>
+<meta name="description" content="Install the Wilcoxon gateway firmware for the 883M sensor on a Cytron Maker ESP32, Adafruit Feather ESP32-S3 or Cytron IRIV IO Controller. Choose Wilcoxon 883M or Wilcoxon ILA210.">
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 <style>
 :root {
@@ -35,12 +35,13 @@ a { color: var(--accent); }
 button.install { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
 button.install:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
 a.install { display: inline-block; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 10px 20px; font-weight: 600; text-decoration: none; }
-a.install:focus-visible, .board:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+a.install:focus-visible, .board:focus-visible, .sensor:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
 .boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-.board { text-align: left; background: var(--card); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; font: inherit; cursor: pointer; }
-.board strong { display: block; font-size: 1.05rem; }
-.board span { display: block; color: var(--muted); font-size: .9rem; margin-top: 2px; }
-.board[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.board, .sensor, .board-choice { text-align: left; background: var(--card); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; font: inherit; cursor: pointer; }
+.board strong, .sensor strong, .board-choice strong { display: block; font-size: 1.05rem; }
+.board span, .sensor span, .board-choice span { display: block; color: var(--muted); font-size: .9rem; margin-top: 2px; }
+.board[aria-pressed="true"], .sensor[aria-pressed="true"], .board-choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tag { display: inline-block; font-size: .72rem; font-weight: 600; padding: 0 7px; border-radius: 99px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--text); margin: 0 0 0 6px; vertical-align: 2px; font-style: normal; }
 h3 { font-size: 1.02rem; margin: 22px 0 8px; }
 .channel h3 { margin: 0; }
 .small { color: var(--muted); font-size: .85rem; }
@@ -52,10 +53,43 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
 </head>
 <body>
 <main>
-  <h1>Wilcoxon 883M Gateway Installer</h1>
+  <h1>Wilcoxon Gateway Installer</h1>
   <p class="lead">Install the gateway firmware straight from this page. No software to install.</p>
 
-  <h2>Choose your board</h2>
+  <h2>1. Choose your sensor</h2>
+  <div class="boards" role="group" aria-label="Sensor">
+    <button type="button" class="sensor" data-sensor="883m" aria-pressed="true">
+      <strong>Wilcoxon 883M</strong><span>Triaxial (X / Y / Z) vibration and temperature sensor, Modbus RTU.</span>
+    </button>
+    <button type="button" class="sensor" data-sensor="ila210" aria-pressed="false">
+      <strong>Wilcoxon ILA210</strong><span>Vibration gateway with separate IOC input, analog and alarm pages.</span>
+    </button>
+  </div>
+
+  <section id="ila210-section" hidden>
+    <h2>Wilcoxon ILA210</h2>
+    <p>Choose your board below. This firmware is separate from the 883M gateway.</p>
+    <p class="notice">Software builds and simulated tests passed; physical ILA sensor/IOC validation is pending. Confirm the exact sensor model and register manual before equipment use.</p>
+    <div class="boards" role="group" aria-label="ILA210 board">
+      <button type="button" class="ila-board board-choice" data-board="esp32" aria-pressed="true"><strong>ESP32-S3</strong><span>ESP32-S3 DevKitC-1-N8 wiring; Wi-Fi. Original ESP32 is unsupported.</span></button>
+      <button type="button" class="ila-board board-choice" data-board="ioc" aria-pressed="false"><strong>IRIV IO Controller</strong><span>RP2350, Ethernet and built-in RS485; install by copying UF2.</span></button>
+    </div>
+    <section id="ila-esp32-section"><h3>ESP32-S3 installation</h3>
+      <div id="ila-channels"><div class="card">Loading available versions...</div></div>
+      <p>Use Chrome or Edge on a computer and a USB data cable. Select Install, choose the port and reset the board afterwards. If needed, hold BOOT and tap RESET to enter download mode.</p>
+      <p>Only the ESP32-S3 chip is accepted. Chip detection cannot verify your board wiring: this is the ILA DevKitC build, not the 883M Feather build. Check the <a class="ila-wiring" href="#">ILA wiring guide</a>.</p>
+      <p>On first boot, connect to <code>ILA_Sensor_AP</code> (password <code>12345678</code>), open <a href="http://192.168.4.1">192.168.4.1</a> and save Wi-Fi settings.</p>
+    </section>
+    <section id="ila-ioc-section" hidden><h3>IRIV installation</h3>
+      <div id="ila-ioc-channels"><div class="card">Loading available versions...</div></div>
+      <ol><li>Connect the IRIV USB-C PROG port with a data cable.</li><li>Hold BOOT, press and release RESET, then release BOOT.</li><li>Copy the ILA210 <code>.uf2</code> onto the RP2350 drive.</li><li>Connect Ethernet and open the DHCP address listed by your router. Without DHCP, use <code>192.168.4.1</code> with the laptop at <code>192.168.4.2/24</code>.</li></ol>
+      <p>IRIV MQTT uses plain port 1883. Inputs, analog channels and spare outputs start disabled. Configure them on the separate IOC pages after verifying wiring.</p>
+    </section>
+    <p><a class="ila-guide" href="#">ILA setup, board pins and MQTT</a> ? <a class="ila-readiness" href="#">Readiness and pending hardware checks</a></p>
+  </section>
+
+  <div id="sensor-883m">
+  <h2>2. Choose your board</h2>
   <div class="boards" role="group" aria-label="Board">
     <button type="button" class="board" data-board="esp32" aria-pressed="true">
       <strong>ESP32 board</strong><span>Cytron Maker ESP32 or Adafruit Feather ESP32-S3. One-click install, Wi-Fi.</span>
@@ -132,13 +166,28 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <p class="notice"><strong>MQTT:</strong> the IRIV IO Controller supports plain MQTT on port <code>1883</code> only. MQTT over TLS (port <code>8883</code>) is not supported, so cloud brokers that require TLS need an ESP32 board.</p>
     <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
   </section>
+  </div>
 
   <footer>
     Source, release notes and manual install files: <a class="repo" href="#">GitHub repository</a>.
   </footer>
 </main>
 <script>
-// Board choice: a per-viewer convenience, so storage failures are ignored.
+// Sensor and board choice: per-viewer conveniences, so storage failures are ignored.
+const sensorButtons = document.querySelectorAll(".sensor");
+function showSensor(sensor) {
+  for (const b of sensorButtons) b.setAttribute("aria-pressed", String(b.dataset.sensor === sensor));
+  document.getElementById("sensor-883m").hidden = sensor !== "883m";
+  document.getElementById("ila210-section").hidden = sensor !== "ila210";
+}
+for (const b of sensorButtons) b.addEventListener("click", () => showSensor(b.dataset.sensor));
+if (["#ila210", "#ila200"].includes(location.hash)) showSensor("ila210");
+for (const button of document.querySelectorAll('.ila-board')) button.addEventListener('click', () => {
+  for (const other of document.querySelectorAll('.ila-board')) other.setAttribute('aria-pressed',String(other===button));
+  document.getElementById('ila-esp32-section').hidden=button.dataset.board!=='esp32';
+  document.getElementById('ila-ioc-section').hidden=button.dataset.board!=='ioc';
+});
+
 const boardButtons = document.querySelectorAll(".board");
 function showBoard(board) {
   for (const b of boardButtons) b.setAttribute("aria-pressed", String(b.dataset.board === board));
@@ -170,16 +219,23 @@ function channelHeader(card, c) {
 (async () => {
   const box = document.getElementById("channels");
   const iocBox = document.getElementById("ioc-channels");
+  const ilaBox=document.getElementById("ila-channels"), ilaIocBox=document.getElementById("ila-ioc-channels");
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
-                    guide: "/blob/main/docs/installing-firmware.md" };
+                    guide: "/blob/main/docs/installing-firmware.md", "ila-guide": "/blob/main/ILA210/README.md",
+                    "ila-wiring": "/blob/main/ILA210/docs/wiring.md", "ila-readiness": "/blob/main/ILA210/docs/ioc-readiness.md" };
     for (const [cls, path] of Object.entries(links))
       for (const a of document.querySelectorAll("a." + cls)) a.href = data.repo + path;
     const none = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
-    box.innerHTML = data.channels.length ? "" : none;
+    box.innerHTML = none;
     iocBox.textContent = "";
+    ilaBox.innerHTML=none; ilaIocBox.innerHTML=none;
     for (const c of data.channels) {
+      const isIla=c.sensor==='ila210';
+      const espTarget=isIla?ilaBox:box, iocTarget=isIla?ilaIocBox:iocBox;
+      if(c.manifest) {
+      if(!espTarget.querySelector('esp-web-install-button'))espTarget.textContent='';
       const card = document.createElement("div");
       card.className = "card channel";
       card.innerHTML =
@@ -192,7 +248,8 @@ function channelHeader(card, c) {
       channelHeader(card, c);
       card.querySelector("esp-web-install-button").setAttribute("manifest", c.manifest);
       card.querySelector("button").setAttribute("aria-label", "Install " + c.tag);
-      box.append(card);
+      espTarget.append(card);
+      }
 
       const uf2 = c.uf2 && c.uf2.cytron_iriv_io_controller;
       if (!uf2) continue;
@@ -204,7 +261,8 @@ function channelHeader(card, c) {
       download.href = uf2;
       download.textContent = "Download .uf2";
       download.setAttribute("aria-label", "Download " + c.tag + " for IRIV IO Controller");
-      iocBox.append(iocCard);
+      if(!iocTarget.querySelector("a.install"))iocTarget.textContent="";
+      iocTarget.append(iocCard);
     }
     if (!iocBox.children.length)
       iocBox.innerHTML = '<div class="card">No release with IRIV IO Controller firmware is published yet. Check the <a href="' + data.repo + '/releases">releases page</a>.</div>';
@@ -212,6 +270,7 @@ function channelHeader(card, c) {
     const failed = '<div class="card">Could not load the release list. Refresh the page, or download firmware from the GitHub releases page.</div>';
     box.innerHTML = failed;
     iocBox.innerHTML = failed;
+    ilaBox.innerHTML = failed; ilaIocBox.innerHTML = failed;
   }
 })();
 </script>

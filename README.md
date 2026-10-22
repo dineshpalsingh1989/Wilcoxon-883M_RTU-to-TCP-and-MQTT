@@ -1,6 +1,6 @@
 <div align="center">
 
-# Wilcoxon 883M Industrial IoT Gateway
+# Wilcoxon Sensor Gateways ? 883M and ILA210
 
 **Bring RS485 vibration data to your browser, PLC and MQTT broker.**
 
@@ -19,12 +19,26 @@
 
 Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
 
+## Choose your sensor
+
+[**? Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+
+| Sensor | Source and setup | Supported firmware boards |
+| --- | --- | --- |
+| **Wilcoxon 883M** | This README; firmware in `src/` | Adafruit Feather ESP32-S3, Cytron Maker ESP32, Cytron IRIV IO Controller |
+| **Wilcoxon ILA210** | [ILA210 setup and wiring](ILA210/README.md); firmware in `ILA210/src/` | ESP32-S3 DevKitC-1-N8 and Cytron IRIV IO Controller |
+
+Choose the sensor first, then its board. Sensor images and wiring differ; the installer never substitutes an 883M build for ILA210. ILA210 has separate IOC input, analog/4?20 mA and alarm-output pages, MQTT output-state reporting and configurable sensor-loss alarms. See [ILA210 readiness](ILA210/docs/ioc-readiness.md): software builds/tests passed, but physical ILA sensor/IOC acceptance is pending and the exact sensor manual still needs confirmation.
+
+The installer offers published release assets only. If an ILA210 release is not yet published, its selection explains that no installable release is available. Open **Wilcoxon Sensors.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. The remaining instructions below describe the 883M firmware.
+
 ## Install on your ESP32 in 4 steps
 
 **You can put this gateway on your own ESP32 board straight from your browser.** No PlatformIO, Arduino IDE or library downloads: the firmware already contains everything, including the Wilcoxon883MRTU Modbus RTU/TCP library.
 
 | You need | |
 | --- | --- |
+| Sensor | **Wilcoxon 883M**. On the installer, choose **Wilcoxon 883M**. For ILA210, select **Wilcoxon ILA210** and use its [separate guide](ILA210/README.md). |
 | Board | **Cytron Maker ESP32**, **Adafruit Feather ESP32-S3** or **Cytron IRIV IO Controller**, see [Supported boards](#supported-boards) |
 | Cable | USB-C **data** cable |
 | Computer | Chrome or Edge on Windows, macOS, Linux or ChromeOS |
@@ -308,18 +322,18 @@ The gateway serves cached data on the configured Modbus TCP port, normally **502
 | 1000–14333 | Latest-axis waveform, signed Int16 | 1000 | g |
 | 20000–26144 | Latest-axis spectrum, UInt16 | 1000 | g |
 
-| 90 | Waveform ready: 2 = X, 3 = Y, 4 = Z, 0 = cleared | — | — |
-| 91 | Spectrum ready: same values as 90 | — | — |
+| 90 | Waveform status: 0 = busy/not ready, 2 = X ready, 3 = Y ready, 4 = Z ready | — | — |
+| 91 | Spectrum status: same values as 90 | — | — |
 
 *Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping.*
 
 Server behaviour: function codes 03, 04, 06 and 16, up to **8 clients**, any unit ID, up to 125 registers per read. Registers 0–99 accept writes, but the next sensor update overwrites them. Waveform and spectrum registers are read-only and are copied from a finished capture, so a PLC never reads a buffer that is still downloading. A read that spans an unmapped gap (for example 95–105) returns an illegal-address exception. Modbus TCP has no authentication; keep port 502 on a trusted network.
 
+Write **1** to register **92 or 93** for an XYZ capture, **2** for X, **3** for Y or **4** for Z. Either trigger starts the gateway's complete capture flow, which downloads both waveform and spectrum data. Registers 90 and 91 are cleared to 0 when a capture starts and updated with the ready axis when each dataset is available. Trigger registers clear after processing. Zero is a no-op; invalid values, simultaneous nonzero writes to both trigger registers, and triggers while the gateway is busy are ignored and logged (the Modbus write itself is still acknowledged).
+
 ![Modbus TCP settings page with the register map and simulated live values.](docs/images/modbus-tcp-settings.png)
 
 *Settings > Modbus TCP lists the register map with live values (simulated here).*
-
-> **Known gap:** that page describes **92/93 as capture triggers** for PLCs, but the firmware does not act on writes to them yet. Start captures from the dashboard or with the MQTT `trigger_capture` / `trigger_all` commands for now.
 
 ## Firmware updates
 

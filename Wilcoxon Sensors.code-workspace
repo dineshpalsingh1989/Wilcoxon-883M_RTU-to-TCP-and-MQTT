@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "Wilcoxon 883M",
+      "path": "."
+    },
+    {
+      "name": "Wilcoxon ILA210",
+      "path": "ILA210"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "ILA210": true
+    }
+  }
+}
