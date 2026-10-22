@@ -2,7 +2,7 @@
 
 [**➜ Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210)
 
-Choose **Wilcoxon ILA210**, then **ESP32-S3** or **IRIV IO Controller**. Releases use separate `ila210-` assets. The public test release is [v4.11.5-beta.1](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.1): install ESP32-S3 from the browser or download `firmware-ila210-cytron_iriv_io_controller.uf2` for IRIV. Factory ESP32 images flash at `0x0`; application `firmware-*.bin` files are not full-device images. Physical ILA hardware validation is pending. Never flash the 883M images onto an ILA installation. The Explorer name is **Wilcoxon ILA210**; the source folder remains `ILA210/`.
+Choose **Wilcoxon ILA210**, then **ESP32-S3** or **IRIV IO Controller**. Releases use separate `ila210-` assets. The public test release is [v4.11.5-beta.2](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.2): install ESP32-S3 from the browser or download `firmware-ila210-cytron_iriv_io_controller.uf2` for IRIV. Factory ESP32 images flash at `0x0`; application `firmware-*.bin` files are not full-device images. Physical ILA hardware validation is pending. Never flash the 883M images onto an ILA installation. The Explorer name is **Wilcoxon ILA210**; the source folder remains `ILA210/`.
 
 Gateway firmware imported from [Wilcoxon-ILA200-DashboardESP32](https://github.com/dineshpalsingh1989/Wilcoxon-ILA200-DashboardESP32). The workspace entry is called **ILA210**, but the upstream repository says **ILA200** and the firmware identifies itself as **ILA**. Confirm the exact sensor and its register manual before using it on equipment.
 

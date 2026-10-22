@@ -6,16 +6,10 @@ Also writes factory.bin, the same images merged into one file for manual flashin
 """
 import json
 import os
-import re
 import shutil
 from pathlib import Path
 
 Import("env")
-
-# Release artifacts expose the same version as the public installer/release.
-tag = os.environ.get("GITHUB_REF_NAME", "")
-if os.environ.get("GITHUB_REF_TYPE") == "tag" and re.fullmatch(r"v\d+\.\d+\.\d+(-beta\.\d+)?", tag):
-    env.Append(CPPDEFINES=[("ILA_RELEASE_VERSION", env.StringifyMacro(tag[1:]))])
 
 # ESP Web Tools picks the build whose chipFamily matches the connected chip.
 CHIP_FAMILIES = {"esp32": "ESP32", "esp32s3": "ESP32-S3"}

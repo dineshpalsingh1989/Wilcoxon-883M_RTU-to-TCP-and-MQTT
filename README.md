@@ -35,14 +35,14 @@ Choose your sensor first, then your board. Each sensor has its own firmware and 
 
 ### ILA210 public test release
 
-**v4.11.5-beta.1** adds downloadable ILA210 images for both supported boards. Software builds and simulated tests pass; physical ILA sensor/IOC acceptance remains pending. Confirm your sensor model, register manual and board wiring before connecting equipment. See [readiness and bench checks](ILA210/docs/ioc-readiness.md).
+**v4.11.5-beta.2** adds downloadable ILA210 images for both supported boards. Software builds and simulated tests pass; physical ILA sensor/IOC acceptance remains pending. Confirm your sensor model, register manual and board wiring before connecting equipment. See [readiness and bench checks](ILA210/docs/ioc-readiness.md).
 
 | Your board | Easiest installation | Manual download |
 | --- | --- | --- |
-| ESP32-S3 DevKitC-1-N8 | [Browser installer: choose ILA210, then ESP32-S3](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) | [Factory image (flash at 0x0)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.1/factory-ila210-esp32s3.bin) |
-| Cytron IRIV IO Controller | BOOT + RESET, then copy UF2 to the RP2350 drive | [Download ILA210 IRIV UF2](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.1/firmware-ila210-cytron_iriv_io_controller.uf2) |
+| ESP32-S3 DevKitC-1-N8 | [Browser installer: choose ILA210, then ESP32-S3](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) | [Factory image (flash at 0x0)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.2/factory-ila210-esp32s3.bin) |
+| Cytron IRIV IO Controller | BOOT + RESET, then copy UF2 to the RP2350 drive | [Download ILA210 IRIV UF2](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/download/v4.11.5-beta.2/firmware-ila210-cytron_iriv_io_controller.uf2) |
 
-[Release notes and all files](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.1) include checksums. Original ESP32/Maker ESP32 is supported by the 883M firmware only. Never interchange the two sensors' images.
+[Release notes and all files](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.11.5-beta.2) include checksums. Original ESP32/Maker ESP32 is supported by the 883M firmware only. Never interchange the two sensors' images.
 
 ### What you can do
 
