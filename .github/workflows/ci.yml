@@ -19,6 +19,8 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -p "test_*.py"
+      - name: Test ILA210 local Modbus library
+        run: python "ILA210/ESP32 Family/ESP32-S3/lib/WilcoxonILA210Modbus/tests/run_native.py"
   firmware:
     needs: tests
     runs-on: ubuntu-24.04

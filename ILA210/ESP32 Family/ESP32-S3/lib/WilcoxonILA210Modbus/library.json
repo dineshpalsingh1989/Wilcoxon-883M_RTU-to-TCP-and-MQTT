@@ -1,0 +1,15 @@
+{
+  "name": "WilcoxonILA210Modbus",
+  "version": "0.1.0-beta.1",
+  "description": "Board-local ILA RTU client and cached Modbus TCP server for ESP32-S3.",
+  "license": "MIT",
+  "frameworks": [
+    "arduino"
+  ],
+  "platforms": [
+    "espressif32"
+  ],
+  "build": {
+    "srcDir": "src"
+  }
+}

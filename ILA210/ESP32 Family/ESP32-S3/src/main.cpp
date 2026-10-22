@@ -24,7 +24,7 @@
 #include "time.h"
 
 // --- Modbus Libraries (RTU Master for Sensor & TCP Server for Client Access) ---
-#include <ModbusMaster.h> // For RS485 communication with the sensor
+#include <WilcoxonILA210RTU.h> // Board-local RTU protocol and imported ILA register mapping
 #include "platform/modbus_tcp.h"    // For exposing data over Wi-Fi (Modbus TCP Server)
 
 // --- Standard C++ Libraries ---
@@ -160,39 +160,18 @@ bool mqttTransportReady = false;
 #endif
 uint8_t modbus_slave_id_val = 1;
 long modbus_baud_rate_val = 115200;
-ModbusMaster node;
+WilcoxonILA210RTU node;
 
 // --- Modbus TCP Server Configuration ---
 bool modbusTcpEnabled = true; // Enable by default
 uint16_t modbusTcpPort = 502; // Standard Modbus TCP port
 
-// Define a structure for our Modbus register map
-struct ModbusRegister {
-  const char* name;
-  const char* unit;
-  float scale;
-};
+// Library-owned imported ILA map; existing names, scaling and TCP offsets are unchanged.
+using ModbusRegister = wilcoxonila210::MetricRegister;
+const auto& registerMap = wilcoxonila210::MetricRegisters;
+const int numRegistersInMap = wilcoxonila210::MetricCount;
 
-// Create the map of all registers
-const ModbusRegister registerMap[] = {
-  { "Accel RMS 1",     "g",      100.0 }, // Address 0
-  { "Accel Peak 1",    "g",      100.0 }, // Address 1
-  { "Accel RMS 2",     "g",      100.0 }, // Address 2
-  { "Accel Peak 2",    "g",      100.0 }, // Address 3
-  { "Velo RMS",        "mm/s",   10.0  }, // Address 4
-  { "Velo Peak",       "mm/s",   10.0  }, // Address 5
-  { "Displ RMS",       "um",     1.0   }, // Address 6
-  { "Displ Peak",      "um",     1.0   }, // Address 7
-  { "True Peak",       "g",      100.0 }, // Address 8
-  { "Crest Factor",    "",       100.0 }, // Address 9
-  { "Std Deviation",   "g",      100.0 }, // Address 10
-  { "Temperature",     "C",      10.0  }, // Address 11
-  { "Drive Voltage",   "V",      100.0 }, // Address 12
-  { "Board Temp",      "C",      10.0  }  // Address 13
-};
-const int numRegistersInMap = sizeof(registerMap) / sizeof(registerMap[0]);
-
-ModbusTCP modbusTCPServer;
+WilcoxonILA210TCP modbusTCPServer;
 #define MODBUS_TCP_CACHE_SIZE 50
 // Note: The cache size is larger than the map to allow for future expansion.
 
@@ -215,10 +194,10 @@ float accelRms1=0.0, accelPeak1=0.0, accelRms2=0.0, accelPeak2=0.0, veloRms=0.0,
 float truePeak=0.0, crestFactor=0.0, stdDeviation=0.0, temperature=0.0, driveVoltage=0.0, boardTemperature=0.0;
 
 // --- Global Data Arrays ---
-const uint16_t WAVEFORM_TOTAL_POINTS = 25600;
+const uint16_t WAVEFORM_TOTAL_POINTS = wilcoxonila210::WaveformPoints;
 int16_t fullWaveform[WAVEFORM_TOTAL_POINTS];
 bool newWaveformAvailable = false;
-const uint16_t SPECTRUM_TOTAL_POINTS = 6401;
+const uint16_t SPECTRUM_TOTAL_POINTS = wilcoxonila210::SpectrumPoints;
 int16_t spectrumData[SPECTRUM_TOTAL_POINTS];
 bool newSpectrumAvailable = false;
 
@@ -683,28 +662,25 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 // --- SECTION: MODBUS & SENSOR FUNCTIONS
 // =================================================================
 
-bool readSensorValue(const char* metricName, uint16_t address, float scale_factor, float& value) {
-  uint8_t result = node.readInputRegisters(address, 1);
-  if (result == node.ku8MBSuccess) {
-    value = (int16_t)node.getResponseBuffer(0) * scale_factor;
-    return true;
-  } else {
-    Serial.printf("DEBUG: FAILED - Reading %s. Error: 0x%X\n", metricName, result);
-    return false;
-  }
+bool readSensorValue(uint8_t metricIndex, float& value) {
+  if (metricIndex >= wilcoxonila210::MetricCount) return false;
+  const uint8_t result = node.readMetric(metricIndex, value);
+  if (result == node.ku8MBSuccess) return true;
+  Serial.printf("DEBUG: FAILED - Reading %s. Error: 0x%X\n", registerMap[metricIndex].name, result);
+  return false;
 }
 
 // Reverted to original waveform trigger method
 bool requestNewWaveform() {
-    uint8_t result = node.writeSingleRegister(0x0200, 0xFFFF);
+    uint8_t result = node.writeSingleRegister(wilcoxonila210::CaptureControl, wilcoxonila210::CaptureRequest);
     return (result == node.ku8MBSuccess);
 }
 
 // Reverted to original waveform ready check
 bool isWaveformReady() {
-    uint8_t result = node.readHoldingRegisters(0x0200, 1);
+    uint8_t result = node.readHoldingRegisters(wilcoxonila210::CaptureControl, 1);
     if (result == node.ku8MBSuccess) {
-        return (node.getResponseBuffer(0) == 0x0000);
+        return (node.getResponseBuffer(0) == wilcoxonila210::CaptureReady);
     }
     return false;
 }
@@ -863,8 +839,8 @@ void handleLongReads() {
       xSemaphoreGive(dataMutex);
     }
 
-    const uint16_t START_ADDRESS = 0x1F01;
-    const uint8_t POINTS_PER_CHUNK = 64; // ModbusMaster response-buffer capacity.
+    const uint16_t START_ADDRESS = wilcoxonila210::WaveformStart;
+    const uint8_t POINTS_PER_CHUNK = WilcoxonILA210RTU::MaxRegisters;
     uint16_t currentAddress = START_ADDRESS + waveformReadIndex;
     uint8_t pointsToRead = min((int)POINTS_PER_CHUNK, (int)(WAVEFORM_TOTAL_POINTS - waveformReadIndex));
     uint8_t result = node.readInputRegisters(currentAddress, pointsToRead);
@@ -903,8 +879,8 @@ void handleLongReads() {
       xSemaphoreGive(dataMutex);
     }
 
-    const uint16_t START_ADDRESS = 0x0600;
-    const uint8_t POINTS_PER_CHUNK = 64; // ModbusMaster response-buffer capacity.
+    const uint16_t START_ADDRESS = wilcoxonila210::SpectrumStart;
+    const uint8_t POINTS_PER_CHUNK = WilcoxonILA210RTU::MaxRegisters;
     uint16_t currentAddress = START_ADDRESS + spectrumReadIndex;
     uint8_t pointsToRead = min((int)POINTS_PER_CHUNK, (int)(SPECTRUM_TOTAL_POINTS - spectrumReadIndex));
     uint8_t result = node.readInputRegisters(currentAddress, pointsToRead);
@@ -1304,15 +1280,13 @@ void applySensorLossPolicy() {
 bool serviceSensorRtu() {
     static gateway::SensorSchedule schedule;
     static float pending[14] = {};
-    const uint16_t addresses[] = {0x0000,0x0004,0x0010,0x0014,0x0020,0x0024,0x0030,0x0034,0x0040,0x0044,0x0048,0x0050,0x0060,0x007C};
-    const float scales[] = {.01f,.01f,.01f,.01f,.1f,.1f,1,1,.01f,.01f,.01f,.1f,.01f,.1f};
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(20)) != pdTRUE) return true;
     const bool capturing = isReadingWaveform || isReadingSpectrum;
     xSemaphoreGive(dataMutex);
     const gateway::RtuJob job = schedule.next(millis(), capturing);
     if (job == gateway::RtuJob::Alarm) {
         float value = 0;
-        const bool ok = readSensorValue("Velocity Peak alarm", 0x0024, .1f, value);
+        const bool ok = readSensorValue(wilcoxonila210::VelocityPeakIndex, value);
         schedule.complete(job, millis(), ok);
         if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
             alarmMetricValid = ok;
@@ -1325,7 +1299,7 @@ bool serviceSensorRtu() {
         syncSensorToIoc();
     } else if (job == gateway::RtuJob::Metrics) {
         const uint8_t index = schedule.metricIndex();
-        const bool ok = readSensorValue(registerMap[index].name, addresses[index], scales[index], pending[index]);
+        const bool ok = readSensorValue(index, pending[index]);
         const bool finished = schedule.complete(job, millis(), ok);
         if (!ok || finished) {
             bool recording = false;
@@ -1631,15 +1605,17 @@ void setup() {
     digitalWrite(DE_RE_PIN, LOW);
     SENSOR_SERIAL.begin(modbus_baud_rate_val, SERIAL_8N1, RXD_PIN, TXD_PIN);
 #endif
-    node.begin(modbus_slave_id_val, SENSOR_SERIAL);
+    if (!node.begin(modbus_slave_id_val, SENSOR_SERIAL, modbus_baud_rate_val)) {
+        Serial.println("ILA RTU configuration invalid; restarting."); gw::restart();
+    }
     node.preTransmission(preTransmission);
     node.postTransmission(postTransmission);
     sensorHealth.startedAt = millis();
 
     if (modbusTcpEnabled) {
-      modbusTCPServer.server(modbusTcpPort);
-      modbusTCPServer.addHreg(0, 0, MODBUS_TCP_CACHE_SIZE);
-      Serial.printf("Modbus TCP Server started on port %d\n", modbusTcpPort);
+      if (modbusTCPServer.addHreg(0, 0, MODBUS_TCP_CACHE_SIZE) && modbusTCPServer.server(modbusTcpPort)) {
+          Serial.printf("Modbus TCP Server started on port %d\n", modbusTcpPort);
+      } else { modbusTcpEnabled = false; Serial.println("Modbus TCP startup failed."); }
     } else if (connected_to_wifi) {
       Serial.println("Modbus TCP Server is disabled by configuration.");
     }

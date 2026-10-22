@@ -5,6 +5,7 @@ This is a complete, independent PlatformIO project. Edit this board's files here
 - [src/main.cpp](src/main.cpp): firmware entry point
 - [src/](src/): HTML/web pages, sensor communication and hardware code
 - [lib/](lib/): local libraries; downloaded dependencies are declared in `platformio.ini`
+- [WilcoxonILA210Modbus](lib/WilcoxonILA210Modbus/README.md): this board's own RTU client, TCP cache server, metric mapping and protocol tests
 - [scripts/](scripts/): build, version and installer helpers
 - `platformio.ini`: standalone project configuration
 - `profile.ini`: board settings also used by the sensor-root build selector
