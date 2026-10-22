@@ -1,3 +1,5 @@
-# Libraries
+# Board-local libraries
 
-Third-party libraries are declared in this board's platformio.ini and installed by PlatformIO into its .pio/libdeps folder. Build artifacts and downloaded dependencies are not committed.
+[WilcoxonILA210Modbus](WilcoxonILA210Modbus/README.md) contains this board's
+RTU client, cached TCP server, ILA register definitions and sensor setup controller.
+Other downloaded dependencies remain listed in `platformio.ini`.

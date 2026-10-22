@@ -2,7 +2,7 @@
 static const char SENSOR_HEALTH_PAGE[] PROGMEM = R"html(
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sensor communication alarm</title><style>body{font:16px system-ui;background:#101827;color:#edf2ff;max-width:700px;margin:30px auto;padding:20px}a{color:#82caff}label{display:block;margin:24px 0}input,select,button{font:inherit;padding:10px;max-width:100%;box-sizing:border-box}input[type=number],select{display:block;margin-top:8px}button{cursor:pointer}#result{white-space:pre-wrap}</style>
-<a href="/settings">Settings</a> / <a href="/ioc">IOC</a><h1>Sensor communication alarm</h1>
+<a href="/settings">Settings</a> / <a href="/ioc">IOC</a><h1>Sensor communication alarm</h1><p><a href="/sensor_setup">Find sensor, configure sensor and diagnostics</a></p>
 <p id="status">Loading sensor status...</p><p id="identity"></p>
 <form id="form"><label>Loss timeout (milliseconds, 2000–600000)<input id="timeout" type="number" min="2000" max="600000" step="1" required></label>
 <label><input id="fault" type="checkbox"> Include sensor loss in the IOC combined alarm</label>

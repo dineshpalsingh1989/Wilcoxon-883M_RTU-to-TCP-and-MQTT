@@ -97,9 +97,11 @@ const server = http.createServer((req, res) => {
     await page.waitForFunction(() => document.getElementById('status').textContent.includes('Monitoring'));
     offline = true;
     await page.evaluate(() => updateDashboardData());
+    await page.waitForFunction(() => document.getElementById('status').textContent.includes('Connection lost'));
     assert.match(await page.locator('#status').innerText(), /Connection lost/);
     offline = false;
     await page.evaluate(() => updateDashboardData());
+    await page.waitForFunction(() => document.getElementById('status').textContent.includes('Monitoring'));
     assert.match(await page.locator('#status').innerText(), /Monitoring/);
     await page.setViewportSize({width: 390, height: 844});
     for (const name of ['Overall Metrics', 'Waveform & Spectrum', 'Spectrum Analysis', 'Data Logger']) {

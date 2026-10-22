@@ -1,8 +1,8 @@
 # WilcoxonILA210Modbus
 
-Board-local Arduino library for the ILA210 ESP32-S3 gateway. It replaces
-ModbusMaster and modbus-esp8266 in this board project. The IRIV IOC project
-continues to use its existing communication stack.
+Board-local Arduino library for the ILA210 ESP32-S3 and IRIV RP2350 gateways.
+It replaces ModbusMaster and modbus-esp8266. Each board has its own complete
+copy; there is no runtime or build dependency on the other board folder.
 
 ## Interfaces
 
@@ -37,8 +37,14 @@ Wilcoxon883MModbus library. ILA metric and capture logic is separate from the
 ## Verification
 
 Run `python tests/run_native.py` from this library directory with g++ or clang++
-available (or the workspace Zig toolchain). Three host suites cover RTU
+available (or the workspace Zig toolchain). Four host suites cover RTU
 framing/errors, TCP framing/partial sends, register bounds, and the Arduino
-adapter with a simulated UART. Build the enclosing PlatformIO project to check
-the actual ESP32 network/UART integration. These checks do not validate physical
+adapter with a simulated UART, and sensor setup state transitions. The RTU
+adapter is compiled under both ESP32 and RP2040 architecture guards. Build the enclosing PlatformIO project to check
+the actual board network/UART integration. These checks do not validate physical
 RS485 timing, the sensor register map, or connected hardware.
+
+`ILASetup.h` provides the single-owner bounded search/configuration state machine.
+The firmware adapter and setup UI are in `src/web/sensor_setup.h` and
+`src/web/sensor_setup_page.h` relative to the board project. See the sensor-root
+`docs/sensor-setup.md` for the API, scheduling and commissioning limits.

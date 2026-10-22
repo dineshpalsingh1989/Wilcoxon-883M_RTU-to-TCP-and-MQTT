@@ -11,7 +11,9 @@ else:sys.exit('Install a native C++ compiler or set CXX.')
 extra=['-nostdlib++','-fno-exceptions','-fno-rtti','-DOWNMODBUS_NO_CXX_RUNTIME'] if 'zig' in Path(compiler[0]).name else []
 with tempfile.TemporaryDirectory(prefix='ila-modbus-') as tmp:
  for source in sorted((lib/'tests').glob('*_tests.cpp')):
-  exe=Path(tmp)/(source.stem+('.exe' if os.name=='nt' else ''))
-  defines=['-DARDUINO_ARCH_ESP32'] if source.stem=='adapter_tests' else []
-  subprocess.run(compiler+extra+['-std=c++11','-Wall','-Wextra','-Werror','-I'+str(lib/'tests/stubs'),'-I'+str(lib/'src')]+defines+[str(source),'-o',str(exe)],check=True)
-  subprocess.run([str(exe)],check=True)
+  architectures=['ARDUINO_ARCH_ESP32','ARDUINO_ARCH_RP2040'] if source.stem=='adapter_tests' else ['']
+  for arch in architectures:
+   exe=Path(tmp)/(source.stem+arch+('.exe' if os.name=='nt' else ''))
+   defines=['-D'+arch] if arch else []
+   subprocess.run(compiler+extra+['-std=c++11','-Wall','-Wextra','-Werror','-I'+str(lib/'tests/stubs'),'-I'+str(lib/'src')]+defines+[str(source),'-o',str(exe)],check=True)
+   subprocess.run([str(exe)],check=True)

@@ -1,0 +1,25 @@
+#pragma once
+static const char SENSOR_SETUP_PAGE[] PROGMEM = R"html(
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ILA210 sensor setup</title><style>body{font:16px system-ui;background:#101827;color:#edf2ff;max-width:850px;margin:auto;padding:24px}a{color:#8dceff}section{background:#1b2940;border-radius:12px;padding:20px;margin:20px 0}label{display:block;margin:12px 0}input,select,button{font:inherit;padding:10px;box-sizing:border-box;max-width:100%}button{cursor:pointer;margin:6px 4px 6px 0}button:disabled{cursor:default;opacity:.6}:focus-visible{outline:3px solid #ffca60;outline-offset:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}#status,#result{white-space:pre-wrap}form{margin:0}</style>
+<a href="/settings">Settings</a> / <a href="/sensor_fault_settings">Sensor-loss policy</a><h1>ILA210 sensor setup</h1>
+<p>For one connected ILA210 sensor using 8N1. Search checks settings for a compatible device; it does not prove device identity. Vibration polling pauses during setup. Sensor-loss alarms and outputs continue following your configured loss policy. Commission with controlled loads.</p>
+<p id="status" role="status">Connecting...</p><p id="result" role="status"></p>
+<section><h2>Find sensor</h2><p>Checks 9600, 19200, 38400, 57600 and 115200 baud. A full 1–247 search can take several minutes. Search never writes sensor settings.</p>
+<form id="searchForm"><label>First ID <input id="first" type="number" value="1" min="1" max="247" required></label><label>Last ID <input id="last" type="number" value="16" min="1" max="247" required></label><button id="search" disabled>Find sensor</button></form>
+<button id="cancel" disabled>Cancel search</button><button id="use" disabled>Use detected connection</button></section>
+<section><h2>Change sensor settings</h2><p>This writes to the physical sensor. Change either baud or ID per operation. New settings are read back before saving the gateway connection. If verification fails, the sensor may need a search or power cycle. Match any other connected Modbus clients after a change.</p>
+<form id="configForm"><label>Sensor baud <select id="baud"><option>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></label><label>Sensor ID <input id="id" type="number" min="1" max="247" value="1" required></label><button id="configure" disabled>Write sensor setting and verify</button></form></section>
+<section><h2>Communication diagnostics</h2><p>RTU counters include setup probes. TCP readings remain cached during search. Counters restart at reboot.</p><pre id="diagnostics">Waiting for status...</pre></section>
+<script>
+const el=id=>document.getElementById(id);let state=null,initialized=false;
+function controls(online){const busy=!online||!state||state.busy;el('search').disabled=busy;el('configure').disabled=busy;el('cancel').disabled=!online||!state?.can_cancel;el('use').disabled=busy||!state?.found}
+async function action(body){controls(false);try{const r=await fetch('/api/sensor_setup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const text=await r.text();if(!r.ok)throw Error(text);el('result').textContent=text}catch(e){el('result').textContent='Operation failed: '+e.message}await refresh()}
+async function refresh(){try{const r=await fetch('/api/sensor_setup',{cache:'no-store'});if(!r.ok)throw Error(await r.text());state=await r.json();if(!initialized){el('baud').value=state.baud;el('id').value=state.id;initialized=true}el('status').textContent=state.message+'\nGateway: '+state.baud+' baud, ID '+state.id+', '+state.format+(state.total?'\nSearch: '+state.tested+' / '+state.total:'')+(state.found?'\nFound: '+state.found_baud+' baud, ID '+state.found_id:'');el('diagnostics').textContent='RTU successes: '+state.read_successes+'\nTimeouts: '+state.timeouts+'\nCRC errors: '+state.crc_errors+'\nExceptions: '+state.exceptions+'\nOther errors: '+state.other_errors+'\nLast reading age: '+(state.reading_age_ms===null?'No valid reading':state.reading_age_ms+' ms')+'\nMQTT: '+(state.mqtt_connected?'Connected':'Disconnected')+'\nTCP clients: '+state.tcp_clients+'\nTCP requests: '+state.tcp_requests+'\nTCP malformed frames: '+state.tcp_malformed+'\nTCP timeouts: '+state.tcp_timeouts;controls(true)}catch(e){el('status').textContent='Offline / status unavailable: '+e.message;controls(false)}}
+el('searchForm').onsubmit=e=>{e.preventDefault();action({action:'search',first_id:Number(el('first').value),last_id:Number(el('last').value)})};
+el('cancel').onclick=()=>action({action:'cancel'});
+el('use').onclick=()=>{el('baud').value=state.found_baud;el('id').value=state.found_id;action({action:'use',baud:state.found_baud,id:state.found_id})};
+el('configForm').onsubmit=e=>{e.preventDefault();action({action:'configure',baud:Number(el('baud').value),id:Number(el('id').value)})};
+(async function poll(){await refresh();setTimeout(poll,1000)})();
+</script></html>
+)html";

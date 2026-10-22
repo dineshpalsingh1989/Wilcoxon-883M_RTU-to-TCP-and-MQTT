@@ -51,6 +51,10 @@ Run that command from the parent workspace, or use `pio run` inside this folder.
 
 **IRIV:** Plug in Ethernet. DHCP is attempted for 10 seconds; without an answer, the gateway uses `192.168.4.1` (set the connected laptop to `192.168.4.2/24`). Holding USER for five seconds also switches to this fallback address. Wi-Fi setup/scan operations are unavailable on this board. Logging stays in RAM; GPIO5 is never used as an SD chip select.
 
+## Sensor setup and commissioning
+
+Both boards include [sensor discovery, sensor configuration and diagnostics](docs/sensor-setup.md) at `/sensor_setup`. Each board now owns its local `WilcoxonILA210Modbus` RTU/TCP library. Search and sensor changes are serialized with capture operations; verify the sensor-loss output policy before using them. Physical acceptance remains pending: use the [hardware bench checklist](docs/hardware-bench.md). These features require a current source build; older release assets are unchanged.
+
 ## Hardware configuration
 
 Existing explicit ESP32-S3 GPIO assignments are preserved:

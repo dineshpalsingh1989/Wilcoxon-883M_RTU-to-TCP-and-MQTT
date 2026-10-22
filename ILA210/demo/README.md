@@ -15,3 +15,7 @@ Demo presets enable DI0 capture, DI1 acknowledge, DI2 external alarm, AN0 pressu
 Simulation is for viewing and exercising the interface, not validating firmware timing, GPIO wiring, sensor registers, ADC accuracy, MQTT or physical alarm operation.
 
 Sensor communication settings are previewed at `/sensor_fault_settings`. Use Disconnect sensor / Reconnect sensor to test the configured timeout and combined alarm independently of the simulated HTTP offline state. DO0/DO1 in this demo represent enabled vibration outputs. All settings remain in memory.
+
+Sensor setup preview: open **http://localhost:8091/sensor_setup** for simulated
+search, cancellation, connection selection, sensor settings and diagnostics.
+No physical sensor settings are changed.

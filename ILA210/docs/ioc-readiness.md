@@ -101,3 +101,12 @@ Connected alarm equipment requires successful installation-specific hardware acc
 ## Reuse the review agent
 
 Ask: **Use ioc_readiness_review to audit ILA210 for an IRIV bench upload. Do not flash hardware.** Definitions exist in the parent workspace and standalone ILA project. If the current session does not list the saved role, a delegated agent can follow its instructions or a new project session can load it.
+
+## Sensor setup and local protocol library update
+
+Both ILA210 board projects now own `WilcoxonILA210Modbus` (0.2.0-beta.1);
+IRIV no longer depends on ModbusMaster or modbus-esp8266. Search, verified
+connection selection, single-setting sensor changes and diagnostics are
+available at `/sensor_setup`. See [setup behavior](sensor-setup.md) and the
+[physical bench checklist](hardware-bench.md). Native and simulated browser
+checks cover software behavior; physical acceptance is still pending.

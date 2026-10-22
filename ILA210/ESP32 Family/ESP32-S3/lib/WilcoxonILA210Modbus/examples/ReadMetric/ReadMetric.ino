@@ -1,24 +1,33 @@
 #include <WilcoxonILA210RTU.h>
 
-// Existing ILA ESP32-S3 gateway wiring. Confirm your RS485 transceiver first.
-constexpr int RxPin = 16;
-constexpr int TxPin = 18;
-constexpr int DirectionPin = 10;
+// Existing board wiring; no GPIO direction control on the IRIV transceiver.
+#if defined(ARDUINO_ARCH_RP2040)
+#define SENSOR_PORT Serial2
+constexpr int RxPin = PIN_SERIAL2_RX, TxPin = PIN_SERIAL2_TX, DirectionPin = -1;
+#else
+#define SENSOR_PORT Serial1
+constexpr int RxPin = 16, TxPin = 18, DirectionPin = 10;
+#endif
 constexpr uint32_t Baud = 9600; // Manual factory default; match the configured sensor.
 WilcoxonILA210RTU sensor;
 bool ready = false;
 
-void transmit() { digitalWrite(DirectionPin, HIGH); }
-void receive() { digitalWrite(DirectionPin, LOW); }
+void transmit() { if (DirectionPin >= 0) digitalWrite(DirectionPin, HIGH); }
+void receive() { if (DirectionPin >= 0) digitalWrite(DirectionPin, LOW); }
 
 void setup() {
     Serial.begin(115200);
-    pinMode(DirectionPin, OUTPUT);
+    if (DirectionPin >= 0) pinMode(DirectionPin, OUTPUT);
     receive();
-    Serial1.begin(Baud, SERIAL_8N1, RxPin, TxPin);
+    #if defined(ARDUINO_ARCH_RP2040)
+    SENSOR_PORT.setRX(RxPin); SENSOR_PORT.setTX(TxPin);
+    SENSOR_PORT.begin(Baud, SERIAL_8N1);
+#else
+    SENSOR_PORT.begin(Baud, SERIAL_8N1, RxPin, TxPin);
+#endif
     sensor.preTransmission(transmit);
     sensor.postTransmission(receive);
-    ready = sensor.begin(1, Serial1, Baud); // Match the configured slave ID.
+    ready = sensor.begin(1, SENSOR_PORT, Baud); // Match the configured slave ID.
     if (!ready) Serial.println("Invalid RTU configuration");
 }
 

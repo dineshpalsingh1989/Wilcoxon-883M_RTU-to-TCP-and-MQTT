@@ -5,8 +5,8 @@
 #include "detail/TcpSession.h"
 #include "detail/RegisterBlocks.h"
 
-#if !defined(ARDUINO_ARCH_ESP32)
-#error "WilcoxonILA210TCP supports Arduino ESP32 only."
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_RP2040)
+#error "WilcoxonILA210TCP supports Arduino ESP32 and RP2040/RP2350."
 #endif
 
 // Modbus TCP holding-cache server (03, 06, 16); 04 has no mapped inputs.

@@ -3,6 +3,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const {simulatorControls} = require('./simulator_controls');
+const {createSensorSetupDemo} = require('./sensor_setup');
 const embedded = fs.readFileSync(path.join(__dirname, '../IRIV IOC/src/ioc/pages.h'), 'utf8').match(/R"ioc\(([\s\S]*?)\)ioc"/)[1];
 const healthPage = fs.readFileSync(path.join(__dirname, '../IRIV IOC/src/web/sensor_health_page.h'), 'utf8').match(/R"html\(([\s\S]*?)\)html"/)[1];
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -25,9 +26,11 @@ function validConfig(c) {
   return c.outputs.every(o=>o&&integer(o.source,4)&&integer(o.input,10));
 }
 function createDemoServer() {
+  const setupDemo=createSensorSetupDemo();
   let sensorSignals, health, sensorOffline, lastSensor, config, state, pins, readings, debounce, delays, limits, latchMask, acknowledged, offline, captureUntil, sequence=0;
   const now=()=>Date.now();
   function reset() {
+    setupDemo.reset();
     sensorSignals={alert:false,alarm:false};
     health={timeout_ms:10000,fault_alarm:true,output_mode:0,gateway_id:"SIMULATED-IOC-01"};sensorOffline=false;lastSensor=now();
     config=defaults(); pins=Array(11).fill(false);readings=[12,12];
@@ -81,9 +84,10 @@ function createDemoServer() {
     const send=(status,body,type='application/json')=>{res.writeHead(status,{'Content-Type':type,'Cache-Control':'no-store'});res.end(type==='application/json'?JSON.stringify(body):body);};
     const body=()=>new Promise((resolve,reject)=>{let data='';req.on('data',chunk=>{data+=chunk;if(Buffer.byteLength(data)>8192){reject(new Error('Request too large'));req.destroy();}});req.on('end',()=>{try{resolve(data?JSON.parse(data):{});}catch{reject(new Error('Invalid JSON'));}});req.on('error',reject);});
     try {
+      if(await setupDemo.handle(req,url,send,body))return;
       if(url.pathname==='/'){res.writeHead(302,{Location:'/ioc'});res.end();return;}
       if(['/ioc','/ioc/inputs','/ioc/analog','/ioc/outputs'].includes(url.pathname))return send(200,embedded.replace('<main>','<main>'+simulatorControls),'text/html; charset=utf-8');
-      if(['/settings','/relay_settings'].includes(url.pathname))return send(200,`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Simulated IOC demo</title><body style="font:16px system-ui;max-width:800px;margin:40px auto;padding:20px"><h1>IOC demo · simulated only</h1><p>No device is connected. Changes are stored in demo memory only.</p><ul><li><a href="/ioc">Live status</a></li><li><a href="/ioc/inputs">Inputs &amp; push-buttons</a></li><li><a href="/ioc/analog">Analog &amp; 4–20 mA</a></li><li><a href="/ioc/outputs">Alarm outputs</a></li></ul><p>DO0/DO1 represent the existing vibration outputs. Use the simulator controls on an IOC page to switch their simulated states.</p></body></html>`,'text/html; charset=utf-8');
+      if(['/settings','/relay_settings'].includes(url.pathname))return send(200,`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Simulated IOC demo</title><body style="font:16px system-ui;max-width:800px;margin:40px auto;padding:20px"><h1>IOC demo · simulated only</h1><p>No device is connected. Changes are stored in demo memory only.</p><ul><li><a href="/ioc">Live status</a></li><li><a href="/ioc/inputs">Inputs &amp; push-buttons</a></li><li><a href="/ioc/analog">Analog &amp; 4–20 mA</a></li><li><a href="/ioc/outputs">Alarm outputs</a></li><li><a href="/sensor_setup">Sensor search, configuration and diagnostics</a></li></ul><p>DO0/DO1 represent the existing vibration outputs. Use the simulator controls on an IOC page to switch their simulated states.</p></body></html>`,'text/html; charset=utf-8');
       if(url.pathname==='/sensor_fault_settings')return send(200,healthPage.replace('<h1>', '<p>SIMULATED DEMO: memory only; no hardware connected.</p><h1>'),'text/html; charset=utf-8');
       if(url.pathname==='/demo/state')return send(200,{simulated:true,offline,pins,readings,capture_busy:now()<captureUntil});
       if(url.pathname==='/demo/action'&&req.method==='POST'){

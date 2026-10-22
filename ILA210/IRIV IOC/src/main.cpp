@@ -24,7 +24,7 @@
 #include "time.h"
 
 // --- Modbus Libraries (RTU Master for Sensor & TCP Server for Client Access) ---
-#include <ModbusMaster.h> // For RS485 communication with the sensor
+#include <WilcoxonILA210RTU.h> // For RS485 communication with the sensor
 #include "platform/modbus_tcp.h"    // For exposing data over Wi-Fi (Modbus TCP Server)
 
 // --- Standard C++ Libraries ---
@@ -160,7 +160,7 @@ bool mqttTransportReady = false;
 #endif
 uint8_t modbus_slave_id_val = 1;
 long modbus_baud_rate_val = 115200;
-ModbusMaster node;
+WilcoxonILA210RTU node;
 
 // --- Modbus TCP Server Configuration ---
 bool modbusTcpEnabled = true; // Enable by default
@@ -192,7 +192,9 @@ const ModbusRegister registerMap[] = {
 };
 const int numRegistersInMap = sizeof(registerMap) / sizeof(registerMap[0]);
 
-ModbusTCP modbusTCPServer;
+WilcoxonILA210TCP modbusTCPServer;
+uint32_t sensorConnectionGeneration = 0;
+bool sensorSetupBusy = false; // Protected by dataMutex; UART owned by background task.
 #define MODBUS_TCP_CACHE_SIZE 50
 // Note: The cache size is larger than the map to allow for future expansion.
 
@@ -662,7 +664,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                     snprintf(systemStatus, sizeof(systemStatus), "Recording stopped");
                     anomalyDetected = false;
                 } else if (strcmp(command, "trigger_capture") == 0) {
-                    if (currentDataState == DD_IDLE && !isReadingWaveform &&
+                    if (!sensorSetupBusy && currentDataState == DD_IDLE && !isReadingWaveform &&
                         !isReadingSpectrum && !dynamicStreamActive) currentDataState = DD_REQUEST_DATA;
                 } else if (strcmp(command, "get_status") == 0) {
                     // Status is published outside the lock
@@ -1304,9 +1306,11 @@ void applySensorLossPolicy() {
 bool serviceSensorRtu() {
     static gateway::SensorSchedule schedule;
     static float pending[14] = {};
+    static uint32_t generation = 0;
     const uint16_t addresses[] = {0x0000,0x0004,0x0010,0x0014,0x0020,0x0024,0x0030,0x0034,0x0040,0x0044,0x0048,0x0050,0x0060,0x007C};
     const float scales[] = {.01f,.01f,.01f,.01f,.1f,.1f,1,1,.01f,.01f,.01f,.1f,.01f,.1f};
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(20)) != pdTRUE) return true;
+    if (generation != sensorConnectionGeneration) { generation = sensorConnectionGeneration; schedule = gateway::SensorSchedule(); memset(pending, 0, sizeof(pending)); }
     const bool capturing = isReadingWaveform || isReadingSpectrum;
     xSemaphoreGive(dataMutex);
     const gateway::RtuJob job = schedule.next(millis(), capturing);
@@ -1382,12 +1386,15 @@ void handleSensorHealth() {
     server.send(200, "application/json", body);
 }
 
+#include "web/sensor_setup.h"
+
 void backgroundLoop(void * pvParameters) {
   Serial.println("Background Task (Modbus, MQTT, AI) running on core 1");
   gw::watchdogStart();
   for(;;) {
       gw::watchdogFeed();
-      const bool sensorBusUsed = serviceSensorRtu();
+      const bool setupUsed = serviceSensorSetup();
+      const bool sensorBusUsed = setupUsed || serviceSensorRtu();
       applySensorLossPolicy();
 #if GATEWAY_ETHERNET
       static uint32_t buttonPressedAt = 0;
@@ -1459,7 +1466,7 @@ void backgroundLoop(void * pvParameters) {
           case DD_IDLE:
             if (local_dataCaptureInterval > 0 && local_dataCaptureInterval < INTERVAL_NEVER && (millis() - local_lastCaptureActionTime >= local_dataCaptureInterval)) {
               if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-                currentDataState = DD_REQUEST_DATA;
+                if (!sensorSetupBusy) currentDataState = DD_REQUEST_DATA;
                 xSemaphoreGive(dataMutex);
               }
             }
@@ -1521,7 +1528,7 @@ void backgroundLoop(void * pvParameters) {
 
 bool requestIocCapture() {
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) != pdTRUE) return false;
-    const bool available = currentDataState == DD_IDLE && !isReadingWaveform && !isReadingSpectrum && !dynamicStreamActive;
+    const bool available = !sensorSetupBusy && currentDataState == DD_IDLE && !isReadingWaveform && !isReadingSpectrum && !dynamicStreamActive;
     if (available) currentDataState = DD_REQUEST_DATA;
     xSemaphoreGive(dataMutex);
     return available;
@@ -1631,14 +1638,14 @@ void setup() {
     digitalWrite(DE_RE_PIN, LOW);
     SENSOR_SERIAL.begin(modbus_baud_rate_val, SERIAL_8N1, RXD_PIN, TXD_PIN);
 #endif
-    node.begin(modbus_slave_id_val, SENSOR_SERIAL);
+    node.begin(modbus_slave_id_val, SENSOR_SERIAL, modbus_baud_rate_val);
     node.preTransmission(preTransmission);
     node.postTransmission(postTransmission);
     sensorHealth.startedAt = millis();
 
     if (modbusTcpEnabled) {
-      modbusTCPServer.server(modbusTcpPort);
-      modbusTCPServer.addHreg(0, 0, MODBUS_TCP_CACHE_SIZE);
+      modbusTcpEnabled = modbusTCPServer.addHreg(0, 0, MODBUS_TCP_CACHE_SIZE) && modbusTCPServer.server(modbusTcpPort);
+      if (!modbusTcpEnabled) Serial.println("Modbus TCP startup failed");
       Serial.printf("Modbus TCP Server started on port %d\n", modbusTcpPort);
     } else if (connected_to_wifi) {
       Serial.println("Modbus TCP Server is disabled by configuration.");
@@ -1650,6 +1657,9 @@ void setup() {
     }
     ioc::registerRoutes(server);
     server.on("/sensor_fault_settings", HTTP_GET, []() { server.send_P(200, "text/html; charset=utf-8", SENSOR_HEALTH_PAGE); });
+    server.on("/sensor_setup", HTTP_GET, []() { server.send_P(200, "text/html; charset=utf-8", SENSOR_SETUP_PAGE); });
+    server.on("/api/sensor_setup", HTTP_GET, handleSensorSetup);
+    server.on("/api/sensor_setup", HTTP_POST, handleSensorSetup);
     server.on("/api/sensor_health", HTTP_GET, handleSensorHealth);
     server.on("/api/sensor_health", HTTP_POST, handleSensorHealth);
     server.on("/charts.js", HTTP_GET, []() { server.send_P(200, "application/javascript", LOCAL_CHARTS_JS); });
@@ -2345,7 +2355,7 @@ void handleMetrics() {
     doc["alarm_sample_valid"] = alarmMetricValid;
     doc["metrics_valid"] = metricsValid;
     if (metricsValid) doc["metrics_age_ms"] = millis() - lastMetricsSuccessAt;
-    doc["capture_busy"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
+    doc["capture_busy"] = sensorSetupBusy || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
     doc["newWaveformAvailable"] = newWaveformAvailable; doc["newSpectrumAvailable"] = newSpectrumAvailable;
     doc["alert_relay_active"] = isAlertRelayActive;
     doc["alarm_relay_active"] = isAlarmRelayActive;
@@ -2703,12 +2713,21 @@ void handleSaveMqtt() {
 }
 
 void handleRs485Settings() {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    const uint8_t displayedId = modbus_slave_id_val; const long displayedBaud = modbus_baud_rate_val;
+    xSemaphoreGive(dataMutex);
     String html = R"rawliteral(
-<!DOCTYPE html><html><head><title>Modbus RS485 Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh}.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.form-group{margin-bottom:15px}label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}input[type=number],select{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;transition:border-color .3s}input[type=number]:focus,select:focus{outline:0;border-color:#007bff}.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;transition:background-color .3s}.btn-primary:hover{background-color:#0056b3}.status-bar{text-align:center;margin-top:20px;padding-top:20px;border-top:2px solid #e9ecef;font-size:14px;color:#6c757d;font-weight:500}.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:600;font-size:14px}.nav-link:hover{text-decoration:underline}</style></head><body><div class="container"><div class="header"><h2>Modbus RS485 Settings</h2></div><form onsubmit="return saveRs485()"><div class="form-group"><label for="slave_id">Slave ID</label><input type="number" id="slave_id" name="slave_id" min="1" max="247" value=")rawliteral" + String(modbus_slave_id_val) + R"rawliteral(" required></div><div class="form-group"><label for="baud_rate">Baud Rate</label><select id="baud_rate" name="baud_rate" required><option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="57600">57600</option><option value="115200">115200</option></select></div><button type="submit" class="btn-primary">Save and Reboot</button></form><div class="status-bar" id="status-bar">Current settings are displayed above. Saving will reboot the device.</div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function saveRs485(){const t=document.getElementById("slave_id").value,e=document.getElementById("baud_rate").value,n=document.getElementById("status-bar");n.textContent="Saving RS485 settings...";fetch(`/save_rs485?slave_id=${t}&baud_rate=${e}`).then(async r=>{const text=await r.text();if(!r.ok)throw Error(text);n.textContent=text}).catch(e=>{n.textContent="Save failed: "+e.message});return false}window.onload=function(){document.getElementById("baud_rate").value=")rawliteral" + String(modbus_baud_rate_val) + R"rawliteral("};</script></body></html>)rawliteral";
+<!DOCTYPE html><html><head><title>Modbus RS485 Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh}.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.form-group{margin-bottom:15px}label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}input[type=number],select{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;transition:border-color .3s}input[type=number]:focus,select:focus{outline:0;border-color:#007bff}.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;transition:background-color .3s}.btn-primary:hover{background-color:#0056b3}.status-bar{text-align:center;margin-top:20px;padding-top:20px;border-top:2px solid #e9ecef;font-size:14px;color:#6c757d;font-weight:500}.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:600;font-size:14px}.nav-link:hover{text-decoration:underline}</style></head><body><div class="container"><div class="header"><h2>Modbus RS485 Settings</h2><p><a href="/sensor_setup">Find sensor, change sensor settings and diagnostics</a></p></div><form onsubmit="return saveRs485()"><div class="form-group"><label for="slave_id">Slave ID</label><input type="number" id="slave_id" name="slave_id" min="1" max="247" value=")rawliteral" + String(displayedId) + R"rawliteral(" required></div><div class="form-group"><label for="baud_rate">Baud Rate</label><select id="baud_rate" name="baud_rate" required><option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="57600">57600</option><option value="115200">115200</option></select></div><button type="submit" class="btn-primary">Save and Reboot</button></form><div class="status-bar" id="status-bar">Current settings are displayed above. Saving will reboot the device.</div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function saveRs485(){const t=document.getElementById("slave_id").value,e=document.getElementById("baud_rate").value,n=document.getElementById("status-bar");n.textContent="Saving RS485 settings...";fetch(`/save_rs485?slave_id=${t}&baud_rate=${e}`).then(async r=>{const text=await r.text();if(!r.ok)throw Error(text);n.textContent=text}).catch(e=>{n.textContent="Save failed: "+e.message});return false}window.onload=function(){document.getElementById("baud_rate").value=")rawliteral" + String(displayedBaud) + R"rawliteral("};</script></body></html>)rawliteral";
     server.send(200, "text/html", html);
 }
 
 void handleSaveRs485() {
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    const bool setupBusy = sensorSetupBusy;
+    if (!setupBusy) { sensorSetupBusy = true; sensorSetupMode = 0; }
+    xSemaphoreGive(dataMutex);
+    if (setupBusy) { server.send(409, "text/plain", "Sensor setup busy"); return; }
+    struct ReleaseSetup { ~ReleaseSetup() { xSemaphoreTake(dataMutex, portMAX_DELAY); sensorSetupBusy=false; xSemaphoreGive(dataMutex); } } releaseSetup;
     long slave, baud;
     if (!parseInteger(server.arg("slave_id"), 1, 247, slave) ||
         !parseInteger(server.arg("baud_rate"), 9600, 115200, baud) ||
@@ -2733,9 +2752,9 @@ void handleTriggerWaveform() {
   bool isBusy = true;
   if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
     isBusy = isReadingWaveform || isReadingSpectrum ||
-             currentDataState != DD_IDLE || dynamicStreamActive;
+             currentDataState != DD_IDLE || dynamicStreamActive || sensorSetupBusy;
     if (!isBusy) {
-      currentDataState = DD_REQUEST_DATA;
+      if (!sensorSetupBusy) currentDataState = DD_REQUEST_DATA;
     }
     xSemaphoreGive(dataMutex);
   }

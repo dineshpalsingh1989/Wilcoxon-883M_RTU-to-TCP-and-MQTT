@@ -4,8 +4,8 @@
 #include "detail/RtuClient.h"
 #include "WilcoxonILA210Registers.h"
 
-#if !defined(ARDUINO_ARCH_ESP32)
-#error "WilcoxonILA210RTU currently supports Arduino ESP32 only."
+#if !defined(ARDUINO_ARCH_ESP32) && !defined(ARDUINO_ARCH_RP2040)
+#error "WilcoxonILA210RTU currently supports Arduino ESP32 and RP2040/RP2350."
 #endif
 
 // One calling task. UART pins/configuration remain owned by the application.
@@ -14,6 +14,9 @@ public:
     static constexpr uint16_t MaxRegisters = 64;
     static constexpr uint8_t ku8MBSuccess = 0;
     using Result = wilcoxonila210::Result;
+    struct Stats { uint32_t successes=0, timeouts=0, crcErrors=0, exceptions=0, otherErrors=0, lastSuccessAt=0; };
+    const Stats& stats() const { return stats_; }
+    void setTimeout(uint32_t ms) { timeoutMs_ = ms>=50 && ms<=2000 ? ms : 2000; }
     WilcoxonILA210RTU() : client_(transport_) {}
     bool begin(uint8_t unit, HardwareSerial& serial, uint32_t baud) {
         transport_.serial = &serial; valid_ = 0;
@@ -34,7 +37,7 @@ public:
         return code;
     }
     uint8_t writeSingleRegister(uint16_t address, uint16_t value) {
-        valid_ = 0; return status(client_.writeSingle(address, value, 2000));
+        valid_ = 0; return status(client_.writeSingle(address, value, timeoutMs_));
     }
     uint16_t getResponseBuffer(uint16_t index) const { return index < valid_ ? response_[index] : 0; }
     Result lastResult() const { return last_; }
@@ -50,23 +53,36 @@ private:
         int available() { return serial->available(); }
         int read() { return serial->read(); }
         size_t write(const uint8_t* data, size_t count) { return serial->write(data, count); }
-        void flush() { serial->flush(true); }
+        void flush() {
+#if defined(ARDUINO_ARCH_RP2040)
+            serial->flush();
+#else
+            serial->flush(true);
+#endif
+        }
         void tx(bool active) { if (active) { if (before) before(); } else if (after) after(); }
     } transport_;
     wilcoxonila210::Client<Transport> client_;
     uint16_t response_[MaxRegisters] = {};
     uint16_t valid_ = 0;
     Result last_ = Result::InvalidArgument;
+    Stats stats_;
+    uint32_t timeoutMs_ = 2000;
     uint8_t read(bool holding, uint16_t address, uint16_t count) {
         valid_ = 0;
         if (!count || count > MaxRegisters) return status(Result::InvalidArgument);
-        const Result result = holding ? client_.readHolding(address, count, response_, MaxRegisters, 2000)
-                                      : client_.readInput(address, count, response_, MaxRegisters, 2000);
+        const Result result = holding ? client_.readHolding(address, count, response_, MaxRegisters, timeoutMs_)
+                                      : client_.readInput(address, count, response_, MaxRegisters, timeoutMs_);
         if (result == Result::Ok) valid_ = count;
         return status(result);
     }
     uint8_t status(Result value) {
         last_ = value;
+        if(value==Result::Ok) {++stats_.successes;stats_.lastSuccessAt=millis();}
+        else if(value==Result::Timeout) ++stats_.timeouts;
+        else if(value==Result::Crc) ++stats_.crcErrors;
+        else if(value==Result::Exception) ++stats_.exceptions;
+        else ++stats_.otherErrors;
         switch (value) {
             case Result::Ok: return 0;
             case Result::Exception: return client_.exceptionCode();

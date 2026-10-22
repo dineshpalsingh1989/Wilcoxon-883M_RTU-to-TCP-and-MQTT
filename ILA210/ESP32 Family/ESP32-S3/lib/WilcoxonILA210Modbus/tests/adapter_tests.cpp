@@ -73,6 +73,13 @@ int main() {
  io.mode=Fake::BadCrc;metric=321;assert(node.readMetric(5,metric)==0xe3&&metric==321);
  io.mode=Fake::Normal;assert(node.readMetric(5,metric)==0&&metric > 3276.79f&&metric < 3276.81f);assert(word(io.request+2)==0x0024);
  assert(node.readMetric(0,metric)==0&&metric>327.67f&&metric<327.69f);
+ node.setTimeout(250);io.mode=Fake::NoReply;
+ const auto beforeTimeouts=node.stats().timeouts;const auto started=io.clock;
+ assert(node.readInputRegisters(0,1)==0xe2);
+ assert(io.clock-started>=250000&&io.clock-started<300000);
+ assert(node.stats().timeouts==beforeTimeouts+1&&node.stats().crcErrors>0&&node.stats().exceptions>0);
+ assert(node.stats().successes>0);
+ node.setTimeout(2000);io.mode=Fake::Normal;
  const uint16_t expected[]={0x0000,0x0004,0x0010,0x0014,0x0020,0x0024,0x0030,0x0034,0x0040,0x0044,0x0048,0x0050,0x0060,0x007c};
  for(unsigned i=0;i<wilcoxonila210::MetricCount;i++)assert(wilcoxonila210::MetricRegisters[i].inputAddress==expected[i]);
  // Manual pp.18-19: every published static metric is unsigned.
