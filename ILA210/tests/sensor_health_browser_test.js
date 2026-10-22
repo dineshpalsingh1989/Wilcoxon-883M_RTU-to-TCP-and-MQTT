@@ -5,7 +5,7 @@ catch { playwright = require('../../.tools/node_modules/playwright'); }
 const {chromium} = playwright;
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http');
 const assert = require('node:assert/strict');
-const html = fs.readFileSync(path.join(__dirname, '../src/web/sensor_health_page.h'), 'utf8')
+const html = fs.readFileSync(path.join(__dirname, '../IRIV IOC/src/web/sensor_health_page.h'), 'utf8')
   .match(/R"html\(([\s\S]*?)\)html"/)[1];
 let state = {timeout_ms:10000, fault_alarm:true, output_mode:0,
   sensor_fault:true, sample_seen:false, gateway_id:'simulated-board-001'};

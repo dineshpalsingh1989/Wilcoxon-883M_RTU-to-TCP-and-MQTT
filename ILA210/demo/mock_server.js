@@ -3,8 +3,8 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const {simulatorControls} = require('./simulator_controls');
-const embedded = fs.readFileSync(path.join(__dirname, '../src/ioc/pages.h'), 'utf8').match(/R"ioc\(([\s\S]*?)\)ioc"/)[1];
-const healthPage = fs.readFileSync(path.join(__dirname, '../src/web/sensor_health_page.h'), 'utf8').match(/R"html\(([\s\S]*?)\)html"/)[1];
+const embedded = fs.readFileSync(path.join(__dirname, '../IRIV IOC/src/ioc/pages.h'), 'utf8').match(/R"ioc\(([\s\S]*?)\)ioc"/)[1];
+const healthPage = fs.readFileSync(path.join(__dirname, '../IRIV IOC/src/web/sensor_health_page.h'), 'utf8').match(/R"html\(([\s\S]*?)\)html"/)[1];
 const clone = value => JSON.parse(JSON.stringify(value));
 function defaults() {
   return {

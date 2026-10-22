@@ -10,18 +10,16 @@ The gateway reads sensor metrics, waveforms and spectra over Modbus RTU, serves 
 
 ## Project folders
 
-Board-specific PlatformIO profiles are organized under `ESP32 Family/` and `IRIV IOC/`. Shared firmware stays in `src/`. Open the sensor project root in PlatformIO; its `platformio.ini` loads the board profiles automatically. Existing environment names and build/upload commands are unchanged.
+Each supported board now owns a complete standalone project: `src/main.cpp`, its other firmware modules and HTML, `lib/`, `include/`, `scripts/`, `platformio.ini` and `profile.ini`. Open that board folder in PlatformIO, or use the sensor-root selector to keep existing CI commands.
 
-```text
-Wilcoxon ILA210/
-  ESP32 Family/
-    ESP32-S3/              esp32s3
-  IRIV IOC/                cytron_iriv_io_controller
-  src/                     Shared firmware
-  platformio.ini           Project entry point
-```
+- `ESP32 Family/ESP32-S3/`
+- `IRIV IOC/`
 
-Original ESP32 / Cytron Maker ESP32 is not supported by ILA210.
+Original ESP32 / Cytron Maker ESP32 remains unsupported by ILA210.
+
+See the [board project guide](../docs/board-projects.md) for the complete layout and standalone/root build commands.
+
+Board projects are independent copies. Make future fixes in every applicable board; there is no hidden shared firmware implementation. External libraries are declared in each board configuration and downloaded by PlatformIO. ILA210 dependencies are listed in each board's `platformio.ini`.
 
 ## Supported boards
 
@@ -40,7 +38,7 @@ On IRIV, open **Settings > IOC I/O & Alarms** for separate live-status, digital 
 
 ## Build
 
-The firmware source is now [src/main.cpp](src/main.cpp), replacing the imported `ILA_Firmware.in`. [platformio.ini](platformio.ini) pins the dependencies and uses an ESP32-S3 DevKitC-1 N8 build target. This is a compile target, not confirmation of your physical board. The ESP32-S3 3 MB application partition has no OTA slot. The IRIV target reserves 1 MB for firmware and 1 MB for its LittleFS settings store. No OTA installer is implemented.
+The firmware source is now [src/main.cpp](IRIV%20IOC/src/main.cpp), replacing the imported `ILA_Firmware.in`. [platformio.ini](platformio.ini) pins the dependencies and uses an ESP32-S3 DevKitC-1 N8 build target. This is a compile target, not confirmation of your physical board. The ESP32-S3 3 MB application partition has no OTA slot. The IRIV target reserves 1 MB for firmware and 1 MB for its LittleFS settings store. No OTA installer is implemented.
 
 ```powershell
 pio run -d ILA210 -e esp32s3

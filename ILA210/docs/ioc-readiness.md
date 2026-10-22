@@ -15,11 +15,11 @@ Updated on 2026-10-22 after the four review findings were addressed in source. T
 
 Relevant source:
 
-- [RTU scheduling, health and command-target helpers](../src/core/sensor_policy.h)
-- [Firmware integration and settings handlers](../src/main.cpp)
-- [Transactional preferences](../src/platform/fs_preferences.h) and [storage implementation](../src/platform/fs_preferences.cpp)
-- [Sensor communication page](../src/web/sensor_health_page.h)
-- [IOC alarm integration](../src/ioc/ioc.cpp)
+- [RTU scheduling, health and command-target helpers](../IRIV%20IOC/src/core/sensor_policy.h)
+- [Firmware integration and settings handlers](../IRIV%20IOC/src/main.cpp)
+- [Transactional preferences](../IRIV%20IOC/src/platform/fs_preferences.h) and [storage implementation](../IRIV%20IOC/src/platform/fs_preferences.cpp)
+- [Sensor communication page](../IRIV%20IOC/src/web/sensor_health_page.h)
+- [IOC alarm integration](../IRIV%20IOC/src/ioc/ioc.cpp)
 
 The separate page is available at `/sensor_fault_settings`; it reads and saves `/api/sensor_health`. The dashboard and existing IOC pages remain separate.
 
@@ -51,7 +51,7 @@ Browser command from the parent workspace:
 node ILA210/tests/sensor_health_browser_test.js
 ```
 
-Native persistence tests compile the actual `fs_preferences.cpp` with ArduinoJson 6.21.5 and the narrow test backends under `tests/preferences_stubs/`. Compiler options are `-fno-exceptions -fno-rtti -std=c++11 -Wall -Wextra -Werror`, with include paths to those stubs, `src/` and the installed ArduinoJson `src/`. Compile [preferences_test.cpp](../tests/preferences_test.cpp) for the NVS branch; compile [preferences_fs_test.cpp](../tests/preferences_fs_test.cpp) with `-DARDUINO_ARCH_RP2040` for LittleFS. These tests use the C++ runtime and do not use `-nostdlib++`.
+Native persistence tests compile the actual `fs_preferences.cpp` with ArduinoJson 6.21.5 and the narrow test backends under `tests/preferences_stubs/`. Compiler options are `-fno-exceptions -fno-rtti -std=c++11 -Wall -Wextra -Werror`, with include paths to those stubs, `IRIV IOC/src/` and the installed ArduinoJson `src/`. Compile [preferences_test.cpp](../tests/preferences_test.cpp) for the NVS branch; compile [preferences_fs_test.cpp](../tests/preferences_fs_test.cpp) with `-DARDUINO_ARCH_RP2040` for LittleFS. These tests use the C++ runtime and do not use `-nostdlib++`.
 
 Firmware build command, with the existing workspace toolchain:
 
@@ -61,14 +61,14 @@ $env:PLATFORMIO_PACKAGES_DIR = 'C:/Users/user/.platformio/packages'
 .venv/Scripts/python.exe -m platformio run -d ILA210 -e esp32s3 -e cytron_iriv_io_controller -j 2
 ```
 
-Final build sizes:
+Recorded pre-split build sizes:
 
 | Target | Static RAM | Application flash |
 | --- | --- | --- |
 | ESP32-S3 | 124,524 / 327,680 bytes | 1,142,729 / 3,145,728 bytes |
 | IRIV RP2350 | 205,100 / 524,288 bytes | 375,612 / 1,044,480 bytes |
 
-Final IOC artifact: `.pio/build/cytron_iriv_io_controller/firmware.uf2`. SHA-256: `d9e7797bf331ff8fe182adcad973d971ce46fe797185565886b2064875568f3e`. This is a built artifact only; no physical upload was performed. Static sizes do not measure runtime heap or task-stack headroom.
+Recorded pre-split IOC artifact: `.pio/build/cytron_iriv_io_controller/firmware.uf2`. SHA-256: `d9e7797bf331ff8fe182adcad973d971ce46fe797185565886b2064875568f3e`. This is a built artifact only; no physical upload was performed. Static sizes do not measure runtime heap or task-stack headroom.
 
 Browser checks: `browser_test.js`, `ioc_browser_test.js`, `sensor_health_browser_test.js` and `demo_browser_test.js` under `tests/` passed. Relative documentation links and `git diff --check` passed.
 

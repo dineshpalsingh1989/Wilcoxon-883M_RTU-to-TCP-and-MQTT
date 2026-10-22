@@ -8,14 +8,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const root = path.resolve(__dirname, '..');
-const source = fs.readFileSync(path.join(root, 'src/main.cpp'), 'utf8');
+const source = fs.readFileSync(path.join(root, 'IRIV IOC/src/main.cpp'), 'utf8');
 function htmlFor(handler) {
   const start = source.indexOf(`void ${handler}() {`);
   const end = source.indexOf('\nvoid ', start + 6);
   return [...source.slice(start, end < 0 ? undefined : end).matchAll(/R"rawliteral\(([\s\S]*?)\)rawliteral"/g)]
     .map(match => match[1]).join('');
 }
-const charts = fs.readFileSync(path.join(root, 'src/local_charts.h'), 'utf8').match(/R"js\(([\s\S]*?)\)js"/)[1];
+const charts = fs.readFileSync(path.join(root, 'IRIV IOC/src/local_charts.h'), 'utf8').match(/R"js\(([\s\S]*?)\)js"/)[1];
 const keys = ['accelRms1','accelPeak1','accelRms2','accelPeak2','veloRms','veloPeak','displRms','displPeak','truePeak','crestFactor','stdDeviation','temperature','driveVoltage','boardTemperature'];
 let offline = false, failWaveform = false, validMetrics = true, busyUntil = 0, captureCount = 0;
 const server = http.createServer((req, res) => {

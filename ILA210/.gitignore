@@ -42,3 +42,7 @@ local_mqtt_ca.h
 
 # debug information files
 *.dwo
+
+# Board-owned build caches and generated trust material
+**/.pio/
+**/include/generated/

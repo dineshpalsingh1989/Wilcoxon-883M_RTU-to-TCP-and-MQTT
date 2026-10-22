@@ -1,4 +1,4 @@
-#include "../src/ioc/logic.h"
+#include "../IRIV IOC/src/ioc/logic.h"
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>

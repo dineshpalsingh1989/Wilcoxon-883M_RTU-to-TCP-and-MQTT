@@ -4,6 +4,8 @@ Use `ioc_readiness_review` to determine whether the ILA firmware is ready for an
 
 ## Scope and working rules
 
+Firmware is now board-owned. Use `ILA210/IRIV IOC/` as the IOC firmware project (or `IRIV IOC/` from the ILA root). Its `src/`, `lib/`, `scripts/`, `platformio.ini` and `profile.ini` contain the implementation. Also inspect `ESP32 Family/ESP32-S3/` when a fix must apply to both boards. The sensor-root `src/` contains only a navigation note; it is not compiled. Tests and demo tools remain at the sensor root.
+
 - Review the ILA project only. The parent 883M project can supply context, but do not change its files or assume its sensor manual applies to ILA.
 - Read `platformio.ini`, `src/main.cpp`, all `src/platform/`, `src/config/` and `src/ioc/` files, relevant installed dependency code, `demo/`, `tests/`, and the wiring/review/setup documentation.
 - Trace each finding through its callers. Verify API assumptions and platform differences against the pinned, installed library/core rather than relying on generic ESP32 behavior.

@@ -5,7 +5,7 @@ catch { playwright = require('../../.tools/node_modules/playwright'); }
 const {chromium} = playwright;
 const fs = require('node:fs'), path = require('node:path'), http = require('node:http');
 const assert = require('node:assert/strict');
-const html = fs.readFileSync(path.join(__dirname,'../src/ioc/pages.h'),'utf8').match(/R"ioc\(([\s\S]*?)\)ioc"/)[1];
+const html = fs.readFileSync(path.join(__dirname,'../IRIV IOC/src/ioc/pages.h'),'utf8').match(/R"ioc\(([\s\S]*?)\)ioc"/)[1];
 let config = {
   revision:0, reference_mv:3320,
   digital:Array.from({length:11},(_,i)=>({name:`DI${i}`,action:0,active_low:false,delay_ms:500})),

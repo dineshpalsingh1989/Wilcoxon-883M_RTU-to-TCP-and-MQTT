@@ -65,7 +65,7 @@ Real sensor and flash-update behavior still needs validation on the actual board
 The release workflow builds the configured PlatformIO board. Manual runs produce
 a build artifact. Pushing a stable version tag publishes the binary in a GitHub
 Release and sets its firmware version from the tag. For local untagged builds,
-update the default version in `src/core/globals.cpp` as appropriate. GitHub Actions
+update the default version in the selected board's `src/core/globals.cpp` as appropriate. GitHub Actions
 uses its temporary built-in token.
 
 The local changes must be pushed for the workflow to exist on GitHub. Flash the

@@ -14,7 +14,7 @@ const values = {
   ipAddr: '127.0.0.1', ipAddress: '127.0.0.1', rssiVal: '-55 dBm', uptime: 'Demo session',
   FIRMWARE_VERSION: '4.8.0', localLog: 'Demo mode: no hardware connected.',
   // Read from the library so the demo shows the version the firmware is built with.
-  WILCOXON883M_LIBRARY_VERSION: fs.readFileSync(path.join(__dirname, '../experiments/Wilcoxon883MRTU-beta/src/Wilcoxon883MVersion.h'), 'utf8')
+  WILCOXON883M_LIBRARY_VERSION: fs.readFileSync(path.join(__dirname, '../ESP32 Family/ESP32-S3/lib/Wilcoxon883MRTU/src/Wilcoxon883MVersion.h'), 'utf8')
     .match(/WILCOXON883M_LIBRARY_VERSION "([^"]+)"/)[1],
 };
 function expression(text) {
@@ -29,7 +29,7 @@ function expression(text) {
   return String(values[key]);
 }
 module.exports = function renderPage(file, handler) {
-  const source = fs.readFileSync(path.join(__dirname, '../src/web', file), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '../ESP32 Family/ESP32-S3/src/web', file), 'utf8');
   const start = source.indexOf('void ' + handler + '(');
   if (start < 0) throw new Error('Unknown page handler: ' + handler);
   const rest = source.slice(start);

@@ -1,5 +1,8 @@
 # ESP32 Family
 
-ESP32-S3 uses the Adafruit Feather profile. Cytron Maker ESP32 uses the original ESP32 chip and its own profile.
+Each board folder is now a complete independent firmware project.
 
-Build from the sensor project root. Firmware modules are shared in `src/`; board profiles are kept below this folder. IRIV IOC is separate because it uses an RP2350.
+- [ESP32-S3](ESP32-S3/README.md)
+- [Cytron Maker ESP32](Cytron%20Maker%20ESP32/README.md)
+
+Open the selected board folder in PlatformIO. Its own `src/main.cpp`, web/HTML, local libraries, scripts and configuration live together there. [IRIV IOC](../IRIV%20IOC/README.md) is separate because it uses RP2350.

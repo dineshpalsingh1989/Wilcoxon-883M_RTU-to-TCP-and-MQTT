@@ -51,7 +51,7 @@ Choose your sensor first, then your board. Each sensor has its own firmware and 
 - On ILA210 IRIV, configure push-buttons, analog thresholds, beacons and sounders on separate pages. MQTT reports commanded output states; it does not confirm a physical load operated.
 - Configure ILA210 sensor-loss timeout and output behavior independently of vibration thresholds.
 
-Open **Wilcoxon.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Firmware lives in `src/` and `ILA210/src/` respectively.
+Open **Wilcoxon.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Open a board folder to find its own `src/main.cpp`, web/HTML code, libraries and build scripts.
 
 ---
 
@@ -59,19 +59,15 @@ The setup and integration sections below describe the **883M firmware**. For ILA
 
 ## Project folders
 
-Board-specific PlatformIO profiles are organized under `ESP32 Family/` and `IRIV IOC/`. Shared firmware stays in `src/`. Open the sensor project root in PlatformIO; its `platformio.ini` loads the board profiles automatically. Existing environment names and build/upload commands are unchanged.
+Each supported board now owns a complete standalone project: `src/main.cpp`, its other firmware modules and HTML, `lib/`, `include/`, `scripts/`, `platformio.ini` and `profile.ini`. Open that board folder in PlatformIO, or use the sensor-root selector to keep existing CI commands.
 
-```text
-Wilcoxon 883M/
-  ESP32 Family/
-    ESP32-S3/              adafruit_feather_esp32s3
-    Cytron Maker ESP32/    cytron_maker_esp32
-  IRIV IOC/                cytron_iriv_io_controller
-  src/                     Shared firmware
-  platformio.ini           Project entry point
-```
+- `ESP32 Family/ESP32-S3/`
+- `ESP32 Family/Cytron Maker ESP32/`
+- `IRIV IOC/`
 
-The Wilcoxon workspace shows ILA210 separately, with its own board profiles and shared firmware.
+See the [board project guide](docs/board-projects.md) for the complete layout and standalone/root build commands.
+
+Board projects are independent copies. Make future fixes in every applicable board; there is no hidden shared firmware implementation. External libraries are declared in each board configuration and downloaded by PlatformIO. The 883M Modbus library is included locally under each board's `lib/` folder.
 
 ## Install on your ESP32 in 4 steps
 
@@ -136,7 +132,7 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 3. **Wire the sensor** to the IRIV's RS485 **A, B, G** terminals, see [the wiring guide](docs/wiring.md#cytron-iriv-io-controller).
 4. **Update:** upload `firmware-cytron_iriv_io_controller.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)**, or copy a new `.uf2`. Both keep settings. **Settings > GitHub Firmware Updates** cannot install directly on this board yet.
 
-> **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](src/config/config.h) against your hardware and build from source.
+> **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](ESP32%20Family/ESP32-S3/src/config/config.h) against your hardware and build from source.
 
 <p align="center"><a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/"><strong>➜ Open the web installer</strong></a></p>
 
@@ -285,7 +281,7 @@ Follow the [step-by-step wiring and troubleshooting guide](docs/wiring.md) befor
 | RS485-to-TTL UART module | Interface with ESP32-compatible 3.3 V logic levels |
 | Suitable DC supply | Sensor power; check the linked sensor manual for supply and wiring requirements |
 
-**Current firmware assignments** from [src/config/config.h](src/config/config.h):
+**Current firmware assignments** from [src/config/config.h](ESP32%20Family/ESP32-S3/src/config/config.h):
 
 | Connection / function | ESP32-S3 build | Cytron Maker ESP32 build | IRIV IO Controller build |
 | --- | --- | --- | --- |
@@ -366,7 +362,7 @@ The gateway serves cached data on the configured Modbus TCP port, normally **502
 | 90 | Waveform status: 0 = busy/not ready, 2 = X ready, 3 = Y ready, 4 = Z ready | — | — |
 | 91 | Spectrum status: same values as 90 | — | — |
 
-*Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping.*
+*Displacement RMS is not currently read from the sensor. See [the register cache implementation](ESP32%20Family/ESP32-S3/src/modbus/modbus_tcp.cpp) and [register constants](ESP32%20Family/ESP32-S3/src/config/config.h) for the complete mapping.*
 
 Server behaviour: function codes 03, 04, 06 and 16, up to **8 clients**, any unit ID, up to 125 registers per read. Registers 0–99 accept writes, but the next sensor update overwrites them. Waveform and spectrum registers are read-only and are copied from a finished capture, so a PLC never reads a buffer that is still downloading. A read that spans an unmapped gap (for example 95–105) returns an illegal-address exception. Modbus TCP has no authentication; keep port 502 on a trusted network.
 
@@ -390,7 +386,7 @@ See the [update guide](demo/README.md#github-firmware-installation) for release 
 
 The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and MQTT chunk publishing. This is intended to recover from a subscribed task that stops servicing the watchdog.
 
-The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](src/tasks/tasks.cpp).
+The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](ESP32%20Family/ESP32-S3/src/tasks/tasks.cpp).
 
 ## Operational notes
 
@@ -401,18 +397,21 @@ The web task is not explicitly subscribed, and initialization/subscription retur
 
 ## Project layout
 
+Inside each selected board folder:
+
 | Location | Contents |
 | --- | --- |
-| `src/config/`, `src/core/` | Pin/register definitions, shared state and monitoring |
-| `src/modbus/` | Sensor RTU communication and TCP register cache |
-| `experiments/Wilcoxon883MRTU-beta/` | Our Modbus RTU client and TCP server library, used by the firmware |
+| `src/main.cpp` | Firmware entry point |
+| `src/config/`, `src/core/` | Pin/register definitions, state and monitoring |
+| `src/modbus/`, `lib/Wilcoxon883MRTU/` | Board-owned sensor RTU/TCP implementation and local Modbus library |
 | `src/capture/`, `src/mqtt/` | Capture state machine, logs, publishers and commands |
-| `src/web/` | Dashboard, settings pages and HTTP routes |
+| `src/web/` | HTML, dashboard, settings pages and HTTP routes |
 | `src/ota/` | Firmware upload and GitHub release installation |
 | `src/hardware/`, `src/tasks/`, `src/utils/` | Hardware helpers, FreeRTOS tasks and utilities |
-| `demo/` | Hardware-free preview and browser checks |
-| `installer/` | Browser installer page published to GitHub Pages |
-| `scripts/` | Build configuration, web installer bundle and site helpers |
+| `scripts/`, `include/` | Board build helpers and project headers |
+| `platformio.ini`, `profile.ini` | Standalone dependencies and board settings |
+
+At the repository root, `demo/` contains simulated previews, `installer/` the public installer, and `scripts/` the compatibility/release helpers. `experiments/Wilcoxon883MRTU-beta/` remains a library development project; each board builds its local library copy.
 
 ## License
 

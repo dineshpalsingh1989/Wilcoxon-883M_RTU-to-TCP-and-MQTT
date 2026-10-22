@@ -1,4 +1,4 @@
-#include "../src/core/sensor_policy.h"
+#include "../IRIV IOC/src/core/sensor_policy.h"
 #include <assert.h>
 #include <stdio.h>
 using namespace gateway;

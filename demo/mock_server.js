@@ -1,4 +1,4 @@
-// Demo server: serves the REAL dashboard HTML from src/web/web_dashboard.cpp
+// Demo server: serves the REAL dashboard HTML from ESP32 Family/ESP32-S3/src/web/web_dashboard.cpp
 // and fakes the device API (/data etc.) with simulated vibration data.
 // Run:  node demo/mock_server.js   then open http://localhost:8080
 const http = require('http');

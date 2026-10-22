@@ -25,7 +25,7 @@ Power the ESP32 through its supported USB/power input. Use the sensor's specifie
 ## Before the first read
 
 1. Verify the sensor supply voltage and connector assignments against the manual.
-2. Verify GPIO numbers against [the firmware definitions](../src/config/config.h), rather than relying on board header position.
+2. Verify GPIO numbers against [the firmware definitions](../ESP32%20Family/ESP32-S3/src/config/config.h), rather than relying on board header position.
 3. Check the transceiver's supply and output logic levels. DE and /RE must support the shared direction-control connection.
 4. Use a twisted pair for A/B. Fit termination at the physical bus ends according to the equipment instructions and account for termination/bias resistors already fitted to modules.
 5. In Settings, match the sensor slave ID and serial settings. Start with one sensor on a short bench cable.

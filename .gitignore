@@ -61,3 +61,7 @@ scripts/agent_bridge.js
 # Python validation caches
 __pycache__/
 *.pyc
+
+# Board-owned build caches and generated trust material
+**/.pio/
+**/include/generated/
