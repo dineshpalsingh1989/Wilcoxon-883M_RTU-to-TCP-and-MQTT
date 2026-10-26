@@ -313,7 +313,7 @@ void registerRoutes(WebServer& server) {
 #endif
     });
 }
-void serviceMqtt(PubSubClient& client, const String& baseTopic) {
+void serviceMqtt(WilcoxonMqttClient& client, const String& baseTopic) {
 #if GATEWAY_ETHERNET
     static uint32_t sentSequence = UINT32_MAX, sentAt = 0;
     if (!client.connected()) return;

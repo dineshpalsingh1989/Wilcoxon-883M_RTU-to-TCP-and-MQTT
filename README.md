@@ -109,6 +109,11 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 > **Supported from v4.11.0, tested on an IRIV IO Controller.** The IRIV build runs the same gateway: dashboard, Modbus TCP, MQTT and captures.
 >
+> **New in v4.12.0 (IRIV IO Controller, 883M and ILA210 firmware), tested on an IRIV IO Controller:**
+> - **Static IP address:** choose Automatic (DHCP) or Static IP under **Settings > Network** (883M) or **Settings > Ethernet** (ILA210). Holding **USER** for 5 seconds still reaches 192.168.4.1 if the static address is wrong.
+> - **Our own MQTT library:** MQTT now uses this project's [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) instead of the third-party PubSubClient. Topics, messages and settings are unchanged. See [Built on our own libraries](#built-on-our-own-libraries).
+> - **Watchdog on:** the gateway restarts itself if it stops responding for 60 seconds.
+>
 > **MQTT over TLS (port 8883) is not supported on the IRIV.** Use plain MQTT on **port 1883**, on a trusted network or through a local broker. The gateway's MQTT page shows this, the TLS switch is disabled, and a TLS setting saved earlier is ignored. Brokers that only accept TLS (for example HiveMQ Cloud and EMQX Cloud Serverless) need an ESP32 board.
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
@@ -123,12 +128,12 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 | **USER** button | GP28 | Hold 5 s for the fixed address 192.168.4.1 |
 | **USR** LED | GP29 | Status: on when online, blinking during captures |
 | Buzzer (inside) | GP11 | Start-up beep and network-loss alarm |
-| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | **Not used yet** |
+| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Capture and acknowledge inputs, alarm relays and scaled analog inputs (beta), see [IOC I/O](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware) |
 
-> **Coming soon: use the IRIV's own I/O.** The 11 isolated digital inputs, 4 isolated digital outputs and 2 analog inputs (0–10 V or 0–20 mA) are not used by the gateway yet. Planned: read them and switch the outputs from the dashboard, MQTT and Modbus TCP, for example to drive an alarm light from a vibration alarm. This is planned and not available in the current firmware.
+> **IRIV I/O (beta).** DI0 can start a capture, DI1 acknowledges alarms, DO0–DO3 follow alarm rules (for example an alarm light) and AN0/AN1 read 4–20 mA or 0–10 V. Set them up under **Settings > IOC I/O**; see the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware). These functions are not yet validated on hardware.
 
 1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
-2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1.
+2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1. To use a fixed address instead, choose **Static IP address** under **Settings > Network** and enter the IP address, subnet mask and, optionally, gateway and DNS; the gateway restarts with that address, and holding **USER** still reaches 192.168.4.1 if the address is wrong.
 3. **Wire the sensor** to the IRIV's RS485 **A, B, G** terminals, see [the wiring guide](docs/wiring.md#cytron-iriv-io-controller).
 4. **Update:** upload `firmware-cytron_iriv_io_controller.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)**, or copy a new `.uf2`. Both keep settings. **Settings > GitHub Firmware Updates** cannot install directly on this board yet.
 
@@ -181,7 +186,7 @@ Re-installing is always safe: the ESP32's built-in loader cannot be erased, so y
 
 `<board>` is `adafruit_feather_esp32s3` or `cytron_maker_esp32` ([Supported boards](#supported-boards)). The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
 
-## Built on our own Modbus library
+## Built on our own libraries
 
 > From **v4.10.0** the gateway uses this project's own **Wilcoxon883MRTU 0.1.0-beta.4** library for both sides of the gateway. The third-party `ModbusMaster` and `modbus-esp8266` libraries are no longer used. Register addresses, MQTT messages and web pages are unchanged. The library itself is still versioned as a beta while its API may change.
 
@@ -191,8 +196,22 @@ Re-installing is always safe: the ESP32's built-in loader cannot be erased, so y
 | --- | --- | --- |
 | `Wilcoxon883MRTU` | Reads the sensor over RS485: metrics, captures, device identity | `ModbusMaster` |
 | `Wilcoxon883MTCP` | Serves the gateway's registers to PLCs/SCADA over Wi-Fi | `modbus-esp8266` |
+| `WilcoxonMqtt` (from v4.12.0, IRIV IO Controller) | MQTT client: connects to the broker, publishes metrics, waveforms and alarms, receives commands | `PubSubClient` |
 
-The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
+**WilcoxonMqtt** is a small MQTT 3.1.1 client written for this project. It has the same functions as PubSubClient, so MQTT topics, messages and settings did not change. Compared with PubSubClient it sends large waveform messages straight from memory without copying them, puts a time limit on every network read and write, and closes a broken connection cleanly instead of confusing the broker. It is used by the 883M and ILA210 firmware on the IRIV IO Controller, also underneath TLS (W5500SecureMqtt). The ESP32 boards still use PubSubClient. Its tests run the real library code against a simulated connection and against a real broker; see the [WilcoxonMqtt guide](IRIV%20IOC/lib/WilcoxonMqtt/README.md).
+
+Libraries in the IRIV IO Controller firmware:
+
+| Library | Made by | Used for |
+| --- | --- | --- |
+| Wilcoxon883MRTU / Wilcoxon883MTCP | This project | 883M sensor over RS485 and the Modbus TCP server (883M firmware) |
+| WilcoxonMqtt | This project | MQTT |
+| W5500SecureMqtt | This project | MQTT over TLS (not used while TLS is off on the IRIV) |
+| IRIVIOCHardware | This project | Separate library; not built into the gateway firmware |
+| ArduinoJson | Benoît Blanchon (MIT) | Settings files, web page data and MQTT messages |
+| Arduino-Pico core | Earle Philhower (LGPL) | Base system: RP2350 start-up, W5500 Ethernet, TCP/IP (lwIP), web server, LittleFS storage, FreeRTOS |
+
+The Modbus library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
 
 ## What you can do
 
@@ -387,6 +406,8 @@ See the [update guide](demo/README.md#github-firmware-installation) for release 
 The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and MQTT chunk publishing. This is intended to recover from a subscribed task that stops servicing the watchdog.
 
 The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](ESP32%20Family/ESP32-S3/src/tasks/tasks.cpp).
+
+On the IRIV IO Controller (from v4.12.0) a top-priority supervisor task feeds the RP2350 hardware watchdog while the background task keeps checking in; if it stops for 60 seconds the gateway restarts.
 
 ## Operational notes
 

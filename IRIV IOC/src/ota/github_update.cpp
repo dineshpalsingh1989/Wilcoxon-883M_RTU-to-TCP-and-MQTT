@@ -169,7 +169,7 @@ void handleGithubInstall() {
                  (patch > currentPatch || (patch == currentPatch && currentIsBeta)))));
     if (!newer) { server.send(400, "text/plain", "Release must be newer than installed firmware"); return; }
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) != pdTRUE) { server.send(503, "text/plain", "Device busy"); return; }
-    bool busy = firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
+    bool busy = firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture;
     if (!busy) { firmwareUpdateActive = true; requestedTag = tag; }
     xSemaphoreGive(dataMutex);
     if (busy) { server.send(409, "text/plain", "Wait for capture or update to finish"); return; }

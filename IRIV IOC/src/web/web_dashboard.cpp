@@ -18,7 +18,7 @@ void handleRoot() {
     sendPageText(sensor_model);
     server.sendContent_P(R"rawliteral(</title>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
     <style>
         :root { --primary-color: #007bff; --light-gray: #f8f9fa; --medium-gray: #e9ecef; --dark-gray: #495057; --text-color: #212529; --success-green: #28a745; --inactive-gray: #adb5bd; }
         body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8; color: var(--text-color);}
@@ -101,6 +101,8 @@ void handleRoot() {
         .eyebrow{font-size:11px;font-weight:700;letter-spacing:1.7px;text-transform:uppercase;color:#64808f;margin-bottom:5px}
         h1{font-size:28px;letter-spacing:-1px;line-height:1.2;margin:0 0 6px}.overview-heading p{margin:0;color:#667e8c}
         .connection{display:inline-flex;align-items:center;gap:8px;background:#e6eef2;color:#506774;padding:7px 12px;border-radius:30px;font-size:12px;font-weight:600;white-space:nowrap}
+        .io-strip{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:-10px 0 22px;padding:10px 14px;border:1px solid var(--medium-gray);border-radius:12px;background:white;color:inherit;text-decoration:none;font-size:13px}.io-strip[hidden]{display:none}.io-strip #io-relays{display:flex;flex-wrap:wrap;gap:8px 18px}.io-strip .on{color:#a34536;font-weight:700}.io-strip .io-link{margin-left:auto;color:#147d78;font-weight:600}
+        .sensor-paused{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#fce9e4;color:#7a2a1e;border:1px solid #f3c7bd}.sensor-paused[hidden]{display:none}.sensor-paused button{min-height:44px}
         .connection:before{content:'';height:7px;width:7px;border-radius:50%;background:currentColor}.connection.live{color:#11745f;background:#e1f2eb}.connection.offline{color:#a34536;background:#fce9e4}
         .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:26px}
         .summary-card{background:white;border:1px solid var(--medium-gray);border-radius:12px;padding:20px;border-top:3px solid #299b93}
@@ -173,12 +175,14 @@ void handleRoot() {
             <div><div class="eyebrow">Condition monitoring / Live overview</div><h1>Vibration dashboard</h1><p>Monitor vibration across three axes and manage sensor captures.</p></div>
             <div id="connection-state" class="connection" role="status">Connecting</div>
         </div>
+        <div id="sensor-paused" class="sensor-paused" role="alert" hidden><div><strong>Sensor not responding.</strong> The gateway tried 3 times and stopped polling. Check the RS485 wiring, termination and sensor power, then reconnect.</div><button id="sensor-reconnect" onclick="reconnectSensor()">Reconnect sensor</button></div>
         <div class="summary-grid">
             <div class="summary-card"><div class="summary-label">X-axis velocity <span>X</span></div><div class="summary-value"><span id="summary-x">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
             <div class="summary-card"><div class="summary-label">Y-axis velocity <span>Y</span></div><div class="summary-value"><span id="summary-y">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
             <div class="summary-card"><div class="summary-label">Z-axis velocity <span>Z</span></div><div class="summary-value"><span id="summary-z">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
             <div class="summary-card"><div class="summary-label">Sensor temperature <span>TEMP</span></div><div class="summary-value"><span id="summary-temp">--</span> <small>&deg;C</small></div><div class="summary-note">Internal sensor reading</div></div>
         </div>
+        <a id="io-strip" class="io-strip" href="/io" hidden aria-label="IOC I/O status, open the I/O page"><span id="io-relays">Relays: --</span><span id="io-an0"></span><span id="io-an1"></span><span class="io-link">IOC I/O &rarr;</span></a>
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'Metrics')">Overall Metrics</button>
             <button class="tab-button" onclick="openTab(event, 'Transmission')">Control & Transmission</button>
@@ -387,7 +391,7 @@ void handleRoot() {
 
         function setIntervals() { 
             const val = document.getElementById('data_interval').value;
-            fetch(`/set_intervals?interval=${val}`).then(() => showToast('Auto-Capture Interval Updated!')); 
+            fetch(`/set_intervals?interval=${val}`).then(r => r.ok ? showToast('Auto-Capture Interval Updated!') : r.text().then(t => showToast('Not saved: ' + t))).catch(() => showToast('Not saved: gateway unavailable')); 
         }
 
         function trigger(axis, isCycle = false) {
@@ -426,6 +430,15 @@ void handleRoot() {
             }
         }
         
+        function reconnectSensor() {
+            const button = document.getElementById('sensor-reconnect');
+            button.disabled = true;
+            fetch('/sensor_reconnect', {method: 'POST'})
+                .then(r => r.text().then(t => { if (!r.ok) throw new Error(t); showToast('Reconnecting to sensor...'); document.getElementById('sensor-paused').hidden = true; }))
+                .catch(error => showToast('Reconnect failed: ' + error.message))
+                .finally(() => { button.disabled = false; });
+        }
+
         function updateDashboardData() {
             if (updateDashboardData.pending) return;
             updateDashboardData.pending = true;
@@ -443,8 +456,30 @@ void handleRoot() {
                 document.getElementById('summary-temp').textContent = Number.isFinite(data.temperature) ? data.temperature.toFixed(1) : '--';
                 const statusText = data.status || "Monitoring";
                 const isCapturing = typeof data.capture_busy === 'boolean' ? data.capture_busy : /collecting|waiting|requesting|downloading|calculating/i.test(statusText);
-                document.getElementById('collectSingleBtn').disabled = isCapturing;
-                document.getElementById('collectAllBtn').disabled = isCapturing;
+                const ioStrip = document.getElementById('io-strip');
+                ioStrip.hidden = !data.io;
+                if (data.io) {
+                    const labels = {alarm: 'alarm', sensor_fault: 'sensor fault', '883m': '883M value', an0: 'AN0', an1: 'AN1'};
+                    const relays = document.getElementById('io-relays');
+                    relays.textContent = '';
+                    data.io.output_rules.forEach((rule, i) => {
+                        if (rule.source === 'off') return;
+                        const item = document.createElement('span');
+                        item.textContent = 'DO' + i + ' (' + (labels[rule.source] || rule.source) + '): ' + (data.io.outputs[i] ? 'ON' : 'off');
+                        if (data.io.outputs[i]) item.className = 'on';
+                        relays.appendChild(item);
+                    });
+                    if (!relays.childNodes.length) relays.textContent = 'No relay outputs configured';
+                    data.io.analog.forEach((a, i) => {
+                        document.getElementById('io-an' + i).textContent = a.mode === 'off' ? '' :
+                            a.name + ': ' + (a.fault ? 'fault' : Number(a.value).toFixed(1) + (a.unit ? ' ' + a.unit : ''));
+                    });
+                }
+                const paused = data.sensor_paused === true;
+                document.getElementById('sensor-paused').hidden = !paused;
+                if (paused) { connection.textContent = 'Sensor paused'; connection.className = 'connection offline'; }
+                document.getElementById('collectSingleBtn').disabled = isCapturing || paused;
+                document.getElementById('collectAllBtn').disabled = isCapturing || paused;
                 
                 document.getElementById('status').textContent = 'Status: ' + statusText;
                 
@@ -551,7 +586,7 @@ void handleRoot() {
             .finally(() => { updateDashboardData.pending = false; });
         }
 
-        window.onload = function() {
+        document.addEventListener('DOMContentLoaded', function() {
             if (typeof lucide !== 'undefined') lucide.createIcons();
             
             // Get initial interval settings
@@ -567,7 +602,7 @@ void handleRoot() {
             updateClock();
             setInterval(updateClock, 1000);
             updateDashboardData();
-        };
+        });
     </script>
 <script src="/monitoring_ui.js"></script>
 </body>
@@ -576,7 +611,7 @@ void handleRoot() {
 }
 
 void handleMetrics() {
-    DynamicJsonDocument doc(4096); 
+    DynamicJsonDocument doc(6144); // metrics plus the IRIV I/O block
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
         
         // --- 1. Populate All Metrics (Full Table Support) ---
@@ -627,8 +662,9 @@ void handleMetrics() {
         
         doc["temperature"] = temperature;
         doc["status"] = systemStatus;
-        doc["capture_busy"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
+        doc["capture_busy"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture;
         doc["cycle_active"] = isAutoCaptureCycleActive;
+        doc["sensor_paused"] = sensorPaused;
         doc["traffic_light"] = trafficLightStatus; 
         
         // --- 2. Add Configuration Details for the Transmission Tab ---
@@ -650,6 +686,10 @@ void handleMetrics() {
         doc["status"] = "System Busy";
     }
     
+#if GATEWAY_ETHERNET
+    io::Snapshot ioState;
+    if (io::snapshot(ioState) && ioState.ready) io::writeJson(doc.createNestedObject("io"), ioState);
+#endif
     // Check MQTT connection outside Mutex to avoid deadlocks
     doc["mqtt_connected"] = (mqttClient && mqttClient->connected());
     
@@ -661,6 +701,14 @@ void handleMetrics() {
 // NOTE: handleFullWaveform/Spectrum are unused without graphs but kept for API compat
 void handleFullWaveform() { server.send(200, "application/json", "[]"); }
 void handleFullSpectrum() { server.send(200, "application/json", "{}"); }
+
+void handleSensorReconnect() {
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) != pdTRUE) { server.send(503, "text/plain", "Device busy"); return; }
+    requestSensorReconnect();
+    xSemaphoreGive(dataMutex);
+    logMessage("[Sensor] Reconnect requested from the dashboard");
+    server.send(200, "text/plain", "Reconnecting to sensor");
+}
 
 void handleTriggerCapture() {
     String axis_str = server.arg("axis");
@@ -676,9 +724,13 @@ void handleTriggerCapture() {
         server.send(400, "text/plain", "Invalid or missing axis parameter.");
         return;
     }
+    if (sensorPaused) {
+        server.send(409, "text/plain", "Sensor not responding; press Reconnect sensor on the dashboard first.");
+        return;
+    }
 
     if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-        isBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
+        isBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum || isPublishingCapture;
         if (!isBusy) {
             requestedAxis = selectedAxis;
             requestedCapture = CAPTURE_BOTH; // Still captures buffer for MQTT/Modbus

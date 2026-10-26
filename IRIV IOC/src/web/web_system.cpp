@@ -91,7 +91,7 @@ window.onload = function() {
 function saveZone() {
     let off = document.getElementById('offset').value;
     if(off === 'custom') off = document.getElementById('custom_offset').value;
-    fetch('/save_time?offset=' + off).then(() => { alert('Timezone Saved. Rebooting...'); });
+    fetch('/save_time?offset=' + encodeURIComponent(off)).then(r => r.text().then(t => alert(r.ok ? 'Timezone Saved. Rebooting...' : 'Not saved: ' + t))).catch(() => alert('Not saved: gateway unavailable'));
     return false;
 }
 
@@ -107,7 +107,18 @@ function setManualTime() {
 }
 
 void handleSaveTimeSettings() {
-    long offset = server.arg("offset").toInt();
+#if GATEWAY_ETHERNET
+    // Web pages are served during captures and MQTT sends on the IRIV; a reboot then would cut them off.
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+#endif
+    const String text = server.arg("offset");
+    long offset = text.toInt();
+    // UTC-12 to UTC+14; a blank or non-numeric value must not silently become UTC.
+    if (!text.length() || (offset == 0 && text != "0") || offset < -43200 || offset > 50400) {
+        server.send(400, "text/plain", "Enter a UTC offset in seconds between -43200 and 50400."); return;
+    }
     preferences.begin("device-cfg", false);
     preferences.putLong("tz_offset", offset);
     preferences.end();
@@ -194,7 +205,7 @@ void handleDeviceInfo() {
     server.send(200, "text/html", "");
     server.sendContent_P(R"rawliteral(
 <!DOCTYPE html><html><head><title>Device Diagnostics</title><meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://unpkg.com/lucide@latest"></script>
+<script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;padding:20px 0;}
 .container{width:100%;max-width:800px;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1);text-align:center;padding:30px}
@@ -446,7 +457,11 @@ function performOTA() {
             progressBar.style.backgroundColor = '#2ecc71';
             setTimeout(function() { window.location.href = '/'; }, 10000);
         } else {
-            status.innerHTML = '<span class="status-error">Update Failed! Server Error.</span>';
+            // Show the gateway's reason (busy, not enough space, write failed...) instead of a generic error.
+            var reason = document.createElement('span');
+            reason.className = 'status-error';
+            reason.textContent = 'Update Failed! ' + (xhr.responseText || ('Server error ' + xhr.status));
+            status.innerHTML = ''; status.appendChild(reason);
             btn.disabled = false;
             btn.textContent = "Retry Upload";
         }

@@ -10,3 +10,9 @@ void pollModbusTCPServer();
 void setModbusTCPRegister(uint16_t address, uint16_t value);
 void updateModbusTCPCache();
 void syncModbusRegisters();
+#if GATEWAY_ETHERNET
+// Copies the IRIV I/O state into holding registers 70-79.
+void syncIoModbusRegisters();
+#endif
+// Server state and counters from the Wilcoxon883MTCP library, for the Libraries page.
+void addModbusTcpLibraryStatus(JsonObject out);

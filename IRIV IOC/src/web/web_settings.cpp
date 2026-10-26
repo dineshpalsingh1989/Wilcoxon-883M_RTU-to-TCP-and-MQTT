@@ -1,4 +1,8 @@
 #include "core/modules.h"
+#if GATEWAY_ETHERNET
+#include <LittleFS.h>
+#include "web/network_page.h"
+#endif
 
 // --- SAFE CHUNKED SETTINGS PAGE ---
 void handleSettings() {
@@ -10,7 +14,7 @@ void handleSettings() {
     // We break this up so it doesn't use much RAM
     server.sendContent(R"rawliteral(
 <!DOCTYPE html><html><head><title>Device Settings</title><meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://unpkg.com/lucide@latest"></script>
+<script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
 <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;box-sizing:border-box}.container{width:100%;max-width:500px;background-color:white;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden}.header{text-align:center;padding:20px;border-bottom:1px solid #e9ecef}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.settings-list{list-style:none;padding:0;margin:0}.settings-item{display:flex;align-items:center;padding:15px 20px;border-bottom:1px solid #e9ecef;text-decoration:none;color:inherit;transition:background-color .2s}.settings-item:hover{background-color:#f8f9fa}.settings-item:last-child{border-bottom:none}.icon{width:24px;height:24px;margin-right:20px;color:#007bff}.content{flex-grow:1;text-align:left}.content h3{margin:0;font-size:16px;font-weight:500;color:#343a40}.content p{margin:2px 0 0;font-size:14px;color:#6c757d;display:flex;align-items:center}.chevron{width:20px;height:20px;color:#ced4da}.status-dot{height:9px;width:9px;border-radius:50%;display:inline-block;margin-right:6px}.status-dot.connected{background-color:#2ecc71}.status-dot.disconnected{background-color:#e74c3c}.actions{padding:20px;background-color:#f8f9fa;border-top:1px solid #e9ecef}.btn{display:block;width:100%;padding:12px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;text-align:center;text-decoration:none;box-sizing:border-box;transition:background-color .2s,color .2s}.btn-danger{background-color:#e74c3c;color:white;margin-bottom:10px}.btn-danger:hover{background-color:#c0392b}.btn-secondary{background-color:transparent;color:#007bff}.btn-secondary:hover{background-color:#e9ecef}
 /* Shared palette and accessible controls, embedded for offline device use. */
 :root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
@@ -57,6 +61,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 <a href="/time_settings" class="settings-item"><div class="icon"><i data-lucide="clock"></i></div><div class="content"><h3>Time & Date</h3><p>Timezone & Manual Set</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
 <a href="/device_info" class="settings-item"><div class="icon" style="color:#6c757d"><i data-lucide="info"></i></div><div class="content"><h3>Device Info</h3><p>View model, serial, and firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
 <a href="/github_updates" class="settings-item"><div class="icon"><i data-lucide="download-cloud"></i></div><div class="content"><h3>GitHub Firmware Updates</h3><p>Check releases and download gateway firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/io" class="settings-item"><div class="icon"><i data-lucide="toggle-right"></i></div><div class="content"><h3>IOC I/O</h3><p>Relay outputs, digital inputs, 4-20 mA / 0-10 V inputs</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/libraries" class="settings-item"><div class="icon"><i data-lucide="flask-conical"></i></div><div class="content"><h3>Our Libraries</h3><p>Test the sensor, PLC, MQTT and storage libraries and see their errors</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
 </div><div class="actions"><button class="btn btn-danger" onclick="rebootDevice()">Reboot Device</button><a href="/" class="btn btn-secondary">Back to Dashboard</a></div></div>
 <script>
     if (typeof lucide !== 'undefined') { lucide.createIcons(); }
@@ -106,21 +112,84 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 }
 
 #if GATEWAY_ETHERNET
-// Wired gateways get their address from DHCP, so this page shows status instead of a Wi-Fi form.
-void handleNetworkSettings() {
-    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server.send(200, "text/html", "");
-    server.sendContent_P(R"rawliteral(<!DOCTYPE html><html lang="en"><head><title>Network</title><meta name="viewport" content="width=device-width, initial-scale=1">
-<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f2f5f7;color:#192f3d;line-height:1.5;display:flex;justify-content:center;padding:20px}.container{width:100%;max-width:500px;background:white;border:1px solid #dfe8ed;border-radius:16px;overflow:hidden}.header{background:linear-gradient(115deg,#102c3b,#194655);color:#f8fafc;text-align:center;padding:20px}.header h2{margin:0}table{width:100%;border-collapse:collapse}td{padding:12px 20px;border-bottom:1px solid #e9ecef}td:first-child{color:#536e7d;width:40%}p{padding:0 20px;color:#536e7d;font-size:14px}a{display:block;text-align:center;padding:16px;color:#147d78;font-weight:600}a:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}</style>
-</head><body><div class="container"><div class="header"><h2>Network (Ethernet)</h2></div><table>)rawliteral");
-    server.sendContent("<tr><td>Status</td><td>" + String(gw::netConnected() ? "Cable connected" : "No link: check the Ethernet cable") + "</td></tr>");
-    server.sendContent("<tr><td>Address mode</td><td>" + gw::netDescription() + "</td></tr>");
-    server.sendContent("<tr><td>IP address</td><td>" + gw::netIP().toString() + "</td></tr>");
-    server.sendContent("<tr><td>MAC address</td><td>" + gw::ethernetMac() + "</td></tr>");
-    server.sendContent_P(R"rawliteral(<tr><td>Name</td><td>)rawliteral" ETHERNET_HOSTNAME R"rawliteral(.local</td></tr></table>
-<p>The address comes from your network's DHCP server. If none answers within 10 seconds after power-up, the gateway uses )rawliteral" ETHERNET_FALLBACK_IP R"rawliteral(. Hold the USER button for 5 seconds to switch to )rawliteral" ETHERNET_FALLBACK_IP R"rawliteral( at any time, for example to connect a laptop directly. Restart to use DHCP again.</p>
-<a href="/settings">&larr; Back to Settings</a></div></body></html>)rawliteral");
-    server.sendContent("");
+// Ethernet address mode: DHCP (default) or a static address saved in /prefs/eth-cfg.json.
+void handleNetworkSettings() { server.send_P(200, "text/html; charset=utf-8", NETWORK_PAGE); }
+
+gw::EthernetAddress loadEthernetAddress() {
+    gw::EthernetAddress address;
+    preferences.begin("eth-cfg", true);
+    const bool wanted = preferences.getBool("static", false);
+    const bool parsed = gw::parseIPv4(preferences.getString("ip"), address.ip, false) &&
+                        gw::parseIPv4(preferences.getString("mask"), address.mask, false) &&
+                        gw::parseIPv4(preferences.getString("gw"), address.gateway, true) &&
+                        gw::parseIPv4(preferences.getString("dns"), address.dns, true);
+    preferences.end();
+    String error;
+    address.useStatic = wanted && parsed && gw::ethernetCheckStatic(address, error);
+    if (wanted && !address.useStatic) logMessage("Saved static IP is invalid (" + (parsed ? error : String("unreadable address")) + "); using DHCP");
+    return address;
+}
+
+void handleNetworkApi() {
+    if (server.method() == HTTP_POST) {
+        StaticJsonDocument<256> body;
+        if (server.arg("plain").length() > 256 || deserializeJson(body, server.arg("plain"))) {
+            server.send(400, "text/plain", "Invalid network settings"); return;
+        }
+        const String mode = body["mode"] | "";
+        if (mode != "dhcp" && mode != "static") { server.send(400, "text/plain", "Mode must be dhcp or static"); return; }
+        gw::EthernetAddress address;
+        address.useStatic = mode == "static";
+        if (address.useStatic) {
+            String error;
+            if (!gw::parseIPv4(body["ip"] | "", address.ip, false)) { server.send(400, "text/plain", "Enter a valid IP address"); return; }
+            if (!gw::parseIPv4(body["mask"] | "", address.mask, false)) { server.send(400, "text/plain", "Enter a valid subnet mask"); return; }
+            if (!gw::parseIPv4(body["gateway"] | "", address.gateway, true)) { server.send(400, "text/plain", "Enter a valid gateway or leave it empty"); return; }
+            if (!gw::parseIPv4(body["dns"] | "", address.dns, true)) { server.send(400, "text/plain", "Enter a valid DNS server or leave it empty"); return; }
+            if (!gw::ethernetCheckStatic(address, error)) { server.send(400, "text/plain", error); return; }
+        }
+        StaticJsonDocument<256> config;
+        config["static"] = address.useStatic;
+        config["ip"] = address.useStatic ? address.ip.toString() : String();
+        config["mask"] = address.useStatic ? address.mask.toString() : String();
+        config["gw"] = address.useStatic && address.gateway != IPAddress(0, 0, 0, 0) ? address.gateway.toString() : String();
+        config["dns"] = address.useStatic && address.dns != IPAddress(0, 0, 0, 0) ? address.dns.toString() : String();
+        // Written whole and renamed, so a power cut keeps either the old or the new address.
+        if (!gw::fsLock()) { server.send(503, "text/plain", "Settings storage busy"); return; }
+        LittleFS.mkdir("/prefs");
+        File file = LittleFS.open("/prefs/eth-cfg.tmp", "w");
+        bool ok = file && serializeJson(config, file) == measureJson(config);
+        if (file) { file.flush(); ok = ok && !file.getWriteError(); file.close(); }
+        ok = ok && LittleFS.rename("/prefs/eth-cfg.tmp", "/prefs/eth-cfg.json");
+        gw::fsUnlock();
+        if (!ok) { server.send(500, "text/plain", "Settings write failed; gateway was not restarted"); return; }
+        logMessage(address.useStatic ? "Static IP " + address.ip.toString() + " saved; restarting" : String("DHCP selected; restarting"));
+        server.send(200, "text/plain", address.useStatic ? "Static IP saved. The gateway restarts now." : "DHCP selected. The gateway restarts now.");
+        delay(1000);
+        gw::restart();
+        return;
+    }
+    StaticJsonDocument<768> doc;
+    preferences.begin("eth-cfg", true);
+    doc["mode"] = preferences.getBool("static", false) ? "static" : "dhcp";
+    doc["ip"] = preferences.getString("ip");
+    doc["mask"] = preferences.getString("mask");
+    doc["gateway"] = preferences.getString("gw");
+    doc["dns"] = preferences.getString("dns");
+    preferences.end();
+    doc["fallback_ip"] = ETHERNET_FALLBACK_IP;
+    JsonObject current = doc.createNestedObject("current");
+    current["link"] = gw::netConnected();
+    current["description"] = gw::netDescription();
+    current["ip"] = gw::netIP().toString();
+    current["mask"] = gw::ethernetMask().toString();
+    current["gateway"] = gw::ethernetGateway().toString();
+    current["dns"] = gw::ethernetDns().toString();
+    current["mac"] = gw::ethernetMac();
+    current["hostname"] = ETHERNET_HOSTNAME;
+    String json; serializeJson(doc, json);
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json", json);
 }
 #endif
 
@@ -146,7 +215,7 @@ void handleMqttSettings() {
     // 2. Header & Styles
     server.sendContent(R"rawliteral(
 <!DOCTYPE html><html><head><title>MQTT Settings</title><meta name="viewport" content="width=device-width, initial-scale=1">
-<script src="https://unpkg.com/lucide@latest"></script>
+<script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;padding:20px 0;}
 .container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1);}
@@ -156,7 +225,7 @@ label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}
 input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px}
 .btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600}
 .nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none}
-.switch{position:relative;display:inline-block;width:50px;height:28px}.switch input{opacity:0;width:0;height:0}
+.switch{position:relative;display:inline-block;width:50px;height:28px}.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;z-index:1;cursor:pointer}.switch:focus-within{outline:3px solid #42a8bd;outline-offset:3px;border-radius:28px}
 .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;transition:.4s;border-radius:28px}
 .slider:before{position:absolute;content:"";height:20px;width:20px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
 input:checked+.slider{background-color:#28a745} input:checked+.slider:before{transform:translateX(22px)}
@@ -186,63 +255,85 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 <div class="info-box">
     <strong><i data-lucide="alert-triangle"></i> Security Requirement:</strong><br>
     All MQTT commands sent to this device <u>MUST</u> include the correct <b>serial_number</b> field.<br>
-    <strong>Target Device Serial Number:</strong> <span class="serial-badge">)rawliteral" + sensor_serial + R"rawliteral(</span>
+    <strong>Target Device Serial Number:</strong> <span class="serial-badge">)rawliteral" + htmlEscape(sensor_serial) + R"rawliteral(</span>
 </div>
-<form onsubmit="return saveMqtt()">
+<form onsubmit="saveMqtt(); return false;">
 )rawliteral");
 
     // 4. Form Controls (Toggles)
     // We send these as static HTML; the Javascript at the bottom will check/uncheck them
     server.sendContent(R"rawliteral(
 <div class="form-group inline"><label for="enabled" style="margin-bottom:0;">Enable MQTT Client</label><label class="switch"><input type="checkbox" id="enabled" name="enabled"><span class="slider"></span></label></div>
-<div class="form-group inline"><label for="tls" style="margin-bottom:0;">Use TLS/SSL Security</label><label class="switch"><input type="checkbox" id="tls" name="tls"><span class="slider"></span></label></div>
+<div class="form-group inline"><label for="tls" style="margin-bottom:0;">Use TLS/SSL Security <small style="font-weight:400;color:#8a5a00">(not available on this board)</small></label><label class="switch"><input type="checkbox" id="tls" name="tls" disabled aria-describedby="tls-note"><span class="slider"></span></label></div>
 <div class="form-group inline" id="skip_validation_group"><label for="skip_val" style="margin-bottom:0;">Skip Certificate Validation</label><label class="switch"><input type="checkbox" id="skip_val" name="skip_val"><span class="slider"></span></label></div>
 <div class="form-group inline"><label for="progress" style="margin-bottom:0;">Publish Progress Updates</label><label class="switch"><input type="checkbox" id="progress" name="progress"><span class="slider"></span></label></div>
 )rawliteral");
 
     // 5. Form Inputs (Pre-filled with Variables)
     // We break this into smaller chunks to allow variable insertion
-    server.sendContent(R"rawliteral(<div class="form-group"><label for="server">Broker Address</label><input type="text" id="server" name="server" value=")rawliteral" + mqtt_server_str + R"rawliteral(" required></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="server">Broker Address</label><input type="text" id="server" name="server" value=")rawliteral" + htmlEscape(mqtt_server_str) + R"rawliteral(" required></div>)rawliteral");
     
     server.sendContent(R"rawliteral(<div class="form-group"><label for="port">Port</label><input type="number" id="port" name="port" value=")rawliteral" + String(mqtt_port_val) + R"rawliteral(" required></div>)rawliteral");
     
-    server.sendContent(R"rawliteral(<div class="form-group"><label for="user">Username</label><input type="text" id="user" name="user" value=")rawliteral" + mqtt_user_str + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="user">Username</label><input type="text" id="user" name="user" value=")rawliteral" + htmlEscape(mqtt_user_str) + R"rawliteral("></div>)rawliteral");
     
-    server.sendContent(R"rawliteral(<div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass" value=")rawliteral" + mqtt_pass_str + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass" value=")rawliteral" + htmlEscape(mqtt_pass_str) + R"rawliteral("></div>)rawliteral");
     
-    server.sendContent(R"rawliteral(<div class="form-group"><label for="topic">Base Topic</label><input type="text" id="topic" name="topic" value=")rawliteral" + mqtt_topic_str + R"rawliteral(" required></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="topic">Base Topic</label><input type="text" id="topic" name="topic" value=")rawliteral" + htmlEscape(mqtt_topic_str) + R"rawliteral(" pattern="[^#+]+" title="A topic name such as 883M. # and + are only for subscribing." required></div>)rawliteral");
 
-#if GATEWAY_ETHERNET
-    // Plain string, not a raw literal, so the demo (which renders the ESP32 page) ignores it.
-    server.sendContent("<p class=\"status-bar\" id=\"tls-note\"><strong>IRIV IO Controller:</strong> MQTT over TLS (port 8883) is not supported. "
-                       "Use port 1883 on a trusted network.</p><script>document.getElementById('tls').disabled=true;"
-                       "document.getElementById('skip_val').disabled=true;</script>");
-#endif
+    server.sendContent(R"rawliteral(
+<div class="form-group" id="ca-group"><label for="mqtt-ca">Broker CA certificate (PEM)</label>
+<textarea id="mqtt-ca" rows="6" maxlength="8192" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----" style="width:100%;box-sizing:border-box;font:13px monospace;resize:vertical;border:1px solid #adb8c0;border-radius:8px;padding:8px"></textarea>
+<p>Paste the broker's public root CA certificate to install or replace it. Leave blank to keep the stored CA. TLS verifies the broker hostname and requires correct device time.</p></div>
+<p id="skip-cert-note" hidden>TLS stays encrypted, but the broker's identity will not be checked. No CA certificate is required in this mode.</p>
+<p class="info-box" id="tls-note"><strong>MQTT over TLS (port 8883) cannot be used on the IRIV IO Controller.</strong> The broker closes TLS sessions about 2 seconds after they connect, so this board sends plain MQTT only. Use <b>port 1883</b> on a trusted network or through a local broker. Brokers that accept only TLS, such as HiveMQ Cloud, need an ESP32 board. A TLS setting saved earlier is ignored.</p>
+)rawliteral");
+
     // 6. Footer & Scripts (Dynamic JS Injection for Checkboxes)
     server.sendContent(R"rawliteral(
 <button type="submit" class="btn-primary">Save and Reboot</button></form>
+<div id="mqtt-save-result" role="status" aria-live="polite"></div>
 <div class="status-bar" id="mqtt-status">Loading status...</div>
 <a href="/settings" class="nav-link">&larr; Back to Settings</a></div>
 <script>
 if (typeof lucide !== 'undefined') { lucide.createIcons(); }
-function saveMqtt(){
-    const enabled = document.getElementById('enabled').checked;
-    const tls = document.getElementById('tls').checked;
-    const skip_val = document.getElementById('skip_val').checked;
-    const progress = document.getElementById('progress').checked;
-    const server = document.getElementById('server').value;
-    const port = document.getElementById('port').value;
-    const user = document.getElementById('user').value;
-    const pass = document.getElementById('pass').value;
-    const topic = document.getElementById('topic').value;
-    alert('Saving MQTT settings... The device will reboot.');
-    const url = `/save_mqtt?enabled=${enabled}&tls=${tls}&skip_val=${skip_val}&progress=${progress}&server=${encodeURIComponent(server)}&port=${port}&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}&topic=${encodeURIComponent(topic)}`;
-    fetch(url).then(() => { window.location.href = '/settings'; });
-    return false;
+async function saveMqtt(){
+    const status = document.getElementById('mqtt-save-result');
+    const button = document.querySelector('button[type="submit"]');
+    button.disabled = true;
+    // The gateway can be busy with a broker connection attempt for several seconds before it answers.
+    status.textContent = 'Saving... the gateway may take a few seconds to answer.';
+    const post = (url, body) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
+        return fetch(url, {method:'POST', body, signal:controller.signal}).finally(() => clearTimeout(timer));
+    };
+    try {
+        const pem = document.getElementById('mqtt-ca').value.trim();
+        if (pem && document.getElementById('tls').checked && !document.getElementById('skip_val').checked) {
+            const certResponse = await post('/mqtt_ca', new URLSearchParams({pem}));
+            if (!certResponse.ok) throw new Error(await certResponse.text());
+        }
+        const data = new URLSearchParams();
+        ['enabled','tls','progress'].forEach(id => data.set(id, document.getElementById(id).checked));
+        data.set('skip_val', document.getElementById('tls').checked && document.getElementById('skip_val').checked);
+        ['server','port','user','pass','topic'].forEach(id => data.set(id, document.getElementById(id).value));
+        const response = await post('/save_mqtt', data);
+        if (!response.ok) throw new Error(await response.text());
+        status.textContent = 'Settings saved. Gateway restarting... the status below shows when it is back.';
+        setTimeout(() => { button.disabled = false; }, 15000);
+        return;
+    } catch (error) {
+        status.textContent = 'Save failed: ' + (error.name === 'AbortError' ? 'no answer from the gateway in 30 seconds. Check the connection and try again.' : error.message);
+    }
+    button.disabled = false;
 }
 function updateTlsOptions() {
     const tlsEnabled = document.getElementById('tls').checked;
+    const skip = document.getElementById('skip_val').checked;
     document.getElementById('skip_validation_group').style.display = tlsEnabled ? 'flex' : 'none';
+    document.getElementById('ca-group').style.display = tlsEnabled && !skip ? 'block' : 'none';
+    document.getElementById('skip-cert-note').hidden = !tlsEnabled || !skip;
     const portInput = document.getElementById('port');
     if (tlsEnabled && (portInput.value == '1883' || portInput.value == '')) {
         portInput.value = '8883';
@@ -256,20 +347,21 @@ function updateRequiredFields() {
     ['server', 'port', 'topic'].forEach(id => { document.getElementById(id).required = enabled; });
 }
 function updateMqttStatus() {
-    fetch('/mqtt_status').then(r => r.json()).then(data => { document.getElementById('mqtt-status').textContent = data.status; });
+    fetch('/mqtt_status').then(r => {if (!r.ok) throw new Error('offline'); return r.json();}).then(data => { document.getElementById('mqtt-status').textContent = data.status; }).catch(() => { document.getElementById('mqtt-status').textContent = 'Gateway unavailable or restarting'; });
 }
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('enabled').checked = )rawliteral" + String(mqttEnabled ? "true" : "false") + R"rawliteral(;
     document.getElementById('tls').checked = )rawliteral" + String(mqtt_use_tls ? "true" : "false") + R"rawliteral(;
     document.getElementById('skip_val').checked = )rawliteral" + String(mqtt_skip_cert_validation ? "true" : "false") + R"rawliteral(;
     document.getElementById('progress').checked = )rawliteral" + String(mqtt_publish_progress ? "true" : "false") + R"rawliteral(;
     document.getElementById('tls').addEventListener('change', updateTlsOptions);
+    document.getElementById('skip_val').addEventListener('change', updateTlsOptions);
     document.getElementById('enabled').addEventListener('change', updateRequiredFields);
     updateTlsOptions();
     updateRequiredFields();
     updateMqttStatus();
     setInterval(updateMqttStatus, 2000);
-}
+});
 </script></body></html>
 )rawliteral");
 
@@ -278,17 +370,67 @@ window.onload = function() {
 }
 
 void handleSaveMqtt() {
+#if GATEWAY_ETHERNET
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+    const bool enabled = server.arg("enabled") == "true";
+    const bool tls = server.arg("tls") == "true";
+    if (enabled && tls) {
+        server.send(400, "text/plain", "MQTT over TLS (port 8883) is not supported on the IRIV IO Controller. Turn TLS off and use port 1883."); return;
+    }
+    if (enabled && server.arg("port") == "8883") {
+        server.send(400, "text/plain", "Port 8883 is the TLS port, which this board cannot use. Plain MQTT normally uses port 1883."); return;
+    }
+    const bool skipValidation = tls && server.arg("skip_val") == "true";
+    const String host = server.arg("server");
+    const String topic = server.arg("topic");
+    const String portText = server.arg("port");
+    const long port = portText.toInt();
+    bool validPort = port >= 1 && port <= 65535 && portText.length() <= 5;
+    for (size_t i = 0; i < portText.length(); ++i) validPort &= isDigit(portText[i]);
+    if (enabled && (!host.length() || !topic.length() || !validPort || host.indexOf('/') >= 0 || host.indexOf(' ') >= 0)) {
+        server.send(400, "text/plain", "Enter a broker hostname, valid port and base topic"); return;
+    }
+    // # and + are subscribe wildcards; a broker closes the connection when a client publishes to them.
+    if (enabled && (topic.indexOf('#') >= 0 || topic.indexOf('+') >= 0)) {
+        server.send(400, "text/plain", "Base topic cannot contain # or + (they are only for subscribing). Use a name such as 883M"); return;
+    }
+    if (enabled && tls && !skipValidation && !mqttCertificateInstalled()) {
+        server.send(400, "text/plain", "Install the broker CA certificate before enabling TLS"); return;
+    }
+    StaticJsonDocument<1024> config;
+    config["enabled"] = enabled;
+    config["tls"] = tls;
+    config["skip_val"] = skipValidation;
+    config["progress"] = server.arg("progress") == "true";
+    config["server"] = host;
+    config["port"] = validPort ? port : (tls ? 8883 : 1883);
+    config["user"] = server.arg("user");
+    config["pass"] = server.arg("pass");
+    config["topic"] = topic;
+    if (config.overflowed()) { server.send(400, "text/plain", "MQTT settings exceed storage capacity"); return; }
+    if (!gw::fsLock()) { server.send(503, "text/plain", "Settings storage busy"); return; }
+    LittleFS.mkdir("/prefs");
+    File file = LittleFS.open("/prefs/mqtt-cfg.tmp", "w");
+    bool ok = file && serializeJson(config, file) == measureJson(config);
+    if (file) { file.flush(); ok = ok && !file.getWriteError(); file.close(); }
+    ok = ok && LittleFS.rename("/prefs/mqtt-cfg.tmp", "/prefs/mqtt-cfg.json");
+    gw::fsUnlock();
+    if (!ok) { server.send(500, "text/plain", "Settings write failed; gateway was not restarted"); return; }
+#else
     preferences.begin("mqtt-cfg", false);
     preferences.putBool("enabled", (server.arg("enabled") == "true"));
     preferences.putBool("tls", (server.arg("tls") == "true"));
     preferences.putBool("skip_val", (server.arg("skip_val") == "true"));
-    preferences.putBool("progress", (server.arg("progress") == "true")); 
+    preferences.putBool("progress", (server.arg("progress") == "true"));
     preferences.putString("server", server.arg("server"));
     preferences.putInt("port", server.arg("port").toInt());
     preferences.putString("user", server.arg("user"));
     preferences.putString("pass", server.arg("pass"));
     preferences.putString("topic", server.arg("topic"));
     preferences.end();
+#endif
     server.send(200, "text/plain", "MQTT settings saved. Device will reboot.");
     delay(1000);
     gw::restart();
@@ -320,7 +462,7 @@ function saveRs485(){
     const baudRate=document.getElementById("baud_rate").value;
     const statusBar=document.getElementById("status-bar");
     statusBar.innerHTML="Saving RS485 settings... The device will reboot to apply changes.";
-    fetch(`/save_rs485?slave_id=${slaveId}&baud_rate=${baudRate}`);
+    fetch(`/save_rs485?slave_id=${slaveId}&baud_rate=${baudRate}`).then(r=>r.text().then(t=>{if(!r.ok)statusBar.textContent="Save failed: "+t;})).catch(()=>{});
     return false;
 }
 window.onload=function(){document.getElementById("baud_rate").value=")rawliteral");
@@ -330,6 +472,12 @@ window.onload=function(){document.getElementById("baud_rate").value=")rawliteral
 }
 
 void handleSaveRs485() {
+#if GATEWAY_ETHERNET
+    // Web pages are served during captures and MQTT sends on the IRIV; a reboot then would cut them off.
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+#endif
     long slaveId = server.arg("slave_id").toInt();
     long baud = server.arg("baud_rate").toInt();
     if (slaveId < 1 || slaveId > 247 || baud < 1200 || baud > 921600) {

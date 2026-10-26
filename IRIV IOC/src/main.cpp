@@ -46,18 +46,23 @@ void setup() {
     preferences.begin("mqtt-cfg", true); 
     mqttEnabled = preferences.getBool("enabled", true);
     mqtt_use_tls = preferences.getBool("tls", true);
-    mqtt_skip_cert_validation = preferences.getBool("skip_val", true);
+    mqtt_skip_cert_validation = preferences.getBool("skip_val", false);
     mqtt_publish_progress = preferences.getBool("progress", true);
     mqtt_server_str = preferences.getString("server", mqtt_server_str); 
-    mqtt_port_val = preferences.getInt("port", GATEWAY_ETHERNET ? 1883 : mqtt_port_val); // IRIV: plain MQTT
+    mqtt_port_val = preferences.getInt("port", mqtt_port_val);
     mqtt_user_str = preferences.getString("user", mqtt_user_str); 
     mqtt_pass_str = preferences.getString("pass", mqtt_pass_str); 
     mqtt_topic_str = preferences.getString("topic", mqtt_topic_str); 
     preferences.end();
 #if GATEWAY_ETHERNET
-    // The IRIV IO Controller does not support MQTT over TLS (port 8883): plain MQTT only.
-    if (mqtt_use_tls) logMessage("[MQTT] TLS is not supported on this board; using plain MQTT");
-    mqtt_use_tls = false;
+    logMessage("[Beta] Watchdog disabled; networking runs in Arduino loop");
+    // MQTT over TLS (8883) does not hold a session on the IRIV IO Controller yet (the broker closes
+    // it about 2 s after connecting), so a TLS setting saved earlier is ignored: plain MQTT is used.
+    if (mqtt_use_tls) {
+        mqtt_use_tls = false;
+        if (mqtt_port_val == 8883) mqtt_port_val = 1883;
+        logMessage("[MQTT] TLS is not supported on this board; using plain MQTT on port " + String(mqtt_port_val));
+    }
 #endif
 
     preferences.begin("rs485-cfg", true); 
@@ -72,8 +77,9 @@ void setup() {
     
     // 5. Connect the network
 #if GATEWAY_ETHERNET
-    logMessage("Starting Ethernet (DHCP)...");
-    if (gw::ethernetBegin()) logMessage("Ethernet connected. IP: " + gw::netIP().toString());
+    const gw::EthernetAddress ethAddress = loadEthernetAddress();
+    logMessage(ethAddress.useStatic ? "Starting Ethernet (static IP)..." : "Starting Ethernet (DHCP)...");
+    if (gw::ethernetBegin(ethAddress)) logMessage("Ethernet IP: " + gw::netIP().toString());
     else logMessage("No DHCP answer. Ethernet uses fixed address " ETHERNET_FALLBACK_IP);
     gw::startTimeSync(gmtOffset_sec, daylightOffset_sec, ntpServer);
     // Wired: start the servers now; they answer as soon as the cable is connected.
@@ -123,6 +129,9 @@ void setup() {
     
     // 7. Setup Web Server
     setupMonitoring();
+#if GATEWAY_ETHERNET
+    if (!io::begin()) logMessage("[I/O] Could not start the I/O sampler; relays stay off");
+#endif
     registerWebRoutes();
     
     server.begin();
@@ -130,12 +139,21 @@ void setup() {
 
     if(connected_to_wifi && mqttEnabled){
         if (mqtt_use_tls) {
+#if GATEWAY_ETHERNET
+            setupSecureMqtt();
+#else
             if (mqtt_skip_cert_validation) {
                 espClientSecure.setInsecure();
             } 
-            mqttClient = new PubSubClient(espClientSecure);
+            mqttClient = new WilcoxonMqttClient(espClientSecure);
+#endif
         } else {
-            mqttClient = new PubSubClient(espClient);
+            mqttClient = new WilcoxonMqttClient(espClient);
+#if GATEWAY_ETHERNET
+            // Connect attempts block loop(), and with it the web server; fail an unreachable broker quickly.
+            espClient.setTimeout(3000);
+            if (mqttClient) mqttClient->setSocketTimeout(5);
+#endif
         }
 
         if (mqttClient) {
@@ -143,16 +161,24 @@ void setup() {
             mqttClient->setBufferSize(4096);
             mqttClient->setCallback(mqttCallback);
         } else {
-             logMessage("FATAL: Failed to allocate MQTT client!");
+             logMessage(String("[MQTT] ") + mqttStatus);
         }
     }
     
+#if !GATEWAY_ETHERNET
     gw::startTask(webServerLoop, "WebServerTask", 12000, 1, 0);
     gw::startTask(backgroundLoop, "BackgroundTask", 16384, 1, 1);
+#else
+    gw::watchdogStart();
+#endif
 }
 
 #if GATEWAY_ETHERNET
-void loop() { vTaskDelay(portMAX_DELAY); } // all work runs in the tasks started above
+void loop() {
+    webServerStep();
+    backgroundStep();
+    delay(10);
+}
 #else
 void loop() { vTaskDelete(NULL); }
 #endif

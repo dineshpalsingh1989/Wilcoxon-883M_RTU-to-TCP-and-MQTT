@@ -1,5 +1,20 @@
 #include "core/modules.h"
 
+String htmlEscape(const String& text) {
+    String out;
+    out.reserve(text.length());
+    for (size_t i = 0; i < text.length(); ++i) {
+        const char c = text[i];
+        if (c == '&') out += "&amp;";
+        else if (c == '"') out += "&quot;";
+        else if (c == '<') out += "&lt;";
+        else if (c == '>') out += "&gt;";
+        else if (c == '\'') out += "&#39;";
+        else out += c;
+    }
+    return out;
+}
+
 String formatUptime(unsigned long ms) {
     unsigned long seconds = ms / 1000;
     int days = seconds / 86400;

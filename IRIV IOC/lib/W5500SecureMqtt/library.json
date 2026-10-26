@@ -1,0 +1,9 @@
+{
+  "name": "W5500SecureMqtt",
+  "version": "0.1.0-alpha.3",
+  "description": "Certificate-validated MQTT for Arduino-Pico lwIP Ethernet. Hardware validation pending.",
+  "license": "MIT",
+  "frameworks": ["arduino"],
+  "platforms": ["raspberrypi"],
+  "dependencies": {"WilcoxonMqtt": "0.1.0-alpha.1"}
+}

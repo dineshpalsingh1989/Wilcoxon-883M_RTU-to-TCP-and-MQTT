@@ -81,6 +81,9 @@ bool readLargeDataBlock(uint16_t startAddress, uint16_t totalPoints, int16_t* bu
     while (pointsRead < totalPoints) {
         gw::watchdogFeed();
         pollModbusTCPServer();
+#if GATEWAY_ETHERNET
+        webServerStep(); // loop() also runs the web server here, so keep pages answering during a download
+#endif
 
         uint16_t pointsLeft = totalPoints - pointsRead;
         uint16_t pointsToRead = (pointsLeft > chunkSize) ? chunkSize : pointsLeft;

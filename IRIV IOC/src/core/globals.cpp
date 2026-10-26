@@ -28,7 +28,7 @@ String sensor_vendor_url = "Unknown";
 String sensor_part_number = "Unknown";
 String sensor_fw_version = "Unknown";
 #ifndef GATEWAY_RELEASE_VERSION
-#define GATEWAY_RELEASE_VERSION "4.8.0"
+#define GATEWAY_RELEASE_VERSION "4.10.0-beta.3"
 #endif
 const char* FIRMWARE_VERSION = GATEWAY_RELEASE_VERSION;
 
@@ -40,7 +40,7 @@ int   daylightOffset_sec = 0;
 // --- MQTT Configuration ---
 bool mqttEnabled = true;
 bool mqtt_use_tls = true;
-bool mqtt_skip_cert_validation = true;
+bool mqtt_skip_cert_validation = false;
 bool mqtt_publish_progress = true;
 String mqtt_server_str = ""; 
 int mqtt_port_val = 8883;
@@ -56,7 +56,7 @@ WebServer server(80);
 Preferences preferences;
 WiFiClient espClient; 
 WiFiClientSecure espClientSecure; 
-PubSubClient* mqttClient = nullptr; 
+WilcoxonMqttClient* mqttClient = nullptr; 
 
 // --- Modbus RTU (RS485) ---
 uint8_t modbus_slave_id_val = 1;
@@ -87,6 +87,8 @@ CaptureMode requestedCapture = CAPTURE_NONE;
 bool isReadingWaveform = false;
 int waveformReadIndex = 0;
 bool isReadingSpectrum = false;
+bool isPublishingCapture = false;
+bool sensorPaused = false;
 int spectrumReadIndex = 0;
 Axis requestedAxis = AXIS_NONE;
 Axis lastCapturedAxis = AXIS_NONE;

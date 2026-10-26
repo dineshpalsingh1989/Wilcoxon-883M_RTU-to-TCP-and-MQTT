@@ -120,13 +120,13 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
                 <td><span class="addr-badge">92</span></td>
                 <td>Trigger Waveform</td>
                 <td>W</td>
-                <td>Write: 1=All(XYZ), 2=X Only, 3=Y Only, 4=Z Only</td>
+                <td>Write 1=XYZ, 2=X, 3=Y or 4=Z. Starts waveform and spectrum capture.</td>
             </tr>
             <tr>
                 <td><span class="addr-badge">93</span></td>
                 <td>Trigger Spectrum</td>
                 <td>W</td>
-                <td>Write: 1=All(XYZ), 2=X Only, 3=Y Only, 4=Z Only</td>
+                <td>Write 1=XYZ, 2=X, 3=Y or 4=Z. Starts waveform and spectrum capture.</td>
             </tr>
         </tbody>
     </table>
@@ -159,10 +159,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
         <h3>Example Usage (PLC / Node-RED)</h3>
         <p><strong>Scenario: Manual X-Axis Capture</strong></p>
         <ol>
-            <li><strong>Write:</strong> Value <code>2</code> to Address <code>92</code> (Trigger Waveform).</li>
-            <li><strong>Poll:</strong> Read Address <code>90</code>. Wait until it becomes <code>2</code> (Ready).</li>
-            <li><strong>Read:</strong> Read Address <code>1000</code> (Length 100...) to get data.</li>
+            <li><strong>Write:</strong> Value <code>2</code> to Address <code>92</code> (or <code>93</code>) to capture X. Use <code>1</code> for XYZ, <code>3</code> for Y or <code>4</code> for Z.</li>
+            <li><strong>Poll:</strong> Read Addresses <code>90</code> and <code>91</code>. They return <code>0</code> while busy and <code>2</code> (X), <code>3</code> (Y) or <code>4</code> (Z) when that axis is ready.</li>
+            <li><strong>Read:</strong> Read Address <code>1000</code> for waveform data or <code>20000</code> for spectrum data. Either trigger downloads both datasets.</li>
         </ol>
+        <p>Trigger registers clear after processing. Triggers are ignored while the gateway is busy or when a value other than 1–4 is written. Write to only one trigger register at a time.</p>
     </div>
 
     <div style="margin-top:30px; text-align:center;">
@@ -271,9 +272,20 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 }
 
 void handleSaveModbusTcp() {
-    preferences.begin("modbustcp-cfg", false); 
+#if GATEWAY_ETHERNET
+    // Web pages are served during captures and MQTT sends on the IRIV; a reboot then would cut them off.
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+#endif
+    const long requestedPort = server.arg("port").toInt();
+    if (requestedPort < 1 || requestedPort > 65535) {
+        server.send(400, "text/plain", "Port must be 1-65535; settings were not saved.");
+        return;
+    }
+    preferences.begin("modbustcp-cfg", false);
     bool enabled = (server.arg("enabled") == "true");
-    uint16_t port = server.arg("port").toInt();
+    uint16_t port = (uint16_t)requestedPort;
     preferences.putBool("enabled", enabled);
     preferences.putUShort("port", port);
     preferences.end();

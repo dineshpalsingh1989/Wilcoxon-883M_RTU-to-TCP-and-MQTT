@@ -1,8 +1,123 @@
 #include "core/modules.h"
 
+namespace {
+// A missing sensor costs a full RTU timeout per attempt. On the IRIV that also stalls the
+// web server (same loop), so failed reads are retried less often and polling stops after
+// SENSOR_READ_ATTEMPTS failures in a row until the dashboard's Reconnect button is pressed.
+unsigned long metricsRetryDelay = 0;
+uint8_t sensorFailStreak = 0;
+}
+
+void requestSensorReconnect() {
+    sensorPaused = false;
+    sensorFailStreak = 0;
+    metricsRetryDelay = 0;
+    lastMetricsReadTime = millis() - metricsReadInterval_ms;
+    snprintf(systemStatus, sizeof(systemStatus), "Reconnecting to sensor...");
+}
+
 // =================================================================
 // --- RTOS TASKS ---
 // =================================================================
+#if GATEWAY_ETHERNET
+void acknowledgeAlarms(const char* source) {
+    io::acknowledge();
+    bool retrySensor = false;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        isAlarmBeeping = false;
+        wifiDisconnectAlarmActive = false; // beeping resumes only on a new network loss
+        retrySensor = sensorPaused;
+        if (retrySensor) requestSensorReconnect();
+        xSemaphoreGive(dataMutex);
+    }
+    noTone(BUZZER_PIN);
+    logMessage(String("[I/O] Alarm acknowledged by ") + source + (retrySensor ? "; retrying the sensor" : ""));
+}
+
+namespace {
+// DI0 starts an XYZ capture, the same flow as the dashboard's Capture All button.
+void startCaptureFromInput() {
+    bool accepted = false;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        accepted = !firmwareUpdateActive && currentDataState == DD_IDLE && !isReadingWaveform &&
+                   !isReadingSpectrum && !isPublishingCapture && !sensorPaused;
+        if (accepted) {
+            requestedAxis = AXIS_X;
+            requestedCapture = CAPTURE_BOTH;
+            currentDataState = DD_REQUEST_DATA;
+            isAutoCaptureCycleActive = true;
+            autoCaptureAxisIndex = 0;
+            xyzPeakDataCache.clear();
+        }
+        xSemaphoreGive(dataMutex);
+    }
+    io::recordCapture(accepted);
+    logMessage(accepted ? "[I/O] DI0: starting XYZ capture" : "[I/O] DI0: capture ignored, gateway busy or sensor paused");
+}
+
+// Works out each relay's condition from its rule. 883M values count only while the sensor answers;
+// analog values only while the input is enabled and not faulted. Hysteresis keeps a relay steady
+// near the threshold and the delay requires the condition to hold before the relay switches.
+uint8_t evaluateOutputs(const io::Snapshot& s, bool alarm, bool fault, bool sensorFresh) {
+    static bool raw[io::OutputCount] = {};
+    static uint32_t since[io::OutputCount] = {};
+    static uint32_t revision = UINT32_MAX;
+    if (revision != s.revision) {
+        for (int i = 0; i < io::OutputCount; ++i) { raw[i] = false; since[i] = 0; }
+        revision = s.revision;
+    }
+    uint8_t conditions = 0;
+    for (int i = 0; i < io::OutputCount; ++i) {
+        const io::OutputConfig& o = s.output[i];
+        bool valid = true;
+        float value = NAN;
+        switch (o.source) {
+            case io::SourceAlarm: raw[i] = alarm; break;
+            case io::SourceFault: raw[i] = fault; break;
+            case io::SourceMetric: valid = sensorFresh; if (valid) value = io::metricValue(o.metric, o.axis); break;
+            case io::SourceAn0: case io::SourceAn1: {
+                const int a = o.source == io::SourceAn0 ? 0 : 1;
+                valid = s.analog[a].mode != io::AnalogOff && !s.analogFault[a];
+                value = s.value[a];
+                break;
+            }
+            default: raw[i] = false; break;
+        }
+        if (o.source >= io::SourceMetric) {
+            if (!valid || !std::isfinite(value)) raw[i] = false;
+            else if (o.direction == io::Below) raw[i] = raw[i] ? value < o.threshold + o.hysteresis : value <= o.threshold;
+            else raw[i] = raw[i] ? value > o.threshold - o.hysteresis : value >= o.threshold;
+        }
+        if (!raw[i]) { since[i] = 0; continue; }
+        if (since[i] == 0) since[i] = millis() | 1;
+        if (millis() - since[i] >= uint32_t(o.delaySeconds) * 1000) conditions |= 1u << i;
+    }
+    return conditions;
+}
+
+void serviceIo() {
+    io::Snapshot s;
+    if (!io::snapshot(s)) return;
+    uint8_t conditions = 0;
+    bool alarm = false, fault = false;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        alarm = monitoringAlarmActive();
+        fault = sensorPaused || monitoringCommunicationFault();
+        conditions = evaluateOutputs(s, alarm, fault, !sensorPaused && monitoringFreshReading());
+        xSemaphoreGive(dataMutex);
+    } else {
+        return; // keep the previous relay states until the next pass
+    }
+    const io::Requests requests = io::service(conditions, alarm, fault);
+    if (requests.acknowledge) acknowledgeAlarms("DI1");
+    if (requests.capture) startCaptureFromInput();
+    static uint32_t lastRegisters = 0;
+    if (millis() - lastRegisters >= 500) { lastRegisters = millis(); syncIoModbusRegisters(); }
+    publishIoStatus();
+}
+}
+#endif
+
 void webServerStep() {
     server.handleClient();
     bool updating = true;
@@ -58,6 +173,13 @@ void backgroundStep() {
             tone(BUZZER_PIN, 2000, 500);
         }
     } else {
+#if GATEWAY_ETHERNET
+        // A short press (under 2 s) acknowledges; holding 5 s still selects the fixed address.
+        if (buttonPressStartTime != 0 && !apModeTriggeredByButton) {
+            const unsigned long held = millis() - buttonPressStartTime;
+            if (held >= 50 && held < 2000) acknowledgeAlarms("USER button");
+        }
+#endif
         buttonPressStartTime = 0;
         apModeTriggeredByButton = false;
     }
@@ -94,15 +216,20 @@ void backgroundStep() {
         }
     }
 
+#if GATEWAY_ETHERNET
+    if (mqtt_use_tls) serviceSecureMqtt();
+    else
+#endif
     if (mqttEnabled && isWifiConnected && mqttClient) {
         static bool mqttWasConnected = false;
         static uint32_t mqttConnectedAt = 0;
+        static unsigned long mqttRetryDelay = mqttReconnectInterval; // grows while the broker keeps failing
         if (mqttWasConnected && !mqttClient->connected()) {
             mqttWasConnected = false;
             logMessage("[MQTT] Connection lost after " + String((millis() - mqttConnectedAt) / 1000) + " s, state=" + String(mqttClient->state()));
         }
         if (!mqttClient->connected()) {
-            if (millis() - lastMqttAttemptTime > mqttReconnectInterval) {
+            if (millis() - lastMqttAttemptTime > mqttRetryDelay) {
                 lastMqttAttemptTime = millis();
 
                 if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
@@ -123,9 +250,13 @@ void backgroundStep() {
                     mqttClient->subscribe(mqtt_command_topic.c_str());
                     mqttWasConnected = true; mqttConnectedAt = millis();
                     lastHealthPublishTime = millis() - healthPublishInterval; // health status right after connecting
+                    mqttRetryDelay = mqttReconnectInterval;
                 } else {
                      logMessage("[MQTT] Connect Failed rc=" + String(mqttClient->state()));
+                     mqttRetryDelay = mqttRetryDelay >= 30000 ? 60000 : mqttRetryDelay * 2;
                 }
+                // Measured from the end of the attempt, so a slow failure still leaves the web server a full interval.
+                lastMqttAttemptTime = millis();
             }
         }
         if (mqttClient->connected()) {
@@ -138,6 +269,9 @@ void backgroundStep() {
     }
 
     pollModbusTCPServer();
+#if GATEWAY_ETHERNET
+    serviceIo();
+#endif
     updateLedStatus();
 
     handleLongReads(); // Handles the actual Modbus reading state machine
@@ -157,7 +291,7 @@ void backgroundStep() {
     } else { return; }
 
     if (!local_isReadingWaveform && !local_isReadingSpectrum) {
-        if (millis() - lastMetricsReadTime >= metricsReadInterval_ms) {
+        if (!sensorPaused && millis() - lastMetricsReadTime >= metricsReadInterval_ms + metricsRetryDelay) {
             lastMetricsReadTime = millis();
             bool read_ok = true;
 
@@ -234,6 +368,8 @@ void backgroundStep() {
                     stdDeviationX = t_sdx; stdDeviationY = t_sdy; stdDeviationZ = t_sdz;
                     temperature = t_t;
                     recordMetricsHealth(true, 0);
+                    metricsRetryDelay = 0;
+                    sensorFailStreak = 0;
 
                     if (!wifiDisconnectAlarmActive) {
                         snprintf(systemStatus, sizeof(systemStatus), "Monitoring");
@@ -247,8 +383,17 @@ void backgroundStep() {
                 } else {
                     // --- FAULT HANDLING ---
                     recordMetricsHealth(false, result);
-                    snprintf(systemStatus, sizeof(systemStatus), "Sensor Disconnected");
-                    logMessage("Error reading metrics: Sensor likely disconnected.");
+                    metricsRetryDelay = 8000;
+                    if (++sensorFailStreak >= SENSOR_READ_ATTEMPTS) {
+                        sensorPaused = true;
+                        snprintf(systemStatus, sizeof(systemStatus), "Sensor not responding - press Reconnect");
+                    } else {
+                        snprintf(systemStatus, sizeof(systemStatus), "Sensor Disconnected (try %u of %u)",
+                                 (unsigned)sensorFailStreak, (unsigned)SENSOR_READ_ATTEMPTS);
+                    }
+                    logMessage(sensorPaused ? "Error reading metrics: no answer after " + String(SENSOR_READ_ATTEMPTS) +
+                                              " tries; sensor polling stopped until Reconnect is pressed."
+                                            : String("Error reading metrics: Sensor likely disconnected."));
                     strcpy(trafficLightStatus, "ERROR");
                     xSemaphoreGive(dataMutex);
                 }
@@ -268,7 +413,7 @@ void backgroundStep() {
 
         switch (local_currentDataState) {
             case DD_IDLE:
-                if (local_dataCaptureInterval < INTERVAL_NEVER && (millis() - local_lastAutoCaptureMillis >= local_dataCaptureInterval)) {
+                if (!sensorPaused && local_dataCaptureInterval < INTERVAL_NEVER && (millis() - local_lastAutoCaptureMillis >= local_dataCaptureInterval)) {
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
                         if (firmwareUpdateActive) { xSemaphoreGive(dataMutex); break; }
                         requestedCapture = CAPTURE_BOTH;

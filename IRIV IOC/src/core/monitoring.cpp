@@ -26,6 +26,12 @@ void setupMonitoring() {
     prefs.end();
 }
 
+bool monitoringAlarmActive() { return alarmActive; }
+bool monitoringCommunicationFault() { return consecutive > 0; }
+bool monitoringFreshReading() {
+    return haveReading && consecutive == 0 && millis() - lastSuccess < std::max<uint32_t>(15000, metricsReadInterval_ms * 3);
+}
+
 void recordMetricsHealth(bool success, uint8_t error) {
     readCount++;
     if (!success) {
@@ -72,7 +78,7 @@ void handleMonitoring() {
     health["has_reading"] = haveReading; health["age_ms"] = age;
     health["reads"] = readCount; health["failures"] = failures; health["timeouts"] = timeouts;
     health["consecutive_errors"] = consecutive; health["last_error"] = lastError;
-    health["capturing"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum;
+    health["capturing"] = currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture;
     health["updating"] = firmwareUpdateActive;
     JsonObject alarm = doc.createNestedObject("alarm");
     alarm["enabled"] = alarmEnabled; alarm["velocity"] = velocityLimit; alarm["temperature"] = temperatureLimit; alarm["delay_seconds"] = delayMs / 1000;

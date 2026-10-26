@@ -45,8 +45,21 @@ int netRssi();           // 0 on wired Ethernet
 // Serializes LittleFS use between tasks (settings and firmware upload).
 bool fsLock();
 void fsUnlock();
-// Starts Ethernet with DHCP; without a DHCP answer it falls back to FALLBACK_IP.
-bool ethernetBegin();
+// Saved Ethernet address. useStatic false means DHCP; dns 0.0.0.0 means "use the gateway".
+struct EthernetAddress {
+    bool useStatic = false;
+    IPAddress ip, mask, gateway, dns;
+};
+// Strict dotted IPv4 ("192.168.1.20"). Empty text gives 0.0.0.0, accepted only when allowEmpty.
+bool parseIPv4(const String& text, IPAddress& out, bool allowEmpty);
+// Checks a static address set (one subnet, usable host addresses); error names the first problem.
+bool ethernetCheckStatic(const EthernetAddress& address, String& error);
+// Starts Ethernet with the static address, or with DHCP falling back to FALLBACK_IP without an answer.
+bool ethernetBegin(const EthernetAddress& address);
+bool ethernetUsesStatic();
+IPAddress ethernetMask();
+IPAddress ethernetGateway();
+IPAddress ethernetDns();
 // Switches to FALLBACK_IP, for a laptop plugged in directly (user button held 5 s).
 void ethernetUseFallback();
 bool ethernetOnFallback();

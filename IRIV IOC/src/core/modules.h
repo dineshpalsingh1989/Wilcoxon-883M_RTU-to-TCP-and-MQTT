@@ -11,3 +11,4 @@
 #include "ota/ota.h"
 #include "tasks/tasks.h"
 #include "web/web_handlers.h"
+#include "io/iriv_io.h"

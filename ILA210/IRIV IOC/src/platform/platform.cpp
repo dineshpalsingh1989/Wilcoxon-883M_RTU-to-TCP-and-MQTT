@@ -18,7 +18,7 @@ namespace gw {
 // ---------------------------------------------------------------- RP2350 (IRIV IO Controller)
 namespace {
 Wiznet5500lwIP eth(PIN_W5500_CS, SPI, PIN_W5500_INT);
-bool onFallback = false;
+bool onFallback = false, usingStatic = false;
 SemaphoreHandle_t fsMutex = nullptr;
 }
 
@@ -94,17 +94,78 @@ void startTimeSync(long gmtOffsetSec, int daylightOffsetSec, const char* server)
 
 bool netConnected() { return eth.connected(); }
 IPAddress netIP() { return eth.localIP(); }
-String netDescription() { return onFallback ? String("Ethernet (fixed address, no DHCP)") : String("Ethernet (DHCP)"); }
+String netDescription() {
+    if (onFallback) return "Ethernet (fixed address, no DHCP)";
+    return usingStatic ? "Ethernet (static IP)" : "Ethernet (DHCP)";
+}
 String netSignal() { return "Wired"; }
 int netRssi() { return 0; }
 
-bool ethernetBegin() {
+namespace {
+uint32_t hostOrder(const IPAddress& a) {
+    return (uint32_t(a[0]) << 24) | (uint32_t(a[1]) << 16) | (uint32_t(a[2]) << 8) | a[3];
+}
+bool usableUnicast(uint32_t address) {
+    const uint8_t first = address >> 24;
+    return first != 0 && first != 127 && first < 224;
+}
+}
+bool parseIPv4(const String& text, IPAddress& out, bool allowEmpty) {
+    out = IPAddress(0, 0, 0, 0);
+    if (!text.length()) return allowEmpty;
+    uint8_t parts[4];
+    int count = 0, value = -1;
+    for (size_t i = 0; i <= text.length(); i++) {
+        const char c = i < text.length() ? text[i] : '.';
+        if (c >= '0' && c <= '9') {
+            value = (value < 0 ? 0 : value * 10) + (c - '0');
+            if (value > 255) return false;
+        } else if (c == '.' && value >= 0 && count < 4) {
+            parts[count++] = value;
+            value = -1;
+        } else {
+            return false;
+        }
+    }
+    if (count != 4) return false;
+    out = IPAddress(parts[0], parts[1], parts[2], parts[3]);
+    return true;
+}
+bool ethernetCheckStatic(const EthernetAddress& address, String& error) {
+    const uint32_t ip = hostOrder(address.ip), mask = hostOrder(address.mask);
+    const uint32_t gateway = hostOrder(address.gateway), dns = hostOrder(address.dns);
+    const uint32_t hostBits = ~mask;
+    if (mask < 0xFF000000 || mask > 0xFFFFFFFC || (hostBits & (hostBits + 1))) {
+        error = "Subnet mask must be contiguous, from 255.0.0.0 to 255.255.255.252"; return false;
+    }
+    if (!usableUnicast(ip) || !(ip & hostBits) || (ip & hostBits) == hostBits) {
+        error = "IP address is not a usable host address on this subnet"; return false;
+    }
+    if (gateway && (((gateway ^ ip) & mask) || gateway == ip || !(gateway & hostBits) || (gateway & hostBits) == hostBits)) {
+        error = "Gateway must be another host address on the same subnet as the IP address"; return false;
+    }
+    if (dns && !usableUnicast(dns)) { error = "DNS server is not a usable address"; return false; }
+    return true;
+}
+bool ethernetUsesStatic() { return usingStatic; }
+IPAddress ethernetMask() { return eth.subnetMask(); }
+IPAddress ethernetGateway() { return eth.gatewayIP(); }
+IPAddress ethernetDns() { return eth.dnsIP(); }
+
+bool ethernetBegin(const EthernetAddress& address) {
     pinMode(PIN_W5500_RST, OUTPUT);
     digitalWrite(PIN_W5500_RST, LOW); delay(10);
     digitalWrite(PIN_W5500_RST, HIGH); delay(100);
     SPI.setRX(PIN_W5500_MISO); SPI.setTX(PIN_W5500_MOSI); SPI.setSCK(PIN_W5500_SCK);
     eth.setHostname(ETHERNET_HOSTNAME);
+    String error;
+    if (address.useStatic && ethernetCheckStatic(address, error)) {
+        // ESP argument order (ip, gateway, mask, dns); the mask starts with 255, so lwIP keeps it.
+        const IPAddress dns = hostOrder(address.dns) ? address.dns : address.gateway;
+        usingStatic = eth.config(address.ip, address.gateway, address.mask, dns);
+    }
     if (!eth.begin()) return false;
+    if (usingStatic) return true; // the address is set at once; the cable may be connected later
     const uint32_t started = millis();
     while (!eth.connected() && millis() - started < 10000) delay(100);
     if (eth.connected()) return true;

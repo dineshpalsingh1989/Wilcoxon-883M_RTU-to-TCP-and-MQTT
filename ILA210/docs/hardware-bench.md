@@ -21,7 +21,7 @@ from [register verification](register-verification.md).
 | Analog faults | Inject supported under/over-range conditions and disconnect the loop. Check configured fault alarms and recovery. Follow the controller's electrical limits. | Not run |
 | Outputs | Initially disconnect loads. Verify DO0/DO1 vibration alarms and selected loss policy; verify DO2/DO3 alarm sources, latch/acknowledge and power-up states before connecting controlled loads. | Not run |
 | Search alarm behavior | Run a scan longer than the loss timeout. Verify configured loss behavior, continued MQTT/TCP servicing and normal alarm recovery after polling resumes. | Not run |
-| Networking/recovery | Exercise DHCP failure, Ethernet cable removal/reconnect, broker unavailable/recovery and USER-button fallback. Confirm saved settings survive restart. | Not run |
+| Networking/recovery | Save a static IP and confirm the gateway answers there after restart; switch back to DHCP. Exercise DHCP failure, Ethernet cable removal/reconnect, broker unavailable/recovery and USER-button fallback. Confirm saved settings survive restart. | Not run |
 | Soak | Run the intended production traffic and capture interval, recording heap, task/watchdog behavior, missed messages and recovery events. Define acceptable alarm latency for the application and measure it under worst-case traffic. | Not run |
 
 ESP32-S3 has no IOC onboard 4–20 mA/DI/DO hardware; mark those rows not

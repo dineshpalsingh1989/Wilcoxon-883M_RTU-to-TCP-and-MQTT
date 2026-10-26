@@ -16,6 +16,7 @@ public:
     uint32_t getUInt(const char* key, uint32_t fallback = 0) { return get<uint32_t>(key, fallback); }
     int32_t getLong(const char* key, int32_t fallback = 0) { return get<int32_t>(key, fallback); }
     float getFloat(const char* key, float fallback = NAN) { return get<float>(key, fallback); }
+    uint32_t getULong(const char* key, uint32_t fallback = 0) { return get<uint32_t>(key, fallback); }
     String getString(const char* key, const String& fallback = String());
     size_t putBool(const char* key, bool value) { return put(key, value) ? 1 : 0; }
     size_t putUChar(const char* key, uint8_t value) { return put(key, value) ? 1 : 0; }
@@ -24,6 +25,7 @@ public:
     size_t putUInt(const char* key, uint32_t value) { return put(key, value) ? 4 : 0; }
     size_t putLong(const char* key, int32_t value) { return put(key, value) ? 4 : 0; }
     size_t putFloat(const char* key, float value) { return put(key, value) ? 4 : 0; }
+    size_t putULong(const char* key, uint32_t value) { return put(key, value) ? 4 : 0; }
     size_t putString(const char* key, const String& value) { return put(key, value) ? value.length() : 0; }
 
 private:

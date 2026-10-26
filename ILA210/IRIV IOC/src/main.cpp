@@ -5,6 +5,8 @@
 #include "ioc/ioc.h"
 #include "core/sensor_policy.h"
 #include "web/sensor_health_page.h"
+#include "web/dashboard_page.h"
+#include "web/network_page.h"
 // --- Standard Arduino & ESP32 Libraries ---
 #include <SPI.h>
 #include <SD.h>
@@ -16,7 +18,7 @@
 #include <WiFiClientSecure.h>
 #endif
 #include <WebServer.h>
-#include <PubSubClient.h>
+#include <WilcoxonMqtt.h>
 #include <ArduinoJson.h>
 #if !GATEWAY_ETHERNET
 #include <Adafruit_NeoPixel.h>
@@ -140,7 +142,7 @@ GatewayPreferences preferences;
 WiFiClientSecure espClientSecure;
 #endif
 WiFiClient espClientPlain;
-PubSubClient mqttClient(espClientPlain);
+WilcoxonMqttClient mqttClient(espClientPlain);
 bool mqttTransportReady = false;
 #if __has_include("local_mqtt_ca.h")
 #include "local_mqtt_ca.h" // Defines ILA_MQTT_ROOT_CA as a PEM certificate string.
@@ -1386,6 +1388,84 @@ void handleSensorHealth() {
     server.send(200, "application/json", body);
 }
 
+#if GATEWAY_ETHERNET
+// Ethernet address mode: DHCP (default) or a static address saved in the eth-cfg namespace.
+gw::EthernetAddress loadEthernetAddress() {
+    gw::EthernetAddress address;
+    GatewayPreferences settings;
+    if (!settings.begin("eth-cfg", true)) return address;
+    const bool wanted = settings.getBool("static", false);
+    const bool parsed = gw::parseIPv4(settings.getString("ip"), address.ip, false) &&
+                        gw::parseIPv4(settings.getString("mask"), address.mask, false) &&
+                        gw::parseIPv4(settings.getString("gw"), address.gateway, true) &&
+                        gw::parseIPv4(settings.getString("dns"), address.dns, true);
+    settings.end();
+    String error;
+    address.useStatic = wanted && parsed && gw::ethernetCheckStatic(address, error);
+    if (wanted && !address.useStatic) Serial.println("Saved static IP is invalid (" + (parsed ? error : String("unreadable address")) + "); using DHCP");
+    return address;
+}
+
+void handleNetworkApi() {
+    if (server.method() == HTTP_POST) {
+        StaticJsonDocument<256> body;
+        if (server.arg("plain").length() > 256 || deserializeJson(body, server.arg("plain"))) {
+            server.send(400, "text/plain", "Invalid network settings."); return;
+        }
+        const String mode = body["mode"] | "";
+        if (mode != "dhcp" && mode != "static") { server.send(400, "text/plain", "Mode must be dhcp or static."); return; }
+        gw::EthernetAddress address;
+        address.useStatic = mode == "static";
+        if (address.useStatic) {
+            String error;
+            if (!gw::parseIPv4(body["ip"] | "", address.ip, false)) { server.send(400, "text/plain", "Enter a valid IP address."); return; }
+            if (!gw::parseIPv4(body["mask"] | "", address.mask, false)) { server.send(400, "text/plain", "Enter a valid subnet mask."); return; }
+            if (!gw::parseIPv4(body["gateway"] | "", address.gateway, true)) { server.send(400, "text/plain", "Enter a valid gateway or leave it empty."); return; }
+            if (!gw::parseIPv4(body["dns"] | "", address.dns, true)) { server.send(400, "text/plain", "Enter a valid DNS server or leave it empty."); return; }
+            if (!gw::ethernetCheckStatic(address, error)) { server.send(400, "text/plain", error + "."); return; }
+        }
+        const IPAddress none(0, 0, 0, 0);
+        GatewayPreferences settings;
+        bool saved = settings.begin("eth-cfg", false);
+        if (saved) {
+            settings.putBool("static", address.useStatic);
+            settings.putString("ip", address.useStatic ? address.ip.toString() : String());
+            settings.putString("mask", address.useStatic ? address.mask.toString() : String());
+            settings.putString("gw", address.useStatic && address.gateway != none ? address.gateway.toString() : String());
+            settings.putString("dns", address.useStatic && address.dns != none ? address.dns.toString() : String());
+            saved = settings.commit(); settings.end();
+        }
+        if (!saved) { server.send(503, "text/plain", "Settings could not be saved; device was not rebooted."); return; }
+        server.send(200, "text/plain", address.useStatic ? "Static IP saved. The gateway restarts now." : "DHCP selected. The gateway restarts now.");
+        delay(1000);
+        gw::restart();
+        return;
+    }
+    StaticJsonDocument<768> doc;
+    GatewayPreferences settings;
+    const bool opened = settings.begin("eth-cfg", true);
+    doc["mode"] = opened && settings.getBool("static", false) ? "static" : "dhcp";
+    doc["ip"] = settings.getString("ip");
+    doc["mask"] = settings.getString("mask");
+    doc["gateway"] = settings.getString("gw");
+    doc["dns"] = settings.getString("dns");
+    settings.end();
+    doc["fallback_ip"] = ETHERNET_FALLBACK_IP;
+    JsonObject current = doc.createNestedObject("current");
+    current["link"] = gw::netConnected();
+    current["description"] = gw::netDescription();
+    current["ip"] = gw::netIP().toString();
+    current["mask"] = gw::ethernetMask().toString();
+    current["gateway"] = gw::ethernetGateway().toString();
+    current["dns"] = gw::ethernetDns().toString();
+    current["mac"] = gw::ethernetMac();
+    current["hostname"] = ETHERNET_HOSTNAME;
+    String json; serializeJson(doc, json);
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json", json);
+}
+#endif
+
 #include "web/sensor_setup.h"
 
 void backgroundLoop(void * pvParameters) {
@@ -1612,7 +1692,8 @@ void setup() {
     if (!std::isfinite(veloPeakAlarmThreshold) || veloPeakAlarmThreshold < veloPeakAlertThreshold) veloPeakAlarmThreshold = std::max(20.0f, veloPeakAlertThreshold);
     if (relayTriggerDelay > 3600000) relayTriggerDelay = 5000;
 #if GATEWAY_ETHERNET
-    const bool connected_to_wifi = gw::ethernetBegin(); // wired connectivity, retained name below
+    const gw::EthernetAddress ethAddress = loadEthernetAddress();
+    const bool connected_to_wifi = gw::ethernetBegin(ethAddress); // wired connectivity, retained name below
 #else
     String saved_ssid = "", saved_pass = "";
     preferences.begin("wifi-creds", true); saved_ssid = preferences.getString("ssid", ""); saved_pass = preferences.getString("password", ""); preferences.end();
@@ -1671,6 +1752,10 @@ void setup() {
     server.on("/settings", HTTP_GET, handleSettings);
     server.on("/wifi_settings", HTTP_GET, handleWifiSettings);
     server.on("/savewifi", HTTP_POST, handleSaveWifi);
+#if GATEWAY_ETHERNET
+    server.on("/api/network", HTTP_GET, handleNetworkApi);
+    server.on("/api/network", HTTP_POST, handleNetworkApi);
+#endif
     server.on("/mqtt_settings", HTTP_GET, handleMqttSettings);
     server.on("/save_mqtt", HTTP_POST, handleSaveMqtt);
     server.on("/rs485_settings", HTTP_GET, handleRs485Settings);
@@ -1740,604 +1825,7 @@ void loop() { vTaskDelete(NULL); }
 // =================================================================
 
 void handleRoot() {
-  String html = R"rawliteral(
-<!DOCTYPE html>
-<html>
-<head>
-    <title>ILA Sensor Dashboard</title>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="/charts.js"></script>
-    <style>
-        :focus-visible{outline:3px solid #0866c6;outline-offset:3px}
-        canvas{display:block;max-width:100%}
-        .analysis-container{max-width:100%;box-sizing:border-box;overflow-x:auto}
-        @media(max-width:650px){.header,.header .title-group,.header-statuses{flex-wrap:wrap;gap:10px}.header .menu{display:flex;flex-wrap:wrap;gap:8px}.header .menu a{margin-left:0}.chart-actions{flex-wrap:wrap}.tabs{overflow-x:auto}.tab-content{padding:12px}.logger-controls{flex-wrap:wrap}}
-        body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8}
-        .header{background-color:#2c3e50;color:white;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 4px rgba(0,0,0,.1)}
-        .header .title-group{display:flex;align-items:center;gap:20px} .header .internet-status{font-size:16px;display:flex;align-items:center;gap:8px}
-        .status-dot{height:12px;width:12px;border-radius:50%;display:inline-block;border: 1px solid rgba(0,0,0,0.1);}
-        .status-dot.connected, .status-dot.active{background-color:#2ecc71}
-        .status-dot.disconnected, .status-dot.inactive{background-color:#e74c3c}
-        .title-container{display:flex;flex-direction:column;align-items:flex-start} .title{font-size:22px;font-weight:600} .subtitle{font-size:12px;color:#bdc3c7;font-weight:400}
-        .header .menu a{color:white;text-decoration:none;font-size:15px;padding:8px 14px;border:1px solid #4a627a;border-radius:20px;margin-left:10px;transition:background-color .3s,color .3s}
-        .header .menu a:hover{background-color:#4a627a;color:white} .header .time{font-size:14px;color:#bdc3c7}
-        .header-statuses { display: flex; gap: 20px; color: #bdc3c7; font-size: 14px; align-items: center; }
-        .header-status-item { display: flex; align-items: center; gap: 8px; }
-
-        .main-content{padding:20px}
-        .tabs{display:flex;border-bottom:2px solid #dee2e6}
-        .tab-button{background:0 0;border:none;padding:15px 20px;font-size:16px;cursor:pointer;transition:color .3s,border-bottom .3s;color:#6c757d;border-bottom:2px solid transparent}
-        .tab-button.active{color:#007bff;border-bottom:2px solid #007bff;font-weight:700}
-        .tab-content{display:none;padding-top:20px}
-        .tab-content.active{display:block}
-        .container{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
-        .card{background-color:white;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.05);text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center}
-        .card-title{font-size:16px;font-weight:600;color:#343a40;margin-bottom:10px} .card-value{font-size:26px;font-weight:700;color:#007bff}
-        .wait-message{display:none} .chart-container,.analysis-container{background-color:white;padding:20px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.05);margin-bottom:20px}
-        .chart-actions{display:flex;justify-content:flex-end;align-items:center;gap:15px;width:100%;margin-top:10px;}
-        .last-updated-text{font-size:12px;color:#6c757d;font-style:italic;}
-        .data-status{font-size:12px;font-weight:700} .btn-small{background-color:#6c757d;color:white;padding:5px 10px;border:none;border-radius:5px;cursor:pointer;font-size:12px}
-        .btn-small:disabled{background-color:#adb5bd;cursor:not-allowed}
-        .actions-panel{background-color:white;padding:15px;border-radius:8px;box-shadow:0 4px 8px rgba(0,0,0,.05);margin-bottom:20px;text-align:left}
-        .actions-panel h3, .actions-panel p {margin-top:0} .actions-panel button,.actions-panel select{margin-right:10px;padding:8px 12px;font-size:14px;border:1px solid #ccc;border-radius:5px}
-        .footer{text-align:center;font-size:12px;color:#888;margin-top:20px;padding:10px;background-color:#fff;border-top:1px solid #dee2e6}
-        table{width:100%;border-collapse:collapse} th,td{text-align:left;padding:12px;border-bottom:1px solid #dee2e6} th{background-color:#f8f9fa;font-weight:600} tr:hover{background-color:#f1f3f5}
-        .help-icon{display:inline-block;width:20px;height:20px;border-radius:50%;background-color:#6c757d;color:white;text-align:center;line-height:20px;font-weight:700;cursor:pointer;margin-left:10px;font-size:14px}
-        .modal{display:none;position:fixed;z-index:100;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,.5)}
-        .modal-content{background-color:#fefefe;margin:15% auto;padding:20px;border:1px solid #888;width:80%;max-width:600px;border-radius:8px}
-        .modal-close{color:#aaa;float:right;font-size:28px;font-weight:700;cursor:pointer}
-        .logger-section{border:1px solid #dee2e6;border-radius:8px;padding:20px;margin-top:25px} .logger-section h4{margin-top:0;display:flex;align-items:center}
-        .logger-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
-        .logger-header h4{margin:0}
-        .logger-controls{display:flex;align-items:center;gap:15px;margin-bottom:20px;flex-wrap:wrap}
-        .logger-controls button,.logger-header button{padding:10px 15px;font-size:14px;cursor:pointer;border-radius:5px;border:none;color:white;background-color:#6c757d;transition: background-color 0.3s;}
-        .logger-controls button:disabled{background-color:#ced4da;cursor:not-allowed;}
-        .btn-enabled{background-color:#28a745 !important;} .btn-danger{background-color:#dc3545 !important;}
-        .progress-container{flex-grow:1;min-width:200px}
-        .progress-bar{width:100%;background-color:#e9ecef;border-radius:5px;height:25px}
-        .progress-bar-fill{height:100%;background-color:#007bff;border-radius:5px;text-align:center;color:white;line-height:25px;transition:width .5s ease-in-out}
-        .logger-status{font-weight:700;margin-bottom:5px}
-        .logger-table-container{max-height:400px;overflow-y:auto}
-        .anomaly-banner, .warning-banner{color:white;padding:15px;text-align:center;font-size:16px;font-weight:700;border-radius:8px;margin-bottom:20px;display:none}
-        .anomaly-banner{background-color:#e74c3c;}
-        .warning-banner{background-color:#f39c12;}
-        .chart-controls{margin-bottom:15px; display:flex; gap:10px; align-items:center;}
-        .history-container{position:relative;cursor:pointer}
-        .history-tooltip{visibility:hidden;width:max-content;background-color:#343a40;color:#fff;text-align:left;border-radius:6px;padding:8px;position:absolute;z-index:1;bottom:125%;left:50%;margin-left:-80px;opacity:0;transition:opacity .3s}
-        .history-container:hover .history-tooltip{visibility:visible;opacity:1}
-        .history-tooltip div{font-size:12px;margin-bottom:4px;border-bottom:1px solid #495057;padding-bottom:4px}
-        .history-tooltip div:last-child{margin-bottom:0;border-bottom:none;padding-bottom:0}
-        .hist-ts{font-weight:600;color:#adb5bd}
-        .hist-amp{font-weight:400;color:#f8f9fa}
-    </style>
-</head>
-<body>
-    <div id="analysis-help-modal" class="modal"><div class="modal-content"><span class="modal-close" onclick="closeModal('analysis-help-modal')">&times;</span><h2>Spectrum Analysis Help</h2><p>This table shows the most significant frequencies detected in the vibration data.</p><ul><li><b>Rank:</b> The importance of the peak, from highest amplitude to lowest.</li><li><b>Status:</b> Shows how the peak's amplitude is changing over time.</li><li><b>History:</b> Hover over the current amplitude value to see the last 5 timestamped readings.</li></ul></div></div>
-    <div id="logger-help-modal" class="modal"><div class="modal-content"><span class="modal-close" onclick="closeModal('logger-help-modal')">&times;</span><h2>Anomaly Detection Help</h2><p>The anomaly detection works in two phases:</p><ol><li><b>Learning Phase:</b> When you start recording, the device records the first 10 readings to learn the machine's "normal" vibration signature. It calculates the average (mean) and standard deviation for each peak. The LED will blink cyan during this phase.</li><li><b>Monitoring Phase:</b> After learning, it compares every new reading to this learned baseline. An anomaly is flagged if a peak's amplitude is significantly higher than normal (more than 3 standard deviations above its average). The LED will pulse red if an anomaly is found.</li></ol></div></div>
-    <div class="header">
-        <div class="title-group">
-            <div class="internet-status" id="internet-status"><span class="status-dot disconnected"></span>Offline</div>
-            <div class="title-container">
-                <div class="title">ILA Sensor Dashboard</div>
-                <div class="subtitle">Model: )rawliteral" + String(DEVICE_MODEL) + R"rawliteral( | Serial: )rawliteral" + String(DEVICE_SERIAL_NUMBER) + R"rawliteral(</div>
-            </div>
-        </div>
-        <div class="header-statuses">
-            <div id="alert-relay-status" class="header-status-item"></div>
-            <div id="alarm-relay-status" class="header-status-item"></div>
-        </div>
-        <div class="time" id="clock">--:--:--</div>
-        <div class="menu"><a href="/settings">Settings</a></div>
-    </div>
-    <div class="main-content">
-        <div class="tabs">
-            <button class="tab-button active" onclick="openTab(event, 'Metrics')">Overall Metrics</button>
-            <button class="tab-button" onclick="openTab(event, 'Waveforms')">Waveform & Spectrum</button>
-            <button class="tab-button" onclick="openTab(event, 'Analysis')">Spectrum Analysis</button>
-            <button class="tab-button" onclick="openTab(event, 'Logger')">Data Logger</button>
-        </div>
-        <div id="Metrics" class="tab-content active">
-            <div class="container" id="metrics-container"></div>
-            <div class="wait-message" id="wait-message"><div class="card" style="grid-column:1/-1"><div class="card-title" style="color:#007bff">PLEASE WAIT</div><div id="wait-message-text" class="card-value">Collecting Data...</div></div></div>
-            <div class="chart-container" style="margin-top: 20px;">
-                <div class="chart-controls">
-                    <label for="metric-chart-selector">Select Metric to Plot:</label>
-                    <select id="metric-chart-selector" onchange="drawMetricsChart()"></select>
-                </div>
-                <canvas id="metricsHistoryChart"></canvas>
-            </div>
-        </div>
-        <div id="Waveforms" class="tab-content">
-            <div class="actions-panel"><h3>Actions</h3><button onclick="trigger()">Collect Full Data Now</button><button onclick="clearDynamicData()">Clear Cached Data</button></div>
-            <div class="actions-panel"><h3>Automatic Data Collection</h3>
-                <select id="data_interval" onchange="setIntervals()">
-                    <option value="300000">5 Minutes</option>
-                    <option value="600000">10 Minutes</option>
-                    <option value="1200000">20 Minutes</option>
-                    <option value="2147483647">Never (Manual Only)</option>
-                </select>
-            </div>
-            <div class="chart-container"><canvas id="waveformChart"></canvas><div class="chart-actions"><span class="data-status" id="waveform-data-status"></span><em id="waveformLastUpdated" class="last-updated-text"></em><button class="btn-small" onclick="loadFullWaveform()">View Full Waveform</button></div></div>
-            <div class="chart-container"><canvas id="spectrumChart"></canvas><div class="chart-actions"><span class="data-status" id="spectrum-data-status"></span><em id="spectrumLastUpdated" class="last-updated-text"></em><button class="btn-small" onclick="loadFullSpectrum()">View Full Spectrum</button></div></div>
-        </div>
-        <div id="Analysis" class="tab-content">
-            <div class="analysis-container">
-                <h3>Top 4 Frequency Peaks<span class="help-icon" onclick="openModal('analysis-help-modal')">?</span></h3>
-                <p>This table shows the most significant frequencies detected in the latest spectrum analysis and tracks how their amplitude is changing over time.</p>
-                <table id="analysis-table"><thead><tr><th>Rank</th><th>Frequency (Hz)</th><th>Amplitude (g)</th><th>Status</th><th>History</th></tr></thead><tbody></tbody></table>
-            </div>
-        </div>
-        <div id="Logger" class="tab-content">
-            <div id="storage-warning-banner" class="warning-banner"></div>
-            <div class="logger-section">
-                <h4>Spectrum Peak Logger & Anomaly Detection<span class="help-icon" onclick="openModal('logger-help-modal')">?</span></h4>
-                <div id="anomaly-banner" class="anomaly-banner"></div>
-                <div class="logger-controls">
-                    <button id="record-btn" onclick="togglePeakRecording()">Start Recording</button>
-                    <button id="clear-log-btn" onclick="clearPeakLog()">Clear Log</button>
-                    <div class="progress-container"><div class="logger-status" id="logger-status">Stopped</div><div class="progress-bar"><div class="progress-bar-fill" id="progress-bar-fill">0/30</div></div></div>
-                    <button id="download-csv-btn" onclick="downloadPeakCSV()" disabled>Download Peaks CSV</button>
-                </div>
-                <div class="logger-table-container"><table id="logger-table"><thead><tr><th>Timestamp</th><th id="peak-header-1">Peak 1 (F/A)</th><th id="peak-header-2">Peak 2 (F/A)</th><th id="peak-header-3">Peak 3 (F/A)</th><th id="peak-header-4">Peak 4 (F/A)</th></tr></thead><tbody></tbody></table></div>
-            </div>
-            <div class="logger-section">
-                <h4>Overall Metrics Logger</h4>
-                <div class="logger-controls">
-                    <button id="metrics-record-btn" onclick="toggleMetricsRecording()">Start Metrics Recording</button>
-                    <button id="clear-metrics-log-btn" onclick="clearMetricsLog()">Clear Log</button>
-                    <div class="progress-container"><div class="logger-status" id="metrics-logger-status">Stopped</div><div class="progress-bar"><div class="progress-bar-fill" id="metrics-progress-bar-fill" style="background-color: #28a745;">0/30</div></div></div>
-                    <button id="metrics-download-csv-btn" onclick="downloadMetricsCSV()" disabled>Download Metrics CSV</button>
-                </div>
-                <div class="logger-table-container"><table id="metrics-logger-table"><thead><tr><th>Timestamp</th><th>A(rms)1</th><th>A(pk)1</th><th>A(rms)2</th><th>A(pk)2</th><th>V(rms)</th><th>V(pk)</th><th>D(rms)</th><th>D(pk)</th><th>TruePk</th><th>CF</th><th>StdDev</th><th>Temp</th><th>DriveV</th><th>BoardT</th></tr></thead><tbody></tbody></table></div>
-            </div>
-            <div class="logger-section">
-                <div class="logger-header">
-                     <h4>SD Card File Log</h4>
-                     <button id="clear-events-btn" class="btn-danger" onclick="clearEventLog()">Clear event_log.csv</button>
-                </div>
-                <div class="logger-table-container">
-                    <table id="event-log-table">
-                        <thead><tr><th>Last Modified</th><th>File Name</th><th>Size</th></tr></thead>
-                        <tbody><tr><td colspan="3" style="text-align:center;">No files found.</td></tr></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="footer"><span id="status">Status: Initializing...</span> | Last Metrics Update: <span id="lastUpdated">--</span></div>
-    <script>
-        let waveformChart, spectrumChart, metricsHistoryChart, isPeakRecording = false, isMetricsRecording = false;
-        let metricsLogData = [];
-
-        let liveMetricsHistory = [];
-        const LIVE_HISTORY_SIZE = 50;
-
-        let liveMetricsData = {};
-        const metricKeys = ['accelRms1','accelPeak1','accelRms2','accelPeak2','veloRms','veloPeak','displRms','displPeak','truePeak','crestFactor','stdDeviation','temperature','driveVoltage','boardTemperature'];
-        const metricNames = ["Accel RMS 1 (g)", "Accel Peak 1 (g)", "Accel RMS 2 (g)", "Accel Peak 2 (g)", "Velo RMS (mm/s)", "Velo Peak (mm/s)", "Displ RMS (um)", "Displ Peak (um)", "True Peak (g)", "Crest Factor", "Std. Deviation", "Temperature (C)", "Drive Voltage (V)", "Board Temp (C)"];
-        const metric_cards_html=`<div class="card"><div class="card-title">Accel RMS (2-1kHz)</div><div class="card-value" id="accelRms1">--</div></div><div class="card"><div class="card-title">Accel Peak (2-1kHz)</div><div class="card-value" id="accelPeak1">--</div></div><div class="card"><div class="card-title">Accel RMS (10-10kHz)</div><div class="card-value" id="accelRms2">--</div></div><div class="card"><div class="card-title">Accel Peak (10-10kHz)</div><div class="card-value" id="accelPeak2">--</div></div><div class="card"><div class="card-title">Velo RMS (10-1kHz)</div><div class="card-value" id="veloRms">--</div></div><div class="card"><div class="card-title">Velo Peak (10-1kHz)</div><div class="card-value" id="veloPeak">--</div></div><div class="card"><div class="card-title">Displ RMS (2-1kHz)</div><div class="card-value" id="displRms">--</div></div><div class="card"><div class="card-title">Displ Peak (2-1kHz)</div><div class="card-value" id="displPeak">--</div></div><div class="card"><div class="card-title">True Peak</div><div class="card-value" id="truePeak">--</div></div><div class="card"><div class="card-title">Crest Factor</div><div class="card-value" id="crestFactor">--</div></div><div class="card"><div class="card-title">Std. Deviation</div><div class="card-value" id="stdDeviation">--</div></div><div class="card"><div class="card-title">Temperature</div><div class="card-value" id="temperature">--</div></div><div class="card"><div class="card-title">Drive Voltage</div><div class="card-value" id="driveVoltage">--</div></div><div class="card"><div class="card-title">Board Temp</div><div class="card-value" id="boardTemperature">--</div></div>`;
-
-        function openModal(id) { document.getElementById(id).style.display = 'block'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function openTab(evt, tabName) {
-            let i, tabcontent, tablinks;
-            tabcontent = document.getElementsByClassName("tab-content");
-            for (i = 0; i < tabcontent.length; i++) { tabcontent[i].style.display = "none"; }
-            tablinks = document.getElementsByClassName("tab-button");
-            for (i = 0; i < tablinks.length; i++) { tablinks[i].className = tablinks[i].className.replace(" active", ""); }
-            document.getElementById(tabName).style.display = "block";
-            evt.currentTarget.className += " active";
-        }
-        function updateClock() { document.getElementById('clock').textContent = new Date().toLocaleTimeString(); }
-
-        function updateCaptureStatus(statusText, data) {
-            const wfStatusEl = document.getElementById('waveform-data-status');
-            const spStatusEl = document.getElementById('spectrum-data-status');
-            const lowerStatus = statusText.toLowerCase();
-            if (lowerStatus.includes('collecting') || lowerStatus.includes('waiting') || lowerStatus.includes('requesting')) {
-                const msg = 'Busy collecting...'; const color = '#f39c12';
-                wfStatusEl.textContent = msg; spStatusEl.textContent = msg;
-                wfStatusEl.style.color = color; spStatusEl.style.color = color;
-            } else if (lowerStatus.includes('failed') || lowerStatus.includes('error')) {
-                const msg = 'Error during capture.'; const color = '#e74c3c';
-                wfStatusEl.textContent = msg; spStatusEl.textContent = msg;
-                wfStatusEl.style.color = color; spStatusEl.style.color = color;
-            } else {
-                wfStatusEl.textContent = data.newWaveformAvailable ? 'New data available!' : 'No new data.';
-                spStatusEl.textContent = data.newSpectrumAvailable ? 'New data available!' : 'No new data.';
-                wfStatusEl.style.color = data.newWaveformAvailable ? '#2ecc71' : '#6c757d';
-                spStatusEl.style.color = data.newSpectrumAvailable ? '#2ecc71' : '#6c757d';
-            }
-        }
-        async function requestJSON(url) {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 15000);
-            try {
-                const response = await fetch(url, {signal: controller.signal, cache: 'no-store'});
-                if (!response.ok) throw new Error(`Request failed (${response.status})`);
-                return await response.json();
-            } finally { clearTimeout(timer); }
-        }
-        function showOffline() {
-            document.getElementById('internet-status').textContent = 'Gateway unreachable';
-            document.getElementById('status').textContent = 'Connection lost. Retrying...';
-        }
-        function loadFullWaveform() {
-            const button = document.querySelector('button[onclick="loadFullWaveform()"]');
-            button.textContent = 'Loading...'; button.disabled = true;
-            requestJSON('/fullwaveform').then(d => {
-                if (d && d.length > 0) {
-                    waveformChart.data.datasets[0].data = d;
-                    waveformChart.data.labels = Array.from({length: d.length}, (_, i) => i);
-                    waveformChart.update('none');
-                    document.getElementById('waveformLastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-                } else { alert('No waveform data is available on the device.'); }
-                button.textContent = 'View Full Waveform'; button.disabled = false;
-            }).catch(() => { document.getElementById('waveformLastUpdated').textContent = 'Load failed. Try again.'; })
-              .finally(() => { button.textContent = 'View Full Waveform'; button.disabled = false; });
-        }
-        function loadFullSpectrum() {
-            const button = document.querySelector('button[onclick="loadFullSpectrum()"]');
-            button.textContent = 'Loading...'; button.disabled = true;
-            requestJSON('/fullspectrum').then(d => {
-                if (d && d.points && d.points.length > 0) {
-                    const maxAmplitude = Math.max(...d.points);
-                    spectrumChart.data.datasets[0].data = d.points;
-                    spectrumChart.data.labels = d.labels;
-                    spectrumChart.options.scales.y.max = Math.max(0.01, maxAmplitude * 1.1);
-                    spectrumChart.update('none');
-                    document.getElementById('spectrumLastUpdated').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
-                } else { alert('No spectrum data is available on the device.'); }
-                button.textContent = 'View Full Spectrum'; button.disabled = false;
-            }).catch(() => { document.getElementById('spectrumLastUpdated').textContent = 'Load failed. Try again.'; })
-              .finally(() => { button.textContent = 'View Full Spectrum'; button.disabled = false; });
-        }
-        async function requestAction(url, successMessage) {
-            try {
-                const response = await fetch(url);
-                const text = await response.text();
-                if (!response.ok) throw new Error(text || `Request failed (${response.status})`);
-                if (successMessage) alert(successMessage);
-                return true;
-            } catch (error) { alert(error.message || 'Gateway unreachable.'); return false; }
-        }
-        async function trigger() {
-            if (await requestAction('/trigger_waveform', 'Data collection requested.')) updateDashboardData();
-        }
-        function setIntervals() { requestAction(`/set_intervals?interval=${document.getElementById('data_interval').value}`, 'Interval updated.'); }
-        function clearDynamicData() { if (confirm('Clear cached chart data?')) requestAction('/clear_dynamic_data'); }
-        function clearPeakLog() { if (confirm('Delete all recorded peak data?')) requestAction('/clear_peak_log'); }
-        function clearMetricsLog() { if (confirm('Delete all recorded metrics data?')) requestAction('/clear_metrics_log'); }
-        function clearEventLog() { if (confirm('Delete event_log.csv?')) requestAction('/clear_event_log'); }
-        function togglePeakRecording() { requestAction(`/datalog_control?action=${isPeakRecording?'stop':'start'}`); }
-        function toggleMetricsRecording() { requestAction(`/metrics_log_control?action=${isMetricsRecording?'stop':'start'}`); }
-        function downloadPeakCSV() { window.location.href = '/download_csv'; }
-        function downloadMetricsCSV(){ window.location.href = '/download_metrics_csv'; }
-
-        function updatePeakLoggerUI(data) {
-            isPeakRecording = data.is_recording;
-            const recordBtn = document.getElementById('record-btn');
-            const downloadBtn = document.getElementById('download-csv-btn');
-            const loggerStatus = document.getElementById('logger-status');
-            const progressBarFill = document.getElementById('progress-bar-fill');
-            const anomalyBanner = document.getElementById('anomaly-banner');
-            if (isPeakRecording) {
-                recordBtn.textContent = 'Stop Recording'; recordBtn.style.backgroundColor = '#e74c3c';
-                if (!data.is_baseline_established) {
-                    loggerStatus.textContent = `Learning Baseline (${data.baseline_samples}/${data.max_baseline_samples})`;
-                    loggerStatus.style.color = '#007bff';
-                } else {
-                    loggerStatus.textContent = 'Monitoring for Anomalies'; loggerStatus.style.color = '#2ecc71';
-                }
-            } else {
-                recordBtn.textContent = 'Start Recording'; recordBtn.style.backgroundColor = '#28a745';
-                loggerStatus.textContent = 'Stopped'; loggerStatus.style.color = '#6c757d';
-            }
-            const progressPercent = (data.log_count / data.max_log_size) * 100;
-            progressBarFill.style.width = `${progressPercent}%`;
-            progressBarFill.textContent = `${data.log_count}/${data.max_log_size}`;
-
-            const canDownload = data.log_count > 0;
-            downloadBtn.disabled = !canDownload;
-            if(downloadBtn.disabled) { downloadBtn.classList.remove('btn-enabled'); } else { downloadBtn.classList.add('btn-enabled'); }
-
-            if (data.anomaly_detected) {
-                anomalyBanner.style.display = 'block';
-                anomalyBanner.textContent = `🚨 ANOMALY DETECTED: ${data.anomaly_details}`;
-            } else { anomalyBanner.style.display = 'none'; }
-
-            let freqs = data.is_baseline_established ? data.baseline_freqs : (data.log_count > 0 ? data.initial_freqs : []);
-            if (freqs && freqs.length > 0) {
-                for(let i=0; i < freqs.length; i++) {
-                    if(document.getElementById(`peak-header-${i+1}`)) document.getElementById(`peak-header-${i+1}`).textContent = `Peak ${i+1} (${freqs[i].toFixed(2)} Hz)`;
-                }
-            } else {
-                for(let i=1; i<=4; i++) {
-                   if(document.getElementById(`peak-header-${i}`)) document.getElementById(`peak-header-${i}`).textContent = `Peak ${i} (F/A)`;
-                }
-            }
-
-            const tableBody = document.querySelector("#logger-table tbody");
-            tableBody.innerHTML = "";
-            if (data.log_count > 0) {
-                data.log.slice().reverse().forEach(entry => {
-                    const row = document.createElement('tr');
-                    let peakHtml = '';
-                    entry.peaks.forEach(p => { peakHtml += `<td>${p.f.toFixed(2)} Hz / ${p.a.toFixed(4)} g</td>`; });
-                    row.innerHTML = `<td>${entry.timestamp}</td>${peakHtml}`;
-                    tableBody.appendChild(row);
-                });
-            } else { tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No data recorded.</td></tr>'; }
-        }
-
-        function updateMetricsLoggerUI(data) {
-            isMetricsRecording = data.is_recording;
-            metricsLogData = data.log || [];
-            const recordBtn = document.getElementById('metrics-record-btn');
-            const downloadBtn = document.getElementById('metrics-download-csv-btn');
-            const loggerStatus = document.getElementById('metrics-logger-status');
-            const progressBarFill = document.getElementById('metrics-progress-bar-fill');
-
-            if(isMetricsRecording){
-                recordBtn.textContent = 'Stop Metrics Recording'; recordBtn.style.backgroundColor = '#e74c3c';
-                loggerStatus.textContent = `Recording... (${data.log_count}/${data.max_log_size})`;
-                loggerStatus.style.color = '#28a745';
-            } else {
-                recordBtn.textContent = 'Start Metrics Recording'; recordBtn.style.backgroundColor = '#28a745';
-                loggerStatus.textContent = 'Stopped'; loggerStatus.style.color = '#6c757d';
-            }
-            const progressPercent = (data.log_count / data.max_log_size) * 100;
-            progressBarFill.style.width = `${progressPercent}%`;
-            progressBarFill.textContent = `${data.log_count}/${data.max_log_size}`;
-
-            const canDownload = data.log_count > 0;
-            downloadBtn.disabled = !canDownload;
-            if(downloadBtn.disabled) { downloadBtn.classList.remove('btn-enabled'); } else { downloadBtn.classList.add('btn-enabled'); }
-
-            const tableBody = document.querySelector("#metrics-logger-table tbody");
-            tableBody.innerHTML = "";
-            if (data.log_count > 0) {
-                data.log.slice().reverse().forEach(entry => {
-                    const row = document.createElement('tr');
-                    let valuesHtml = '';
-                    entry.values.forEach(v => { valuesHtml += `<td>${v.toFixed(3)}</td>`; });
-                    row.innerHTML = `<td>${entry.timestamp}</td>${valuesHtml}`;
-                    tableBody.appendChild(row);
-                });
-            } else { tableBody.innerHTML = '<tr><td colspan="15" style="text-align:center;">No historical metrics recorded yet.</td></tr>'; }
-        }
-
-        function drawMetricsChart() {
-            if (!metricsHistoryChart) return;
-
-            const selector = document.getElementById('metric-chart-selector');
-            const selectedIndex = selector.value;
-            const selectedLabel = selector.options[selector.selectedIndex].text;
-            const selectedKey = metricKeys[selectedIndex];
-
-            const labels = liveMetricsHistory.map(d => d.time);
-            const dataPoints = liveMetricsHistory.map(d => d.metrics[selectedKey]);
-
-            metricsHistoryChart.data.labels = labels;
-            metricsHistoryChart.data.datasets[0].data = dataPoints;
-            metricsHistoryChart.data.datasets[0].label = selectedLabel;
-            metricsHistoryChart.options.scales.y.title.text = selectedLabel;
-
-            const hasData = liveMetricsHistory.length > 0;
-            metricsHistoryChart.options.plugins.customCanvasMessage.display = !hasData;
-
-            metricsHistoryChart.update();
-        }
-
-        function updateEventLogUI(data) {
-            const tableBody = document.querySelector("#event-log-table tbody");
-            tableBody.innerHTML = "";
-            if (data.files && data.files.length > 0) {
-                data.files.forEach(entry => {
-                    const row = document.createElement('tr');
-                    const sizeInKb = (entry.size / 1024).toFixed(2);
-                    row.innerHTML = `<td>${entry.timestamp}</td><td>${entry.name}</td><td>${sizeInKb} KB</td>`;
-                    tableBody.appendChild(row);
-                });
-            } else {
-                tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No files found on SD Card.</td></tr>';
-            }
-        }
-
-        let wasCapturing = false;
-        let dashboardPending = false;
-        async function updateDashboardData() {
-            if (dashboardPending) return;
-            dashboardPending = true;
-            try {
-            await Promise.all([
-            requestJSON("/data").then(data => {
-                liveMetricsData = data;
-
-                if (data.metrics_valid !== false && Object.keys(liveMetricsData).length > 0 && !isNaN(liveMetricsData.veloPeak)) {
-                    liveMetricsHistory.push({
-                        time: new Date().toLocaleTimeString(),
-                        metrics: liveMetricsData
-                    });
-                    if (liveMetricsHistory.length > LIVE_HISTORY_SIZE) {
-                        liveMetricsHistory.shift();
-                    }
-                }
-
-                const statusText = data.status || "Monitoring";
-                const isCapturing = !!data.capture_busy;
-
-                const internetStatus = document.getElementById('internet-status');
-                internetStatus.innerHTML = data.mqtt_connected ? '<span class="status-dot connected"></span>Online' : '<span class="status-dot disconnected"></span>Offline';
-                document.getElementById('status').textContent = 'Status: ' + statusText;
-                updateCaptureStatus(statusText, data);
-
-                if(wasCapturing && !isCapturing) {
-                    loadFullWaveform();
-                    loadFullSpectrum();
-                }
-                wasCapturing = isCapturing;
-
-                // NEW: Handle button loading state
-                const wfBtn = document.querySelector('button[onclick="loadFullWaveform()"]');
-                const spBtn = document.querySelector('button[onclick="loadFullSpectrum()"]');
-                if (isCapturing) {
-                    wfBtn.textContent = 'Loading...';
-                    wfBtn.disabled = true;
-                    spBtn.textContent = 'Loading...';
-                    spBtn.disabled = true;
-                } else {
-                    wfBtn.textContent = 'View Full Waveform';
-                    wfBtn.disabled = false;
-                    spBtn.textContent = 'View Full Spectrum';
-                    spBtn.disabled = false;
-                }
-
-
-                const storageBanner = document.getElementById('storage-warning-banner');
-                if (data.storage_mode !== 'SD Card') {
-                    storageBanner.textContent = `⚠️ SD Card not found! Logging is limited to recent readings in internal memory. Data will be lost on reboot.`;
-                    storageBanner.style.display = 'block';
-                } else {
-                    storageBanner.style.display = 'none';
-                }
-
-                const alertStatusEl = document.getElementById('alert-relay-status');
-                if(data.alert_relay_active) {
-                    alertStatusEl.innerHTML = '<span class="status-dot active"></span> Alert: ACTIVE';
-                } else {
-                    alertStatusEl.innerHTML = '<span class="status-dot inactive"></span> Alert: INACTIVE';
-                }
-                const alarmStatusEl = document.getElementById('alarm-relay-status');
-                if(data.alarm_relay_active) {
-                    alarmStatusEl.innerHTML = '<span class="status-dot active"></span> Alarm: ACTIVE';
-                } else {
-                    alarmStatusEl.innerHTML = '<span class="status-dot inactive"></span> Alarm: INACTIVE';
-                }
-
-                if (!isCapturing){
-                    document.getElementById('metrics-container').style.display = 'grid';
-                    document.getElementById('wait-message').style.display = 'none';
-                    if (document.getElementById('metrics-container').children.length < 14) { document.getElementById('metrics-container').innerHTML = metric_cards_html; }
-                    metricKeys.forEach(key => {
-                        const el = document.getElementById(key);
-                        if (el) {
-                            let val = data[key];
-                            if (data.metrics_valid === false || !Number.isFinite(val)) { el.textContent = '--'; return; }
-                            let suffix = ' ';
-                            let precision = 3;
-                            if (key.includes('velo')) { suffix += 'mm/s'; precision = 2; }
-                            else if (key.includes('displ')) { suffix += '&micro;m'; precision = 2; }
-                            else if (key.includes('crest')) { precision = 2; }
-                            else if (key.toLowerCase().includes('temp')) { suffix += '&deg;C'; precision = 2; }
-                            else if (key.toLowerCase().includes('volt')) { suffix += 'V'; precision = 2; }
-                            else { suffix += 'g'; }
-                            el.innerHTML = val.toFixed(precision) + suffix;
-                        }
-                    });
-                    document.getElementById('lastUpdated').textContent = data.metrics_valid === false ? 'No valid sensor reading' : new Date(Date.now() - (data.metrics_age_ms || 0)).toLocaleTimeString();
-                } else {
-                    document.getElementById('metrics-container').style.display = 'none';
-                    document.getElementById('wait-message').style.display = 'block';
-                    document.getElementById('wait-message-text').textContent = statusText;
-                }
-
-                drawMetricsChart();
-                return Promise.all([
-                    requestJSON('/get_log_data').then(updatePeakLoggerUI),
-                    requestJSON('/get_metrics_log_data').then(updateMetricsLoggerUI)
-                ]);
-            }),
-            requestJSON('/spectrum_analysis').then(data => {
-                const tableBody = document.querySelector("#analysis-table tbody");
-                tableBody.innerHTML = "";
-                if(data.peaks && data.peaks.length > 0 && data.peaks.some(p => p.frequency > 0)) {
-                    data.peaks.forEach((peak, index) => {
-                        const row = document.createElement('tr');
-
-                        // NEW: Create detailed history tooltip
-                        let historyHtml = '<div class="history-container">' + peak.amplitude.toFixed(4);
-                        historyHtml += '<div class="history-tooltip">';
-                        if(peak.history && peak.history.length > 0) {
-                            peak.history.slice().reverse().forEach(h => {
-                                historyHtml += `<div><span class="hist-ts">${h.ts}</span>: <span class="hist-amp">${h.amp.toFixed(4)}g</span></div>`;
-                            });
-                        } else {
-                            historyHtml += 'No history yet.';
-                        }
-                        historyHtml += '</div></div>';
-
-                        row.innerHTML = `<td>#${index + 1}</td><td>${peak.frequency.toFixed(2)}</td><td>${historyHtml}</td><td>${peak.status}</td><td>${peak.history.map(h => h.amp.toFixed(4)).join(' &rarr; ')}</td>`;
-                        tableBody.appendChild(row);
-                    });
-                } else { tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No significant peaks detected.</td></tr>'; }
-                if (spectrumChart) {
-                    const peakPoints = data.peaks.filter(p => p.frequency > 0).map(p => ({ x: p.frequency, y: p.amplitude }));
-                    spectrumChart.data.datasets[1].data = peakPoints;
-                    spectrumChart.update('none');
-                }
-            }),
-            requestJSON('/get_event_log').then(data => updateEventLogUI(data))
-            ]);
-            } catch (error) { showOffline(); }
-            finally { dashboardPending = false; }
-        }
-
-        window.onload = function() {
-            document.getElementById('metrics-container').innerHTML = metric_cards_html;
-            requestJSON('/get_intervals').then(d => { document.getElementById('data_interval').value = d.interval; });
-            const wfCtx = document.getElementById('waveformChart').getContext('2d');
-            waveformChart = new Chart(wfCtx, { type: 'line', data: { datasets: [{ label: 'Time Waveform (g vs. Sample)', data: [], borderColor: 'rgb(75, 192, 192)', borderWidth: 1.5, pointRadius: 0 }] }, options: { animation: false, scales: { y: { title: { display: true, text: 'Acceleration (g)' } }, x: { title: { display: true, text: 'Sample Point' } } } } });
-            const spCtx = document.getElementById('spectrumChart').getContext('2d');
-            spectrumChart = new Chart(spCtx, { type: 'line', data: { datasets: [{ label: 'Frequency Spectrum (g vs. Hz)', data: [], borderColor: 'rgb(255, 99, 132)', borderWidth: 1.5, pointRadius: 0 }, { label: 'Top Peaks', data: [], backgroundColor: 'rgba(255, 0, 0, 0.8)', pointRadius: 6, showLine: false, type: 'scatter' }] }, options: { animation: false, scales: { y: { title: { display: true, text: 'Amplitude (g)' }, min: 0 }, x: { type: 'linear', title: { display: true, text: 'Frequency (Hz)' } } } } });
-
-            const selector = document.getElementById('metric-chart-selector');
-            metricNames.forEach((name, index) => {
-                selector.innerHTML += `<option value="${index}">${name}</option>`;
-            });
-
-            const customCanvasMessage = {
-                id: 'customCanvasMessage',
-                afterDraw: (chart, args, options) => {
-                    if (!options.display) return;
-                    const {ctx, chartArea: {top, width, height}} = chart;
-                    ctx.save();
-                    ctx.font = '16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillStyle = '#6c757d';
-                    ctx.fillText(options.text, width / 2, height / 2 + top);
-                    ctx.restore();
-                }
-            };
-            Chart.register(customCanvasMessage);
-
-            const histCtx = document.getElementById('metricsHistoryChart').getContext('2d');
-            metricsHistoryChart = new Chart(histCtx, {
-                type: 'line',
-                data: { labels: [], datasets: [{ data: [], borderColor: 'rgb(40, 167, 69)', borderWidth: 2, pointRadius: 2, tension: 0.1 }] },
-                options: {
-                    animation: false,
-                    scales: { y: { title: { display: true } }, x: { title: { display: true, text: 'Time' } } },
-                    plugins: {
-                        legend: { display: false },
-                        customCanvasMessage: {
-                            display: true,
-                            text: "Waiting for live data to build historical trend..."
-                        }
-                    }
-                }
-            });
-
-            updateClock();
-            updateDashboardData();
-            setInterval(updateClock, 1000);
-            setInterval(updateDashboardData, 3000);
-        };
-    </script>
-</body>
-</html>
-)rawliteral";
-  server.send(200, "text/html; charset=utf-8", html);
+  server.send_P(200, "text/html; charset=utf-8", DASHBOARD_PAGE);
 }
 
 void handleMetrics() {
@@ -2359,12 +1847,20 @@ void handleMetrics() {
     doc["newWaveformAvailable"] = newWaveformAvailable; doc["newSpectrumAvailable"] = newSpectrumAvailable;
     doc["alert_relay_active"] = isAlertRelayActive;
     doc["alarm_relay_active"] = isAlarmRelayActive;
+    doc["alert_relay_enabled"] = relayAlertEnabled;
+    doc["alarm_relay_enabled"] = relayAlarmEnabled;
     xSemaphoreGive(dataMutex);
   } else {
     server.send(503, "application/json", "{\"error\":\"System busy\"}"); return;
   }
 
   doc["mqtt_connected"] = mqttConnected.load();
+  // Static identity for the dashboard header; const char* values are stored by pointer.
+  doc["model"] = DEVICE_MODEL;
+  doc["firmware"] = FIRMWARE_VERSION;
+  doc["network"] = gw::netDescription();
+  doc["ioc"] = (bool)GATEWAY_ETHERNET;
+  doc["sd_supported"] = !GATEWAY_ETHERNET;
 
   if (currentStorageMode == STORAGE_SD) {
       doc["storage_mode"] = "SD Card";
@@ -2641,7 +2137,7 @@ void handleSaveModbusTcp() {
 
 void handleWifiSettings() {
 #if GATEWAY_ETHERNET
-    server.send(200, "text/html", "<html><meta name=viewport content=\"width=device-width,initial-scale=1\"><h2>Ethernet Settings</h2><p>IRIV uses wired Ethernet with DHCP. Without DHCP, connect at 192.168.4.1.</p><p>Device IP: " + gw::netIP().toString() + "</p><a href=/settings>Back to settings</a></html>");
+    server.send_P(200, "text/html; charset=utf-8", NETWORK_PAGE);
 #else
     String html = R"rawliteral(
 <!DOCTYPE html><html><head><title>Wi-Fi Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh}.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.form-group{margin-bottom:15px}label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}input[type=text],input[type=password]{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;transition:border-color .3s}input[type=text]:focus,input[type=password]:focus{outline:0;border-color:#007bff}.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;transition:background-color .3s}.btn-primary:hover{background-color:#0056b3}.btn-scan{background-color:#6c757d;margin-bottom:15px}.btn-scan:hover{background-color:#5a6268}.wifi-list-container{max-height:250px;overflow-y:auto;border:1px solid #e9ecef;border-radius:8px;padding:5px;background-color:#f8f9fa}#wifi-list{list-style:none;padding:0;margin:0}#wifi-list li{padding:12px 15px;cursor:pointer;border-bottom:1px solid #e9ecef;transition:background-color .2s;display:flex;justify-content:space-between;align-items:center}#wifi-list li:last-child{border-bottom:none}#wifi-list li:hover{background-color:#e9ecef}.wifi-ssid{font-size:16px;font-weight:500;flex-grow:1}.wifi-rssi{font-size:14px;color:#6c757d;font-weight:400}.status-bar{text-align:center;margin-top:20px;padding-top:20px;border-top:2px solid #e9ecef;font-size:14px;color:#6c757d;font-weight:500}.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:600;font-size:14px}.nav-link:hover{text-decoration:underline}</style></head><body><div class="container"><div class="header"><h2>Wi-Fi Settings</h2></div><div class="status-bar">Current Status: )rawliteral" + htmlEscape(gw::netDescription()) + R"rawliteral(<br>IP Address: )rawliteral" + (gw::netConnected() ? gw::netIP().toString() : gw::netIP().toString()) + R"rawliteral(</div><div class="form-section"><button class="btn-primary btn-scan" onclick="scanWifi()">Scan for Networks</button><div class="wifi-list-container"><ul id="wifi-list"></ul></div><form onsubmit="return saveWifi()"><div class="form-group"><label for="ssid">Network Name (SSID)</label><input type="text" id="ssid" name="ssid" required></div><div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass"></div><button type="submit" class="btn-primary">Save and Connect</button></form></div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function scanWifi(){const t=document.getElementById("wifi-list");t.innerHTML="<li>Scanning...</li>",fetch("/scanwifi").then(t=>t.json()).then(e=>{t.innerHTML="",0===e.length?t.innerHTML="<li>No networks found.</li>":e.forEach(e=>{const n=document.createElement("li");n.textContent=`${e.ssid} (${e.rssi} dBm)`,n.onclick=()=>{document.getElementById("ssid").value=e.ssid},t.appendChild(n)})})}function saveWifi(){const t=document.getElementById("ssid").value,e=document.getElementById("pass").value;fetch("/savewifi",{method:"POST",body:new URLSearchParams({ssid:t,pass:e})}).then(async r=>{const text=await r.text();if(!r.ok)throw Error(text);alert(text)}).catch(e=>alert("Save failed: "+e.message));return false}</script></body></html>)rawliteral";

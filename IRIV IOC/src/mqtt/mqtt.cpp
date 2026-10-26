@@ -1,5 +1,20 @@
 #include "core/modules.h"
 
+namespace {
+// Same call as before (the char* overload, so the retain flag is unchanged), but a failed or
+// partial send is logged with its size and the connection state. At most one line per 10 s.
+bool publishLogged(const String& topic, const char* payload, size_t n, const char* what) {
+    const bool ok = mqttClient->publish(topic.c_str(), payload, n);
+    static uint32_t lastLog = 0;
+    if (!ok && (lastLog == 0 || millis() - lastLog >= 10000)) {
+        lastLog = millis();
+        logMessage(String("[MQTT] ") + what + " publish failed: " + String(n) + " bytes to " + topic +
+                   ", still connected " + (mqttClient->connected() ? "yes" : "no") + ", state " + String(mqttClient->state()));
+    }
+    return ok;
+}
+}
+
 // =================================================================
 // --- MQTT FUNCTIONS
 // =================================================================
@@ -20,8 +35,31 @@ void publishDeviceHealth() {
     } else { return; }
     char payload[2048];
     size_t n = serializeJson(doc, payload);
-    mqttClient->publish(mqtt_status_topic.c_str(), payload, n);
+    publishLogged(mqtt_status_topic, payload, n, "Health");
 }
+
+#if GATEWAY_ETHERNET
+void publishIoStatus() {
+    if (!mqttClient || !mqttClient->connected()) return;
+    static uint32_t sentSequence = UINT32_MAX, sentAt = 0;
+    io::Snapshot s;
+    if (!io::snapshot(s) || !s.ready) return;
+    if (s.sequence == sentSequence && millis() - sentAt < 60000) return;
+    DynamicJsonDocument doc(4096);
+    doc["model"] = sensor_model;
+    doc["serial_number"] = sensor_serial;
+    doc["timestamp"] = getTimestamp();
+    doc["type"] = "io_status";
+    io::writeJson(doc.as<JsonObject>(), s);
+    char payload[3072];
+    if (doc.overflowed() || measureJson(doc) >= sizeof(payload)) return;
+    const size_t n = serializeJson(doc, payload, sizeof(payload));
+    // Not retained: a stale relay state must not look current to a new subscriber.
+    if (mqttClient->publish((mqtt_topic_str + "/io").c_str(), reinterpret_cast<const uint8_t*>(payload), n, false)) {
+        sentSequence = s.sequence; sentAt = millis();
+    }
+}
+#endif
 
 void publishMetrics() {
     if (!mqttClient || !mqttClient->connected()) return;
@@ -84,7 +122,7 @@ void publishMetrics() {
     } else { return; }
     char payload[4096];
     size_t n = serializeJson(doc, payload);
-    mqttClient->publish(mqtt_topic_str.c_str(), payload, n);
+    publishLogged(mqtt_topic_str, payload, n, "publishMetrics");
 }
 
 void publishDownsampledWaveform() {
@@ -111,7 +149,7 @@ void publishDownsampledWaveform() {
 
   char payload[6144];
   size_t n = serializeJson(doc, payload);
-  mqttClient->publish(mqtt_topic_str.c_str(), payload, n);
+  publishLogged(mqtt_topic_str, payload, n, "publishDownsampledWaveform");
 }
 
 void publishFullWaveformInChunks(Axis capturedAxis) {
@@ -161,7 +199,12 @@ void publishFullWaveformInChunks(Axis capturedAxis) {
         }
         char payload[4096];
         size_t n = serializeJson(doc, payload);
-        mqttClient->publish(mqtt_topic_str.c_str(), payload, n);
+        publishLogged(mqtt_topic_str, payload, n, "publishFullWaveformInChunks");
+#if GATEWAY_ETHERNET
+        // loop() also runs the web server and Modbus TCP; keep them answering between chunks.
+        pollModbusTCPServer();
+        webServerStep();
+#endif
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -213,7 +256,12 @@ void publishFullSpectrumInChunks(Axis capturedAxis) {
         }
         char payload[4096];
         size_t n = serializeJson(doc, payload);
-        mqttClient->publish(mqtt_topic_str.c_str(), payload, n);
+        publishLogged(mqtt_topic_str, payload, n, "publishFullSpectrumInChunks");
+#if GATEWAY_ETHERNET
+        // loop() also runs the web server and Modbus TCP; keep them answering between chunks.
+        pollModbusTCPServer();
+        webServerStep();
+#endif
         vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
@@ -241,7 +289,7 @@ void publishSpectrumPeaks(Axis capturedAxis, const std::vector<SpectrumPeak>& pe
     }
     char payload[2048];
     size_t n = serializeJson(doc, payload);
-    mqttClient->publish(mqtt_topic_str.c_str(), payload, n);
+    publishLogged(mqtt_topic_str, payload, n, "publishSpectrumPeaks");
 }
 
 void publishCombinedSpectrumPeaks() {
@@ -263,7 +311,7 @@ void publishCombinedSpectrumPeaks() {
     }
     char payload[4096];
     size_t n = serializeJson(doc, payload);
-    mqttClient->publish(mqtt_status_topic.c_str(), payload, n);
+    publishLogged(mqtt_status_topic, payload, n, "publishCombinedSpectrumPeaks");
     xyzPeakDataCache.clear();
 }
 
@@ -287,7 +335,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
             }
             
             if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
-                bool captureBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum;
+                bool captureBusy = firmwareUpdateActive || (currentDataState != DD_IDLE) || isReadingWaveform || isReadingSpectrum || isPublishingCapture;
                 if ((strcmp(command, "trigger_all") == 0 || strcmp(command, "trigger_capture") == 0) && captureBusy) {
                     Serial.println("MQTT: capture ignored, device busy");
                 }
@@ -317,7 +365,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                 } 
                 else if (strcmp(command, "set_interval") == 0) {
                     long newInterval = doc["interval_ms"];
-                    if (newInterval > 0) {
+                    if (newInterval >= 10000) { // same lower limit as the web route
                         dataCaptureInterval = newInterval;
                         preferences.begin("device-cfg", false);
                         preferences.putLong("wf_interval", dataCaptureInterval);

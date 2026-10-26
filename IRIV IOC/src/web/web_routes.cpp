@@ -21,15 +21,30 @@ void registerWebRoutes() {
     server.on("/alarm_settings", HTTP_POST, handleAlarmSettings);
 #if GATEWAY_ETHERNET
     server.on("/wifi_settings", HTTP_GET, handleNetworkSettings);
+    server.on("/api/network", HTTP_GET, handleNetworkApi);
+    server.on("/api/network", HTTP_POST, handleNetworkApi);
 #else
     server.on("/wifi_settings", HTTP_GET, handleWifiSettings);
 #endif
     server.on("/savewifi", HTTP_GET, handleSaveWifi);
     server.on("/mqtt_settings", HTTP_GET, handleMqttSettings);
     server.on("/save_mqtt", HTTP_GET, handleSaveMqtt);
+    server.on("/save_mqtt", HTTP_POST, handleSaveMqtt);
+#if GATEWAY_ETHERNET
+    server.on("/mqtt_ca", HTTP_POST, handleMqttCertificate);
+    server.on("/libraries", HTTP_GET, handleLibraries);
+    server.on("/lib_status", HTTP_GET, handleLibraryStatus);
+    server.on("/lib_test", HTTP_POST, handleLibraryTest);
+    server.on("/io", HTTP_GET, handleIoPage);
+    server.on("/io_status", HTTP_GET, handleIoStatus);
+    server.on("/io_config", HTTP_POST, handleIoConfig);
+    server.on("/io_ack", HTTP_POST, handleIoAcknowledge);
+    server.on("/io_outputs", HTTP_POST, handleIoOutputs);
+#endif
     server.on("/rs485_settings", HTTP_GET, handleRs485Settings);
     server.on("/save_rs485", HTTP_GET, handleSaveRs485);
     server.on("/trigger_capture", HTTP_GET, handleTriggerCapture);
+    server.on("/sensor_reconnect", HTTP_POST, handleSensorReconnect);
     server.on("/set_intervals", HTTP_GET, handleSetIntervals);
     server.on("/get_intervals", HTTP_GET, handleGetIntervals);
     server.on("/set_metrics_interval", HTTP_GET, handleSetMetricsInterval); 

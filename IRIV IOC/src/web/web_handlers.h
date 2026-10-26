@@ -9,14 +9,17 @@ inline void sendPageText(const String& text) { if (text.length()) server.sendCon
 
 void registerWebRoutes();
 #if GATEWAY_ETHERNET
-void handleNetworkSettings();
+void handleNetworkSettings(); void handleNetworkApi();
+gw::EthernetAddress loadEthernetAddress();
+void handleLibraries(); void handleLibraryStatus(); void handleLibraryTest();
+void handleIoPage(); void handleIoStatus(); void handleIoConfig(); void handleIoAcknowledge(); void handleIoOutputs();
 #endif
 
 void handleRoot(); void handleMetrics(); void handleFullWaveform(); void handleFullSpectrum();
 void handleSettings(); void handleWifiSettings(); void handleSaveWifi();
 void handleMqttSettings(); void handleSaveMqtt();
 void handleRs485Settings(); void handleSaveRs485();
-void handleTriggerCapture(); void handleSetIntervals();
+void handleTriggerCapture(); void handleSetIntervals(); void handleSensorReconnect();
 void handleGetIntervals(); void handleScanWifi(); void handleNotFound();
 void handleGetMetricsLogData(); void handleMetricsLogControl(); void handleDownloadMetricsCsv();
 void handleClearMetricsLog(); void handleClearDynamicData(); void handleReboot();

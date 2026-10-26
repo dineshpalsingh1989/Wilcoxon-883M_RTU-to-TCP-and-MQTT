@@ -7,7 +7,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <WebServer.h>
-#include <PubSubClient.h>
+#include <WilcoxonMqtt.h>
 #include <ArduinoJson.h>
 #include "time.h"
 #if !GATEWAY_ETHERNET
@@ -62,7 +62,7 @@ extern WebServer server;
 extern Preferences preferences;
 extern WiFiClient espClient;
 extern WiFiClientSecure espClientSecure;
-extern PubSubClient* mqttClient;
+extern WilcoxonMqttClient* mqttClient;
 
 // Modbus RTU / TCP
 extern uint8_t modbus_slave_id_val;
@@ -80,6 +80,8 @@ extern CaptureMode requestedCapture;
 extern bool isReadingWaveform;
 extern int waveformReadIndex;
 extern bool isReadingSpectrum;
+extern bool isPublishingCapture; // capture data is still being sent over MQTT
+extern bool sensorPaused; // polling stopped after SENSOR_READ_ATTEMPTS failures; cleared by Reconnect
 extern int spectrumReadIndex;
 extern Axis requestedAxis, lastCapturedAxis;
 extern char lastCaptureTimestamp[21];

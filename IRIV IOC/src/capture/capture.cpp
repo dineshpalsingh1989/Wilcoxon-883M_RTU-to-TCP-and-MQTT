@@ -1,5 +1,14 @@
 #include "core/modules.h"
 
+namespace {
+// Marks capture data as still being sent over MQTT. The IRIV serves web pages between chunks,
+// so saves, uploads and new captures must stay blocked until the send has finished.
+struct PublishingGuard {
+    PublishingGuard() { isPublishingCapture = true; }
+    ~PublishingGuard() { isPublishingCapture = false; }
+};
+}
+
 void logMetrics() {
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
         MetricsSnapshot& entry = metricsLog[metricsLogIndex];
@@ -87,6 +96,7 @@ void handleLongReads() {
             xSemaphoreGive(dataMutex);
         }
         if (success && mqttClient && mqttClient->connected()) {
+            PublishingGuard publishing;
             publishDownsampledWaveform();
             publishFullWaveformInChunks(local_requestedAxis);
         }
@@ -161,6 +171,7 @@ void handleLongReads() {
             
             if (success) {
                  if(mqttClient && mqttClient->connected()) {
+                    PublishingGuard publishing;
                     publishFullSpectrumInChunks(local_requestedAxis);
                     
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {

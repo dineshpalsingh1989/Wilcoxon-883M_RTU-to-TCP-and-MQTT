@@ -30,11 +30,13 @@ Board projects are independent copies. Make future fixes in every applicable boa
 
 The [Cytron IRIV IO Controller](https://my.cytron.io/p-iriv-io-controller) uses an RP2350, rather than an ESP32. Its alert/alarm outputs use DO0/DO1, with the onboard monochrome status LED. Both networking tasks stay on core 0 as required by the Arduino-Pico network stack. See [hardware wiring diagrams](docs/wiring.md).
 
+MQTT on the IRIV uses this project's [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) library (from v4.12.0) instead of PubSubClient; topics and messages are unchanged. The ESP32-S3 build still uses PubSubClient.
+
 ## IOC I/O and alarms
 
 On IRIV, open **Settings > IOC I/O & Alarms** for separate live-status, digital input/push-button, analog/4?20 mA and alarm-output pages. Configure capture/acknowledge buttons, low/high analog alarms with hysteresis, and a beacon/sounder on DO2/DO3. DO0/DO1 retain the vibration alarm assignments. New functions default to disabled. Physical analog mode switches must match the software setting. See the [I/O setup guide](docs/io-alarms.md) and [wiring diagrams](docs/wiring.md).
 
-**View without hardware:** run `node ILA210/demo/mock_server.js` from the parent workspace, then open **http://localhost:8091/ioc**. The [local demo](demo/README.md) renders the actual IOC pages with clearly labeled simulated signals, push-buttons and alarms. It does not connect to or change a device.
+**View without hardware:** run `node ILA210/demo/mock_server.js` from the parent workspace, then open **http://localhost:8091/ioc**. The [local demo](demo/README.md) renders the actual IOC pages with clearly labeled simulated signals, push-buttons and alarms. It does not connect to or change a device. The main dashboard preview is at **http://localhost:8091/dashboard**, also with simulated values.
 
 ## Build
 
@@ -49,7 +51,7 @@ Run that command from the parent workspace, or use `pio run` inside this folder.
 
 **ESP32-S3:** First boot without saved Wi-Fi settings starts `ILA_Sensor_AP`, password `12345678`. Open `http://192.168.4.1/` and configure Wi-Fi. Settings and controls currently have no authentication; operate on a trusted network.
 
-**IRIV:** Plug in Ethernet. DHCP is attempted for 10 seconds; without an answer, the gateway uses `192.168.4.1` (set the connected laptop to `192.168.4.2/24`). Holding USER for five seconds also switches to this fallback address. Wi-Fi setup/scan operations are unavailable on this board. Logging stays in RAM; GPIO5 is never used as an SD chip select.
+**IRIV:** Plug in Ethernet. DHCP is attempted for 10 seconds; without an answer, the gateway uses `192.168.4.1` (set the connected laptop to `192.168.4.2/24`). Holding USER for five seconds also switches to this fallback address. For a fixed address, choose **Static IP address** under **Settings > Ethernet**, enter the IP address, subnet mask and optional gateway and DNS, and save; the gateway restarts with that address. Holding USER still reaches `192.168.4.1` if the static address cannot be reached. Wi-Fi setup/scan operations are unavailable on this board. Logging stays in RAM; GPIO5 is never used as an SD chip select.
 
 ## Sensor setup and commissioning
 
@@ -70,7 +72,7 @@ The imported README claimed SD SCK 18, MISO 19 and MOSI 23, while the firmware u
 
 ## MQTT
 
-The supplied ILA210 manual has now been checked: see the [register verification](docs/register-verification.md) for addresses, unsigned data corrections, capture sequencing and factory serial settings. Physical sensor validation remains pending.
+The ILA210 manual (97049 Rev.A1, not included in this repository) has now been checked: see the [register verification](docs/register-verification.md) for addresses, unsigned data corrections, capture sequencing and factory serial settings. Physical sensor validation remains pending.
 
 Address commands with the hardware-derived `gateway_id` shown in Device Info or [sensor communication settings](docs/sensor-communication.md). Example: `{"gateway_id":"<your gateway ID>","command":"get_status"}` on the configured commands topic. Legacy `serial_number` command targeting is rejected; update integrations when upgrading. The sensor serial is unverified and telemetry reports an empty value rather than the imported placeholder. Base topics and register mappings are unchanged.
 
