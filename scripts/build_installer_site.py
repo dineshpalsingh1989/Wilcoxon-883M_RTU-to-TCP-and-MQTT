@@ -73,6 +73,8 @@ def main(out):
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     shutil.copyfile(root / "installer" / "index.html", out / "index.html")
+    if (root / "showcase").is_dir():  # customer film page, served at /showcase/
+        shutil.copytree(root / "showcase", out / "showcase")
     repo = gh("repo", "view", "--json", "url", "--jq", ".url").strip()
     channels = []
     for name, tag in pick_channels():

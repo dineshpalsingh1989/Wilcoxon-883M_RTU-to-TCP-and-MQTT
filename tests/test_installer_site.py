@@ -30,6 +30,7 @@ class InstallerTests(unittest.TestCase):
             out = Path(temp) / 'site'
             with patch.object(site, 'gh', gh), patch.object(site, 'pick_channels', return_value=[('stable', 'v5.0.0')]), patch.object(site, 'unpack_board', unpack):
                 site.main(out)
+            self.assertTrue((out / 'showcase' / 'index.html').is_file())
             channels = json.loads((out / 'channels.json').read_text())['channels']
             self.assertEqual([c['sensor'] for c in channels], ['883m', 'ila210'] if ila else ['883m'])
             for c in channels:

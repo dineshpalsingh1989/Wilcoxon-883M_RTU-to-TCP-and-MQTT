@@ -1,0 +1,218 @@
+WEBVTT
+
+1
+00:00:00.550 --> 00:00:03.240
+This vibration monitor uses an IRIV IO
+
+2
+00:00:03.240 --> 00:00:06.779
+Controller, running the Wilcoxon gateway firmware.
+
+3
+00:00:06.779 --> 00:00:08.832
+It reads a Wilcoxon 883M, and
+
+4
+00:00:08.832 --> 00:00:11.663
+publishes to Viking Analytics over MQTT.
+
+5
+00:00:12.883 --> 00:00:14.253
+The sensor measures.
+
+6
+00:00:14.253 --> 00:00:16.856
+The controller polls it and publishes.
+
+7
+00:00:16.856 --> 00:00:19.321
+Viking Analytics learns the machine,
+
+8
+00:00:19.321 --> 00:00:20.897
+and flags what changes.
+
+9
+00:00:22.167 --> 00:00:24.100
+The 883M sits on the motor, and
+
+10
+00:00:24.100 --> 00:00:27.281
+measures vibration on three axes, plus temperature.
+
+11
+00:00:28.067 --> 00:00:30.317
+The controller polls it over Modbus,
+
+12
+00:00:30.317 --> 00:00:32.504
+and publishes each reading as MQTT.
+
+13
+00:00:33.367 --> 00:00:35.508
+MultiViz learns what normal looks like.
+
+14
+00:00:37.117 --> 00:00:41.344
+The 883M is a triaxial MEMS sensor.
+
+15
+00:00:41.344 --> 00:00:43.035
+±16 g, 2 Hz to
+
+16
+00:00:43.035 --> 00:00:45.693
+5 kHz, sealed to IP67.
+
+17
+00:00:46.917 --> 00:00:48.763
+Its RS485 pair lands on A
+
+18
+00:00:48.763 --> 00:00:50.536
+and B, with ground on G.
+
+19
+00:00:50.536 --> 00:00:52.826
+The controller ends the bus, so
+
+20
+00:00:52.826 --> 00:00:55.042
+the terminator switch goes on.
+
+21
+00:00:56.250 --> 00:00:58.436
+A 24 V supply powers the controller,
+
+22
+00:00:58.436 --> 00:01:00.621
+and the sensor shares the same rail.
+
+23
+00:01:02.250 --> 00:01:04.849
+Install the firmware from the web installer.
+
+24
+00:01:04.849 --> 00:01:07.093
+Then set the MQTT broker and the alarm
+
+25
+00:01:07.093 --> 00:01:09.751
+limits in the controller's own web dashboard.
+
+26
+00:01:10.983 --> 00:01:13.391
+MultiViz learns a baseline for each sensor,
+
+27
+00:01:13.391 --> 00:01:15.351
+so there are no thresholds to tune.
+
+28
+00:01:15.351 --> 00:01:17.927
+When the pattern shifts, it names the symptom,
+
+29
+00:01:17.927 --> 00:01:20.503
+and ranks which machine needs attention first.
+
+30
+00:01:21.717 --> 00:01:22.679
+Now the alarm.
+
+31
+00:01:22.679 --> 00:01:25.428
+Output zero follows the dashboard alarm,
+
+32
+00:01:25.428 --> 00:01:27.008
+and drives a 24 V relay
+
+33
+00:01:27.008 --> 00:01:28.657
+for a beacon and buzzer.
+
+34
+00:01:29.883 --> 00:01:31.331
+A push button on input
+
+35
+00:01:31.331 --> 00:01:33.108
+one acknowledges the alarm.
+
+36
+00:01:33.108 --> 00:01:35.149
+Input zero can start a capture.
+
+37
+00:01:36.400 --> 00:01:38.016
+Vibration on the motor climbs
+
+38
+00:01:38.016 --> 00:01:39.187
+past the alarm limit.
+
+39
+00:01:40.200 --> 00:01:43.284
+After the delay, the controller trips the alarm.
+
+40
+00:01:43.284 --> 00:01:45.147
+Output zero closes the relay,
+
+41
+00:01:45.147 --> 00:01:46.624
+and the beacon flashes.
+
+42
+00:01:47.400 --> 00:01:49.550
+The operator presses acknowledge.
+
+43
+00:01:49.550 --> 00:01:51.504
+While vibration is still high,
+
+44
+00:01:51.504 --> 00:01:52.742
+the relay stays on.
+
+45
+00:01:53.400 --> 00:01:55.194
+Once it clears, the relay drops,
+
+46
+00:01:55.194 --> 00:01:56.820
+and the alarm is ready again.
+
+47
+00:01:58.350 --> 00:02:00.255
+The rule runs on the controller.
+
+48
+00:02:00.255 --> 00:02:02.517
+Trip on velocity or temperature, after
+
+49
+00:02:02.517 --> 00:02:04.243
+a delay, and latch the relay.
+
+50
+00:02:04.243 --> 00:02:06.088
+It drops only when the alarm is
+
+51
+00:02:06.088 --> 00:02:08.588
+acknowledged, and the reading has cleared.
+
+52
+00:02:09.817 --> 00:02:11.270
+Sense, analyse, act.
+
+53
+00:02:11.270 --> 00:02:13.740
+One sensor, one controller, and an
+
+54
+00:02:13.740 --> 00:02:16.138
+alarm that someone has to answer.
+
