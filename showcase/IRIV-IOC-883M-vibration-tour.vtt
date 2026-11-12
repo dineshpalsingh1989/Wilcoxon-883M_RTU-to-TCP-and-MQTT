@@ -53,166 +53,210 @@ and publishes each reading as MQTT.
 MultiViz learns what normal looks like.
 
 14
-00:00:37.117 --> 00:00:41.344
-The 883M is a triaxial MEMS sensor.
+00:00:37.117 --> 00:00:39.750
+The Wilcoxon 883M measures vibration in
 
 15
-00:00:41.344 --> 00:00:43.035
-±16 g, 2 Hz to
+00:00:39.750 --> 00:00:41.707
+X, Y and Z, plus temperature.
 
 16
-00:00:43.035 --> 00:00:45.693
-5 kHz, sealed to IP67.
+00:00:41.707 --> 00:00:45.556
+It reports acceleration, velocity and displacement, along
 
 17
-00:00:46.917 --> 00:00:48.763
-Its RS485 pair lands on A
+00:00:45.556 --> 00:00:48.256
+with waveforms and a frequency spectrum.
 
 18
-00:00:48.763 --> 00:00:50.536
-and B, with ground on G.
+00:00:48.256 --> 00:00:50.889
+Its acceleration range is plus or minus
 
 19
-00:00:50.536 --> 00:00:52.826
-The controller ends the bus, so
+00:00:50.889 --> 00:00:53.657
+sixteen g, with a frequency response from
 
 20
-00:00:52.826 --> 00:00:55.042
-the terminator switch goes on.
+00:00:53.657 --> 00:00:54.602
+2 Hz to 5 kHz.
 
 21
-00:00:56.250 --> 00:00:58.436
-A 24 V supply powers the controller,
+00:00:54.602 --> 00:00:56.897
+The compact housing is thirty five
 
 22
-00:00:58.436 --> 00:01:00.621
-and the sensor shares the same rail.
+00:00:56.897 --> 00:00:59.800
+millimetres wide and twenty six millimetres
 
 23
-00:01:02.250 --> 00:01:04.849
-Install the firmware from the web installer.
+00:00:59.800 --> 00:01:01.961
+high, with an M eight connector.
 
 24
-00:01:04.849 --> 00:01:07.093
-Then set the MQTT broker and the alarm
+00:01:01.961 --> 00:01:03.986
+It sends digital readings over
 
 25
-00:01:07.093 --> 00:01:09.751
-limits in the controller's own web dashboard.
+00:01:03.986 --> 00:01:04.864
+Modbus R T U.
 
 26
-00:01:10.983 --> 00:01:13.391
-MultiViz learns a baseline for each sensor,
+00:01:04.864 --> 00:01:08.307
+These measurements help track changes in a machine;
 
 27
-00:01:13.391 --> 00:01:15.351
-so there are no thresholds to tune.
+00:01:08.307 --> 00:01:12.222
+diagnosis also needs its operating conditions and history.
 
 28
-00:01:15.351 --> 00:01:17.927
-When the pattern shifts, it names the symptom,
+00:01:13.450 --> 00:01:15.297
+Its RS485 pair lands on A
 
 29
-00:01:17.927 --> 00:01:20.503
-and ranks which machine needs attention first.
+00:01:15.297 --> 00:01:17.070
+and B, with ground on G.
 
 30
-00:01:21.717 --> 00:01:22.679
-Now the alarm.
+00:01:17.070 --> 00:01:19.359
+The controller ends the bus, so
 
 31
-00:01:22.679 --> 00:01:25.428
-Output zero follows the dashboard alarm,
+00:01:19.359 --> 00:01:21.575
+the terminator switch goes on.
 
 32
-00:01:25.428 --> 00:01:27.008
-and drives a 24 V relay
+00:01:22.783 --> 00:01:24.969
+A 24 V supply powers the controller,
 
 33
-00:01:27.008 --> 00:01:28.657
-for a beacon and buzzer.
+00:01:24.969 --> 00:01:27.155
+and the sensor shares the same rail.
 
 34
-00:01:29.883 --> 00:01:31.331
-A push button on input
+00:01:28.783 --> 00:01:31.382
+Install the firmware from the web installer.
 
 35
-00:01:31.331 --> 00:01:33.108
-one acknowledges the alarm.
+00:01:31.382 --> 00:01:33.626
+Then set the MQTT broker and the alarm
 
 36
-00:01:33.108 --> 00:01:35.149
-Input zero can start a capture.
+00:01:33.626 --> 00:01:36.284
+limits in the controller's own web dashboard.
 
 37
-00:01:36.400 --> 00:01:38.016
-Vibration on the motor climbs
+00:01:37.517 --> 00:01:39.924
+MultiViz learns a baseline for each sensor,
 
 38
-00:01:38.016 --> 00:01:39.187
-past the alarm limit.
+00:01:39.924 --> 00:01:41.884
+so there are no thresholds to tune.
 
 39
-00:01:40.200 --> 00:01:43.284
-After the delay, the controller trips the alarm.
+00:01:41.884 --> 00:01:44.460
+When the pattern shifts, it names the symptom,
 
 40
-00:01:43.284 --> 00:01:45.147
-Output zero closes the relay,
+00:01:44.460 --> 00:01:47.036
+and ranks which machine needs attention first.
 
 41
-00:01:45.147 --> 00:01:46.624
-and the beacon flashes.
+00:01:48.250 --> 00:01:49.212
+Now the alarm.
 
 42
-00:01:47.400 --> 00:01:49.550
-The operator presses acknowledge.
+00:01:49.212 --> 00:01:51.961
+Output zero follows the dashboard alarm,
 
 43
-00:01:49.550 --> 00:01:51.504
-While vibration is still high,
+00:01:51.961 --> 00:01:53.542
+and drives a 24 V relay
 
 44
-00:01:51.504 --> 00:01:52.742
-the relay stays on.
+00:01:53.542 --> 00:01:55.191
+for a beacon and buzzer.
 
 45
-00:01:53.400 --> 00:01:55.194
-Once it clears, the relay drops,
+00:01:56.417 --> 00:01:57.865
+A push button on input
 
 46
-00:01:55.194 --> 00:01:56.820
-and the alarm is ready again.
+00:01:57.865 --> 00:01:59.642
+one acknowledges the alarm.
 
 47
-00:01:58.350 --> 00:02:00.255
-The rule runs on the controller.
+00:01:59.642 --> 00:02:01.682
+Input zero can start a capture.
 
 48
-00:02:00.255 --> 00:02:02.517
-Trip on velocity or temperature, after
+00:02:02.933 --> 00:02:04.550
+Vibration on the motor climbs
 
 49
-00:02:02.517 --> 00:02:04.243
-a delay, and latch the relay.
+00:02:04.550 --> 00:02:05.720
+past the alarm limit.
 
 50
-00:02:04.243 --> 00:02:06.088
-It drops only when the alarm is
+00:02:06.733 --> 00:02:09.817
+After the delay, the controller trips the alarm.
 
 51
-00:02:06.088 --> 00:02:08.588
-acknowledged, and the reading has cleared.
+00:02:09.817 --> 00:02:11.680
+Output zero closes the relay,
 
 52
-00:02:09.817 --> 00:02:11.270
-Sense, analyse, act.
+00:02:11.680 --> 00:02:13.158
+and the beacon flashes.
 
 53
-00:02:11.270 --> 00:02:13.740
-One sensor, one controller, and an
+00:02:13.933 --> 00:02:16.083
+The operator presses acknowledge.
 
 54
-00:02:13.740 --> 00:02:16.138
+00:02:16.083 --> 00:02:18.038
+While vibration is still high,
+
+55
+00:02:18.038 --> 00:02:19.275
+the relay stays on.
+
+56
+00:02:19.933 --> 00:02:21.727
+Once it clears, the relay drops,
+
+57
+00:02:21.727 --> 00:02:23.353
+and the alarm is ready again.
+
+58
+00:02:24.883 --> 00:02:26.788
+The rule runs on the controller.
+
+59
+00:02:26.788 --> 00:02:29.050
+Trip on velocity or temperature, after
+
+60
+00:02:29.050 --> 00:02:30.776
+a delay, and latch the relay.
+
+61
+00:02:30.776 --> 00:02:32.622
+It drops only when the alarm is
+
+62
+00:02:32.622 --> 00:02:35.122
+acknowledged, and the reading has cleared.
+
+63
+00:02:36.350 --> 00:02:37.803
+Sense, analyse, act.
+
+64
+00:02:37.803 --> 00:02:40.274
+One sensor, one controller, and an
+
+65
+00:02:40.274 --> 00:02:42.672
 alarm that someone has to answer.
 

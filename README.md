@@ -20,9 +20,9 @@ Vibration monitoring for your browser, PLC and MQTT broker.
 
 ## Watch the film
 
-[![Watch the 2-minute film: IRIV IO Controller + Wilcoxon 883M + Viking Analytics, with a DO0 alarm relay and DI1 acknowledge button](showcase/images/film-poster-play.jpg)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)
+[![Watch the film (2:43): IRIV IO Controller + Wilcoxon 883M + Viking Analytics, with a DO0 alarm relay and DI1 acknowledge button](showcase/images/film-poster-play.jpg)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)
 
-**[▶ Open the film and the interactive page](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)**: a narrated 2-minute film (captions included) showing a Wilcoxon 883M on an IRIV IO Controller sending readings to Viking Analytics over MQTT. DO0 drives the alarm relay and DI1 acknowledges it. The page also has a hands-on alarm demo, the wiring table and the 883M specifications. [Download the MP4](showcase/IRIV-IOC-883M-vibration-tour.mp4).
+**[▶ Open the film and the interactive page](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)**: a narrated 3D film, 2 min 43 s with captions, showing a Wilcoxon 883M on an IRIV IO Controller sending readings to Viking Analytics over MQTT. DO0 drives the alarm relay and DI1 acknowledges it. The page also has a hands-on alarm demo, the wiring table and the 883M specifications. [Download the MP4](showcase/IRIV-IOC-883M-vibration-tour.mp4).
 
 ## Choose your sensor
 
