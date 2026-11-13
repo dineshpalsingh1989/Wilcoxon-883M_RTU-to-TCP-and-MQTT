@@ -31,7 +31,7 @@ Vibration monitoring for your browser, PLC and MQTT broker.
 5. **Failed sends are reported:** the Monitoring page shows *MQTT send incomplete* and the gateway reconnects.
 6. **Capture IDs stay unique after a reboot** once the gateway has NTP time.
 
-Topics and `type` names are unchanged, and `total_chunks` is now `1`, so back ends written for chunks keep working. Details: [Waveform and spectrum messages](#waveform-and-spectrum-messages). The IRIV's MQTT library is now [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) 0.2.0-alpha.1. Earlier changes: [releases page](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases).
+Default topics and `type` names are unchanged, and `total_chunks` is now `1`, so back ends written for chunks keep working. Details: [Waveform and spectrum messages](#waveform-and-spectrum-messages). The IRIV's MQTT library is now [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) 0.2.0-alpha.1. Earlier changes: [releases page](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases).
 
 ### Also new: choose your own MQTT topics
 
