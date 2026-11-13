@@ -41,5 +41,5 @@ private:
     bool save();
     String path_;
     bool open_ = false, readOnly_ = true;
-    StaticJsonDocument<1024> doc_; // largest namespace (MQTT) holds 9 short values
+    StaticJsonDocument<2048> doc_; // largest namespace (MQTT): 9 values plus up to five custom topics
 };

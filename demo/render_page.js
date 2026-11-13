@@ -7,6 +7,8 @@ const values = {
   mqttClass: 'connected', mqttText: 'Connected', mbClass: 'connected', mbText: 'Enabled',
   statusMsg: 'Connected to Demo Wi-Fi', ipMsg: '127.0.0.1',
   mqtt_server_str: 'demo.broker.local', mqtt_port_val: '1883', mqtt_user_str: '', mqtt_pass_str: '', mqtt_topic_str: '883M',
+  mqtt_custom_topics: false, mqtt_metrics_topic: '883M', mqtt_waveform_topic: '883M', mqtt_spectrum_topic: '883M',
+  mqtt_status_topic: '883M/status', mqtt_command_topic: '883M/command',
   mqttEnabled: true, mqtt_use_tls: false, mqtt_skip_cert_validation: false, mqtt_publish_progress: true,
   modbus_slave_id_val: '1', modbus_baud_rate_val: '115200', modbusTcpEnabled: true, modbusTcpPort: '502',
   gmtOffset_sec: '28800', d_model: 'Wilcoxon 883M', d_pn: '883M', d_serial: 'DEMO-883M-001',

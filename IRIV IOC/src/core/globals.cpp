@@ -49,6 +49,11 @@ String mqtt_pass_str = "";
 String mqtt_topic_str = "883M";
 String mqtt_command_topic = "883M/command";
 String mqtt_status_topic = "883M/status";
+// Topics mode: Default sends metrics, waveform and spectrum to the base topic; Custom uses the user's topics.
+bool mqtt_custom_topics = false;
+String mqtt_metrics_topic = "883M";
+String mqtt_waveform_topic = "883M";
+String mqtt_spectrum_topic = "883M";
 char mqttStatus[128] = "Waiting for config...";
 
 // --- Wi-Fi & Web Server ---

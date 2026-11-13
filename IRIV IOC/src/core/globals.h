@@ -55,6 +55,8 @@ extern bool mqttEnabled, mqtt_use_tls, mqtt_skip_cert_validation, mqtt_publish_p
 extern String mqtt_server_str;
 extern int mqtt_port_val;
 extern String mqtt_user_str, mqtt_pass_str, mqtt_topic_str, mqtt_command_topic, mqtt_status_topic;
+extern bool mqtt_custom_topics;
+extern String mqtt_metrics_topic, mqtt_waveform_topic, mqtt_spectrum_topic;
 extern char mqttStatus[128];
 
 // Wi-Fi & web server

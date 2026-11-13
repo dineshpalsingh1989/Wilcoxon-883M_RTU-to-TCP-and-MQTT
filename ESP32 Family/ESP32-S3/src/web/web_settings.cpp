@@ -156,6 +156,8 @@ label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}
 input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px}
 .btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600}
 .nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none}
+select{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;background:white}
+.topic-note{font-size:13px;color:#536e7d;margin:6px 0 0}label small{font-weight:400;color:#536e7d}
 .switch{position:relative;display:inline-block;width:50px;height:28px}.switch input{opacity:0;width:0;height:0}
 .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;transition:.4s;border-radius:28px}
 .slider:before{position:absolute;content:"";height:20px;width:20px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
@@ -212,6 +214,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
     
     server.sendContent(R"rawliteral(<div class="form-group"><label for="topic">Base Topic</label><input type="text" id="topic" name="topic" value=")rawliteral" + mqtt_topic_str + R"rawliteral(" required></div>)rawliteral");
 
+    // Topics: Default keeps today's topics; Custom lets the user pick a topic for each message group.
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="topic_mode">Topics</label><select id="topic_mode" name="topic_mode"><option value="default">Default</option><option value="custom">Custom: choose a topic for each message</option></select>
+<p class="topic-note" id="topic-default-note">Metrics, waveform and spectrum go to the Base Topic. Health status goes to 883M/status and commands are read from 883M/command.</p></div>
+<div id="custom-topics" hidden>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_metrics">Metrics topic <small>(RMS, peak and temperature values)</small></label><input type="text" id="t_metrics" name="t_metrics" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + mqtt_metrics_topic + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_waveform">Waveform topic <small>(full waveform and preview)</small></label><input type="text" id="t_waveform" name="t_waveform" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + mqtt_waveform_topic + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_spectrum">Spectrum topic <small>(full spectrum and peaks)</small></label><input type="text" id="t_spectrum" name="t_spectrum" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + mqtt_spectrum_topic + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_status">Status topic <small>(health and XYZ peak summary)</small></label><input type="text" id="t_status" name="t_status" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + mqtt_status_topic + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_command">Command topic <small>(the gateway listens here)</small></label><input type="text" id="t_command" name="t_command" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + mqtt_command_topic + R"rawliteral("></div></div>)rawliteral");
+
 #if GATEWAY_ETHERNET
     // Plain string, not a raw literal, so the demo (which renders the ESP32 page) ignores it.
     server.sendContent("<p class=\"status-bar\" id=\"tls-note\"><strong>IRIV IO Controller:</strong> MQTT over TLS (port 8883) is not supported. "
@@ -235,10 +247,21 @@ function saveMqtt(){
     const user = document.getElementById('user').value;
     const pass = document.getElementById('pass').value;
     const topic = document.getElementById('topic').value;
-    alert('Saving MQTT settings... The device will reboot.');
-    const url = `/save_mqtt?enabled=${enabled}&tls=${tls}&skip_val=${skip_val}&progress=${progress}&server=${encodeURIComponent(server)}&port=${port}&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}&topic=${encodeURIComponent(topic)}`;
-    fetch(url).then(() => { window.location.href = '/settings'; });
+    const topics = ['topic_mode', ...TOPIC_IDS].map(id => `&${id}=${encodeURIComponent(document.getElementById(id).value)}`).join('');
+    const url = `/save_mqtt?enabled=${enabled}&tls=${tls}&skip_val=${skip_val}&progress=${progress}&server=${encodeURIComponent(server)}&port=${port}&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}&topic=${encodeURIComponent(topic)}` + topics;
+    fetch(url).then(r => r.text().then(t => {
+        if (!r.ok) { alert('Save failed: ' + t); return; }
+        alert(t);
+        window.location.href = '/settings';
+    })).catch(() => alert('Save failed: no answer from the gateway.'));
     return false;
+}
+const TOPIC_IDS = ['t_metrics', 't_waveform', 't_spectrum', 't_status', 't_command'];
+function updateTopicMode() {
+    const custom = document.getElementById('topic_mode').value === 'custom';
+    document.getElementById('custom-topics').hidden = !custom;
+    document.getElementById('topic-default-note').hidden = custom;
+    TOPIC_IDS.forEach(id => { document.getElementById(id).required = custom; });
 }
 function updateTlsOptions() {
     const tlsEnabled = document.getElementById('tls').checked;
@@ -265,6 +288,9 @@ window.onload = function() {
     document.getElementById('progress').checked = )rawliteral" + String(mqtt_publish_progress ? "true" : "false") + R"rawliteral(;
     document.getElementById('tls').addEventListener('change', updateTlsOptions);
     document.getElementById('enabled').addEventListener('change', updateRequiredFields);
+    document.getElementById('topic_mode').value = ')rawliteral" + String(mqtt_custom_topics ? "custom" : "default") + R"rawliteral(';
+    document.getElementById('topic_mode').addEventListener('change', updateTopicMode);
+    updateTopicMode();
     updateTlsOptions();
     updateRequiredFields();
     updateMqttStatus();
@@ -277,7 +303,32 @@ window.onload = function() {
     server.sendContent("");
 }
 
+namespace {
+const char* const TOPIC_KEYS[] = {"t_metrics", "t_waveform", "t_spectrum", "t_status", "t_command"};
+const char* const TOPIC_NAMES[] = {"Metrics", "Waveform", "Spectrum", "Status", "Command"};
+
+// Checks the custom topics sent by the MQTT page. Returns "" when they can be saved.
+String customTopicsError() {
+    for (int i = 0; i < 5; i++) {
+        const String topic = server.arg(TOPIC_KEYS[i]);
+        // # and + are subscribe wildcards; a broker closes the connection when a client publishes to them.
+        if (!topic.length() || topic.length() > 128 || topic.indexOf('#') >= 0 || topic.indexOf('+') >= 0)
+            return String(TOPIC_NAMES[i]) + " topic: enter 1-128 characters without # or +";
+    }
+    // The gateway subscribes to the command topic, so data sent there would come straight back to it.
+    for (int i = 0; i < 4; i++)
+        if (server.arg(TOPIC_KEYS[i]) == server.arg("t_command"))
+            return String("Command topic must differ from the ") + TOPIC_NAMES[i] + " topic";
+    return "";
+}
+}
+
 void handleSaveMqtt() {
+    const bool customTopics = server.arg("topic_mode") == "custom";
+    if (customTopics) {
+        const String error = customTopicsError();
+        if (error.length()) { server.send(400, "text/plain", error); return; }
+    }
     preferences.begin("mqtt-cfg", false);
     preferences.putBool("enabled", (server.arg("enabled") == "true"));
     preferences.putBool("tls", (server.arg("tls") == "true"));
@@ -288,6 +339,8 @@ void handleSaveMqtt() {
     preferences.putString("user", server.arg("user"));
     preferences.putString("pass", server.arg("pass"));
     preferences.putString("topic", server.arg("topic"));
+    preferences.putBool("custom_topics", customTopics);
+    if (customTopics) for (const char* key : TOPIC_KEYS) preferences.putString(key, server.arg(key));
     preferences.end();
     server.send(200, "text/plain", "MQTT settings saved. Device will reboot.");
     delay(1000);

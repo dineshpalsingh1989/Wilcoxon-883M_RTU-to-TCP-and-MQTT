@@ -33,6 +33,12 @@ Vibration monitoring for your browser, PLC and MQTT broker.
 
 Topics and `type` names are unchanged, and `total_chunks` is now `1`, so back ends written for chunks keep working. Details: [Waveform and spectrum messages](#waveform-and-spectrum-messages). The IRIV's MQTT library is now [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) 0.2.0-alpha.1. Earlier changes: [releases page](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases).
 
+### Also new: choose your own MQTT topics
+
+![Choose your own MQTT topics: in Settings, MQTT, set Topics to Custom and type a topic for metrics, waveform, spectrum, status and command; the gateway then sends each kind of message to its own topic and listens for commands on the command topic.](docs/images/mqtt-custom-topics.svg)
+
+In **Settings → MQTT**, set **Topics** to **Custom** to send metrics, waveforms, spectra and health status to topics you choose, and to choose the topic the gateway listens to for commands. **Default** keeps today's topics, and the message contents do not change. Details: [MQTT](#mqtt).
+
 ## Watch the film
 
 [![Watch the film (2:43): IRIV IO Controller + Wilcoxon 883M + Viking Analytics, with a DO0 alarm relay and DI1 acknowledge button](showcase/images/film-poster-play.jpg)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)
@@ -353,6 +359,18 @@ python scripts/mqtt_check.py --host <broker> --port 8883 --tls --insecure --user
 | `883M/status` | Gateway → broker | Health status, normally every five minutes |
 | `883M/command` | Broker → gateway | Commands addressed to the sensor serial number |
 
+These are the **Default** topics. To send each kind of message to your own topic, open **Settings → MQTT**, set **Topics** to **Custom** and enter a topic for each group. The gateway restarts to apply them; the message contents do not change.
+
+| Custom field | Messages (`type`) | Default topic |
+| --- | --- | --- |
+| Metrics topic | `metrics` | Base Topic |
+| Waveform topic | `waveform_preview`, `waveform_chunk` | Base Topic |
+| Spectrum topic | `spectrum_chunk`, `spectrum_peaks` | Base Topic |
+| Status topic | `health_status`, `combined_spectrum_peaks` | `883M/status` |
+| Command topic | commands the gateway listens to | `883M/command` |
+
+Custom topics must not contain `#` or `+`, can be up to 128 characters, and the command topic must differ from the other four. On the IRIV IO Controller, `io_status` stays on `<Base Topic>/io`.
+
 Every command must include a **`serial_number` matching the connected sensor**.
 
 ```json
@@ -387,7 +405,7 @@ From v4.13.0, each axis capture sends its **whole waveform in one MQTT message**
 | 4 | `spectrum_peaks` | `883M` | Top 5 spectrum peaks (`freq_hz`, `amp_g`); single-axis captures only | under 1 KB |
 | 5 | `combined_spectrum_peaks` | `883M/status` | Top 5 peaks for X, Y and Z; sent once after the Z axis of an XYZ capture | under 1 KB |
 
-An XYZ capture (`trigger_all`, Modbus trigger value 1, the IRIV DI0 input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained.
+An XYZ capture (`trigger_all`, Modbus trigger value 1, the IRIV DI0 input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained. The topics shown are the defaults; with **Custom** topics each message goes to the topic set for its group (see above).
 
 The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware (v4.12.0 and earlier), which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
 

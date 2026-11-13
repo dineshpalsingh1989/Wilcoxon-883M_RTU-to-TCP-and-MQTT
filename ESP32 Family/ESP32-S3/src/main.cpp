@@ -53,6 +53,15 @@ void setup() {
     mqtt_user_str = preferences.getString("user", mqtt_user_str); 
     mqtt_pass_str = preferences.getString("pass", mqtt_pass_str); 
     mqtt_topic_str = preferences.getString("topic", mqtt_topic_str); 
+    mqtt_custom_topics = preferences.getBool("custom_topics", false);
+    mqtt_metrics_topic = mqtt_waveform_topic = mqtt_spectrum_topic = mqtt_topic_str;
+    if (mqtt_custom_topics) {
+        mqtt_metrics_topic = preferences.getString("t_metrics", mqtt_topic_str);
+        mqtt_waveform_topic = preferences.getString("t_waveform", mqtt_topic_str);
+        mqtt_spectrum_topic = preferences.getString("t_spectrum", mqtt_topic_str);
+        mqtt_status_topic = preferences.getString("t_status", mqtt_status_topic);
+        mqtt_command_topic = preferences.getString("t_command", mqtt_command_topic);
+    }
     preferences.end();
 #if GATEWAY_ETHERNET
     // The IRIV IO Controller does not support MQTT over TLS (port 8883): plain MQTT only.

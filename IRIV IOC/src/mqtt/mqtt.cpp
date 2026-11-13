@@ -122,7 +122,7 @@ void publishMetrics() {
     } else { return; }
     char payload[4096];
     size_t n = serializeJson(doc, payload);
-    publishLogged(mqtt_topic_str, payload, n, "publishMetrics");
+    publishLogged(mqtt_metrics_topic, payload, n, "publishMetrics");
 }
 
 void publishDownsampledWaveform() {
@@ -154,7 +154,7 @@ void publishDownsampledWaveform() {
 
   char payload[6144];
   size_t n = serializeJson(doc, payload);
-  publishLogged(mqtt_topic_str, payload, n, "publishDownsampledWaveform");
+  publishLogged(mqtt_waveform_topic, payload, n, "publishDownsampledWaveform");
 }
 
 namespace {
@@ -213,7 +213,7 @@ void writeCaptureJson(JsonSink& out, const char* header, size_t headerLength, in
 // Sends a whole waveform or spectrum (already copied to globalScratchBuffer) as ONE MQTT message.
 // The JSON is formatted while it is sent, so it never has to fit in RAM (about 90 KB for a waveform).
 // chunk_index 0 / total_chunks 1 keep subscribers written for the older 200-point chunks working.
-bool publishWholeCapture(const char* type, Axis capturedAxis, int points, bool isUnsigned,
+bool publishWholeCapture(const String& topic, const char* type, Axis capturedAxis, int points, bool isUnsigned,
                          const char* stepKey, float stepValue) {
     DynamicJsonDocument doc(768);
     doc["model"] = sensor_model;
@@ -237,7 +237,7 @@ bool publishWholeCapture(const char* type, Axis capturedAxis, int points, bool i
 
     JsonSink count(false); // MQTT needs the message length before the first payload byte
     writeCaptureJson(count, header, headerLength, points, isUnsigned);
-    if (!mqttClient->beginPublish(mqtt_topic_str.c_str(), count.total, false)) {
+    if (!mqttClient->beginPublish(topic.c_str(), count.total, false)) {
         logMessage(String("[MQTT] ") + type + " not sent (" + String(count.total) + " bytes)");
         return false;
     }
@@ -265,14 +265,14 @@ bool copyCapture(const int16_t* source, int points, const bool& available) {
 bool publishFullWaveform(Axis capturedAxis) {
     if (!mqttClient || !mqttClient->connected()) return false;
     if (!copyCapture(fullWaveform, WAVEFORM_TOTAL_POINTS, newWaveformAvailable)) return false;
-    return publishWholeCapture("waveform_chunk", capturedAxis, WAVEFORM_TOTAL_POINTS, false,
+    return publishWholeCapture(mqtt_waveform_topic, "waveform_chunk", capturedAxis, WAVEFORM_TOTAL_POINTS, false,
                                "sample_rate_hz", WAVEFORM_SAMPLE_RATE_HZ);
 }
 
 bool publishFullSpectrum(Axis capturedAxis) {
     if (!mqttClient || !mqttClient->connected()) return false;
     if (!copyCapture(spectrumData, SPECTRUM_TOTAL_POINTS, newSpectrumAvailable)) return false;
-    return publishWholeCapture("spectrum_chunk", capturedAxis, SPECTRUM_TOTAL_POINTS, true,
+    return publishWholeCapture(mqtt_spectrum_topic, "spectrum_chunk", capturedAxis, SPECTRUM_TOTAL_POINTS, true,
                                "freq_resolution_hz", SPECTRUM_FREQ_RESOLUTION);
 }
 
@@ -299,7 +299,7 @@ void publishSpectrumPeaks(Axis capturedAxis, const std::vector<SpectrumPeak>& pe
     }
     char payload[2048];
     size_t n = serializeJson(doc, payload);
-    publishLogged(mqtt_topic_str, payload, n, "publishSpectrumPeaks");
+    publishLogged(mqtt_spectrum_topic, payload, n, "publishSpectrumPeaks");
 }
 
 void publishCombinedSpectrumPeaks() {
