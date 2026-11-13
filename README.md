@@ -14,9 +14,24 @@ Vibration monitoring for your browser, PLC and MQTT broker.
 [![MQTT](https://img.shields.io/badge/MQTT-Metrics_%26_alarms-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[Watch the film](#watch-the-film) | [Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
+[What's new](#whats-new-in-v4130) | [Watch the film](#watch-the-film) | [Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
 
 </div>
+
+## What's new in v4.13.0
+
+![What's new in v4.13.0: 1. each waveform and spectrum is one MQTT message; 2. spectrum peaks above 32.767 g fixed; 3. messages state their unit, time or frequency step and point count; 4. the waveform preview keeps impacts; 5. failed sends are reported; 6. capture IDs stay unique after a reboot.](docs/images/whats-new-v4.13.0.svg)
+
+883M firmware for the Adafruit Feather ESP32-S3, Cytron Maker ESP32 and IRIV IO Controller, tested on hardware:
+
+1. **One MQTT message per waveform and per spectrum.** Your back end receives all 13,334 waveform points, or all 6,145 spectrum bins, in one message instead of joining 98 pieces per axis. The gateway streams the message in 1 KB pieces, so it needs only about 3 KB of RAM. **Your broker must accept messages of up to about 110 KB.**
+2. **Spectrum peaks above 32.767 g are correct.** Spectrum registers are now read as unsigned, as the 883M manual specifies.
+3. **Messages label themselves:** `unit`, `sample_rate_hz` (waveform), `freq_resolution_hz` (spectrum) and `points`.
+4. **The waveform preview keeps impacts:** each of its 134 points is the largest sample in its block of 100.
+5. **Failed sends are reported:** the Monitoring page shows *MQTT send incomplete* and the gateway reconnects.
+6. **Capture IDs stay unique after a reboot** once the gateway has NTP time.
+
+Topics and `type` names are unchanged, and `total_chunks` is now `1`, so back ends written for chunks keep working. Details: [Waveform and spectrum messages](#waveform-and-spectrum-messages). The IRIV's MQTT library is now [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) 0.2.0-alpha.1. Earlier changes: [releases page](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases).
 
 ## Watch the film
 
@@ -362,7 +377,7 @@ Set `interval_ms` to `2147483647` to use the firmware's disabled auto-capture in
 
 ![Before: each axis capture was split into 98 small MQTT pieces that the back end had to collect. Now: the gateway counts the message size, then sends the whole waveform as one message in 1 KB pieces, using about 3 KB of RAM.](docs/images/mqtt-one-message.svg)
 
-Each axis capture sends its **whole waveform in one MQTT message** and its **whole spectrum in one MQTT message**. Your back end does not need to collect or join pieces. The messages, in the order they are sent:
+From v4.13.0, each axis capture sends its **whole waveform in one MQTT message** and its **whole spectrum in one MQTT message**. Your back end does not need to collect or join pieces. The messages, in the order they are sent:
 
 | Order | `type` | Topic | Content | Typical size |
 | --- | --- | --- | --- | --- |
@@ -374,7 +389,7 @@ Each axis capture sends its **whole waveform in one MQTT message** and its **who
 
 An XYZ capture (`trigger_all`, Modbus trigger value 1, the IRIV DI0 input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained.
 
-The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware, which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
+The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware (v4.12.0 and earlier), which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
 
 Fields in every `waveform_chunk` and `spectrum_chunk` message:
 
