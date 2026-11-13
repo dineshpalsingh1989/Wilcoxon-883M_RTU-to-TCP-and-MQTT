@@ -12,7 +12,7 @@ void registerWebRoutes();
 void handleNetworkSettings(); void handleNetworkApi();
 gw::EthernetAddress loadEthernetAddress();
 void handleLibraries(); void handleLibraryStatus(); void handleLibraryTest();
-void handleIoPage(); void handleIoStatus(); void handleIoConfig(); void handleIoAcknowledge(); void handleIoOutputs();
+void handleIoPage(); void handleIoStatus(); void handleIoConfig(); void handleIoAcknowledge(); void handleIoOutputs(); void handleIoInputs();
 #endif
 
 void handleRoot(); void handleMetrics(); void handleFullWaveform(); void handleFullSpectrum();

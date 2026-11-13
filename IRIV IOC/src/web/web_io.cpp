@@ -55,24 +55,25 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{ou
 </style></head><body><div class="container">
 <div class="header"><h2>IOC I/O</h2><p>Relays, digital inputs and 4-20 mA / 0-10 V inputs of the IRIV IO Controller</p></div>
 <section class="card" aria-labelledby="out-title"><div class="card-head"><h3 id="out-title">Relay outputs (DO0-DO3)</h3><span class="pill" id="alarm-pill">--</span></div>
-<p class="note">Choose what switches each solid-state relay (50 V / 500 mA max). A source can drive only one output; choices already used by another output are greyed out. <b>Dashboard alarm</b> uses the vibration/temperature alarm limits from the dashboard. <b>883M value</b> compares one sensor value on one axis (or the highest of X, Y, Z) with your threshold. <b>AN0/AN1</b> compare the scaled analog value. A latched output stays on until acknowledged here, with a short press of the USER button or a pulse on DI1; acknowledging also silences the buzzer and retries a paused sensor.</p>
+<p class="note">Choose what switches each solid-state relay (50 V / 500 mA max). Multiple outputs can follow the same sensor with different thresholds. <b>Dashboard alarm</b> includes any DI configured as an alarm. <b>883M value</b> compares one measurement and axis; <b>AN0/AN1</b> compare scaled analog values. A latched output stays on until acknowledged. A DI assigned to force or silence an output overrides its rule while held; silence wins if both are active.</p>
 <div class="chips" id="outputs-live"></div>
 <form id="outputs-form" onsubmit="saveOutputs(event)"><div class="grid" id="outputs-form-fields"></div>
 <div class="actions"><button type="submit" id="save-outputs">Save output settings</button><button type="button" class="secondary" id="ack" onclick="acknowledgeAlarm()">Acknowledge</button><span class="status" id="out-status" role="status"></span><span class="status" id="ack-status" role="status"></span></div></form></section>
 <section class="card" aria-labelledby="di-title"><div class="card-head"><h3 id="di-title">Digital inputs (DI0-DI10)</h3></div>
-<p class="note">DI0: a rising edge starts an XYZ capture (ignored while busy). DI1: a rising edge acknowledges the alarm. DI2-DI10 are reported only. Captures from DI0: <span id="di-captures">--</span>.</p>
-<div class="chips" id="inputs"></div></section>
+<p class="note">Assign an action to each terminal. Capture and acknowledge act once on a rising edge. Force and silence act while the input is high. Alarm is active while the input is high and can drive a DO set to Dashboard alarm. Defaults: DI0 capture, DI1 acknowledge, others off. Captures from DIs: <span id="di-captures">--</span>.</p>
+<div class="chips" id="inputs"></div><form id="inputs-form" onsubmit="saveInputs(event)"><div class="grid" id="inputs-form-fields"></div><div class="actions"><button type="submit" id="save-inputs">Save input settings</button><span class="status" id="in-status" role="status"></span></div></form></section>
 <section class="card" aria-labelledby="an-title"><div class="card-head"><h3 id="an-title">Analog inputs (AN0 / AN1)</h3></div>
-<p class="note">Set the mode to match the AN-IN MODE DIP switch under the IOC. Scaling maps 4 mA / 0 V to the minimum and 20 mA / 10 V to the maximum. A 4-20 mA input below 3.6 mA or above 21 mA, or any over-range reading, shows a fault. Readings use the nominal ADC reference and are not calibrated.</p>
+<p class="note">Set the AN-IN MODE DIP switch to Current for PCC420 sensors. Choose a velocity model to fill its 0 to full-scale mm/s range, or choose Manual to enter your own scale. A current below 3.6 mA or above 21 mA shows a fault. The PCC420 needs separate loop power; readings use the nominal ADC reference and are not calibrated.</p>
 <div class="grid" id="analog-live"></div>
 <form id="analog-form" onsubmit="saveAnalog(event)">
 <div class="grid" id="analog-form-fields"></div>
 <div class="actions"><button type="submit" id="save-analog">Save analog settings</button><span class="status" id="save-status" role="status"></span></div></form></section>
 <a href="/settings" class="nav-link">&larr; Back to Settings</a></div>
 <script>
-const inputNames=['DI0 - start XYZ capture','DI1 - acknowledge alarm','DI2','DI3','DI4','DI5','DI6','DI7','DI8','DI9','DI10'];
+const inputActionNames=['Off (report only)','Start 883M XYZ capture','Acknowledge alarm','Force selected DO on while active','Silence selected DO while active','Trigger alarm while active'];
+const pccRanges=[['05',12.7],['10',25.4],['20',50.8],['30',76.2],['50',127],['10mm',10],['20mm',20],['25mm',25],['50mm',50]];
 const set=(id,text)=>{document.getElementById(id).textContent=text;};
-let formBuilt=false,outputsBuilt=false,metrics=[],analogNames=['AN0','AN1'],analogUnits=['',''];
+let formBuilt=false,outputsBuilt=false,inputsBuilt=false,metrics=[],analogNames=['AN0','AN1'],analogUnits=['',''];
 const sourceNames=['Off','Dashboard alarm','Sensor fault','883M value','AN0 (analog)','AN1 (analog)'];
 const axisNames=['X','Y','Z','Any axis (highest)'];
 function sourceText(r,i){
@@ -104,7 +105,6 @@ function buildOutputs(rules){
   });
   outputsBuilt=true;updateOutputForm();
 }
-// One output per source: disable sources, and 883M value/axis pairs, used by another output.
 function updateOutputForm(){
   const n=4,get=(i,f)=>Number(document.getElementById('do'+i+'_'+f).value);
   for(let i=0;i<n;i++){
@@ -114,10 +114,6 @@ function updateOutputForm(){
     document.getElementById('do'+i+'_limit_fields').hidden=src<3;
     document.getElementById('do'+i+'_lat').disabled=src===0;
     document.getElementById('do'+i+'_unit').textContent=src===3?(m.unit?'('+m.unit+')':''):src>=4?(analogUnits[src-4]?'('+analogUnits[src-4]+')':''):'';
-    [...document.getElementById('do'+i+'_src').options].forEach(o=>{const v=Number(o.value);
-      o.disabled=v!==0&&v!==3&&[...Array(n).keys()].some(k=>k!==i&&get(k,'src')===v);});
-    [...document.getElementById('do'+i+'_axis').options].forEach(o=>{const a=Number(o.value);
-      o.disabled=[...Array(n).keys()].some(k=>k!==i&&get(k,'src')===3&&get(k,'met')===get(i,'met')&&(get(k,'axis')===a||get(k,'axis')===3||a===3));});
   }
 }
 function saveOutputs(e){
@@ -128,17 +124,46 @@ function saveOutputs(e){
     .catch(()=>set('out-status','Not saved: gateway unavailable')).finally(()=>{b.disabled=false;});
 }
 function esc(text){const d=document.createElement('div');d.textContent=text;return d.innerHTML;}
+function buildInputs(rules){
+  const fields=document.getElementById('inputs-form-fields');fields.innerHTML='';
+  rules.forEach((r,i)=>{
+    fields.insertAdjacentHTML('beforeend','<fieldset style="border:1px solid #e6edf1;border-radius:10px;padding:10px 12px;margin:10px 0 0"><legend style="font-weight:700">DI'+i+'</legend>'+
+      '<label for="di'+i+'_act">Action</label><select id="di'+i+'_act" name="di'+i+'_act" onchange="updateInputForm()">'+inputActionNames.map((n,k)=>'<option value="'+k+'">'+n+'</option>').join('')+'</select>'+
+      '<div id="di'+i+'_target"><label for="di'+i+'_do">Output to control</label><select id="di'+i+'_do" name="di'+i+'_do">'+[0,1,2,3].map(k=>'<option value="'+k+'">DO'+k+'</option>').join('')+'</select></div></fieldset>');
+    document.getElementById('di'+i+'_act').value=String(r.action);
+    document.getElementById('di'+i+'_do').value=String(r.output);
+  });
+  inputsBuilt=true;updateInputForm();
+}
+function updateInputForm(){for(let i=0;i<11;i++){const a=Number(document.getElementById('di'+i+'_act').value);document.getElementById('di'+i+'_target').hidden=a!==3&&a!==4;}}
+function saveInputs(e){
+  e.preventDefault();const b=document.getElementById('save-inputs');b.disabled=true;set('in-status','Saving...');
+  fetch('/io_inputs',{method:'POST',body:new URLSearchParams(new FormData(document.getElementById('inputs-form')))})
+    .then(r=>r.text().then(t=>{set('in-status',r.ok?t:'Not saved: '+t);if(r.ok){inputsBuilt=false;refresh();}}))
+    .catch(()=>set('in-status','Not saved: gateway unavailable')).finally(()=>{b.disabled=false;});
+}
+function updateAnalogForm(i){
+  const model=Number(document.getElementById('an'+i+'_model').value),mode=document.getElementById('an'+i+'_mode');
+  const preset=model>0;
+  if(preset){const range=pccRanges[(model-1)%9];mode.value='1';document.getElementById('an'+i+'_min').value='0';document.getElementById('an'+i+'_max').value=range[1];document.getElementById('an'+i+'_unit').value='mm/s';}
+  for(const field of ['min','max','unit'])document.getElementById('an'+i+'_'+field).readOnly=preset;
+}
+function analogModeChanged(i){if(document.getElementById('an'+i+'_mode').value!=='1'){document.getElementById('an'+i+'_model').value='0';updateAnalogForm(i);}}
 function buildForm(analog){
   const fields=document.getElementById('analog-form-fields');fields.innerHTML='';
   analog.forEach((a,i)=>{
     const mode=a.mode==='4-20mA'?1:a.mode==='0-10V'?2:0;
     fields.insertAdjacentHTML('beforeend','<fieldset style="border:1px solid #e6edf1;border-radius:10px;padding:10px 12px;margin:10px 0 0"><legend style="font-weight:700">AN'+i+'</legend>'+
-      '<label for="an'+i+'_mode">Mode</label><select id="an'+i+'_mode" name="an'+i+'_mode"><option value="0">Off</option><option value="1">4-20 mA</option><option value="2">0-10 V</option></select>'+
+      '<label for="an'+i+'_mode">Mode</label><select id="an'+i+'_mode" name="an'+i+'_mode" onchange="analogModeChanged('+i+')"><option value="0">Off</option><option value="1">4-20 mA</option><option value="2">0-10 V</option></select>'+
+      '<label for="an'+i+'_model">Sensor model / scale</label><select id="an'+i+'_model" name="an'+i+'_model" onchange="updateAnalogForm('+i+')"><option value="0">Manual scale / other sensor</option>'+
+      ['VR','VP'].map((type,t)=>pccRanges.map((range,k)=>'<option value="'+(1+t*9+k)+'">PCC420'+type+'-'+range[0]+' (0-'+range[1]+' mm/s '+(t?'peak':'RMS')+')</option>').join('')).join('')+'</select>'+
       '<label for="an'+i+'_name">Name</label><input id="an'+i+'_name" name="an'+i+'_name" maxlength="24" value="'+esc(a.name)+'">'+
       '<label for="an'+i+'_unit">Unit</label><input id="an'+i+'_unit" name="an'+i+'_unit" maxlength="12" value="'+esc(a.unit)+'" placeholder="e.g. RPM">'+
       '<label for="an'+i+'_min">Value at 4 mA / 0 V</label><input id="an'+i+'_min" name="an'+i+'_min" type="number" step="any" required value="'+a.minimum+'">'+
       '<label for="an'+i+'_max">Value at 20 mA / 10 V</label><input id="an'+i+'_max" name="an'+i+'_max" type="number" step="any" required value="'+a.maximum+'"></fieldset>');
     document.getElementById('an'+i+'_mode').value=String(mode);
+    document.getElementById('an'+i+'_model').value=String(a.model||0);
+    updateAnalogForm(i);
   });
   formBuilt=true;
 }
@@ -150,13 +175,14 @@ function render(d){
   const outs=document.getElementById('outputs-live');outs.textContent='';
   d.output_rules.forEach((r,i)=>{
     const c=document.createElement('div');c.className='chip'+(d.outputs[i]?' alert':'');
-    const state=r.source_id===0?'Not used':d.outputs[i]?(r.condition?'ON':'ON (latched'+(r.acknowledged?', acknowledged':'')+')'):'Off';
+    const state=d.outputs[i]?(r.source_id===0?'ON (DI override)':r.condition?'ON':'ON (latched'+(r.acknowledged?', acknowledged':'')+')'):r.source_id===0?'Not used':'Off';
     c.innerHTML='<b>DO'+i+' - '+esc(state)+'</b>'+esc(sourceText(r,i));outs.appendChild(c);
   });
   if(!outputsBuilt)buildOutputs(d.output_rules);
+  if(!inputsBuilt)buildInputs(d.input_rules);
   set('di-captures',d.capture_accepted+' started, '+d.capture_rejected+' ignored');
   const inputs=document.getElementById('inputs');inputs.textContent='';
-  d.inputs.forEach((on,i)=>{const c=document.createElement('div');c.className='chip'+(on?' on':'');c.innerHTML='<b>'+esc(inputNames[i])+'</b>'+(on?'Active':'Inactive');inputs.appendChild(c);});
+  d.inputs.forEach((on,i)=>{const c=document.createElement('div'),r=d.input_rules[i];c.className='chip'+(on?' on':'');c.innerHTML='<b>DI'+i+'</b>'+esc(on?'Active':'Inactive')+'<small style="display:block;color:#5b6b75">'+esc(inputActionNames[r.action]+((r.action===3||r.action===4)?' (DO'+r.output+')':''))+'</small>';inputs.appendChild(c);});
   const live=document.getElementById('analog-live');live.textContent='';
   d.analog.forEach((a,i)=>{
     const c=document.createElement('div');c.className='chip'+(a.fault?' alert':'');
@@ -187,7 +213,7 @@ document.addEventListener('DOMContentLoaded',()=>{refresh();setInterval(refresh,
 void handleIoStatus() {
     io::Snapshot s;
     if (!io::snapshot(s) || !s.ready) { server.send(503, "text/plain", "I/O not ready"); return; }
-    DynamicJsonDocument doc(6144);
+    DynamicJsonDocument doc(8192);
     JsonObject out = doc.to<JsonObject>();
     io::writeJson(out, s, true);
     JsonArray metrics = out.createNestedArray("metrics");
@@ -203,8 +229,13 @@ void handleIoConfig() {
     for (int i = 0; i < io::AnalogCount; ++i) {
         const String key = "an" + String(i) + "_";
         const long mode = server.arg(key + "mode").toInt();
+        const String modelText = server.arg(key + "model");
+        const long model = modelText.toInt();
+        bool modelDigits = modelText.length() > 0 && modelText.length() <= 2;
+        for (size_t n = 0; n < modelText.length(); ++n) modelDigits &= modelText[n] >= '0' && modelText[n] <= '9';
         float minimum = 0, maximum = 0;
         if (mode < io::AnalogOff || mode > io::AnalogVoltage || server.arg(key + "mode").length() != 1 ||
+            !modelDigits || model < 0 || model > 18 || (model && mode != io::AnalogCurrent) ||
             !readText(server.arg(key + "name"), analog[i].name, sizeof(analog[i].name)) ||
             !readText(server.arg(key + "unit"), analog[i].unit, sizeof(analog[i].unit)) ||
             !readNumber(server.arg(key + "min"), minimum) || !readNumber(server.arg(key + "max"), maximum) ||
@@ -214,12 +245,32 @@ void handleIoConfig() {
         }
         if (!analog[i].name[0]) snprintf(analog[i].name, sizeof(analog[i].name), "AN%d", i);
         analog[i].mode = uint8_t(mode);
+        analog[i].model = uint8_t(model);
         analog[i].minimum = minimum;
         analog[i].maximum = maximum;
+        if (model) io::applyPcc420Preset(analog[i]);
     }
     if (!io::setAnalogConfig(analog)) { server.send(503, "text/plain", "Settings storage busy; nothing was changed."); return; }
     logMessage("[I/O] Analog input settings saved");
     server.send(200, "text/plain", "Analog settings saved and applied.");
+}
+
+void handleIoInputs() {
+    io::InputConfig input[io::DigitalCount];
+    for (int i = 0; i < io::DigitalCount; ++i) {
+        const String key = "di" + String(i) + "_";
+        const String actionText = server.arg(key + "act"), outputText = server.arg(key + "do");
+        if (actionText.length() != 1 || outputText.length() != 1 ||
+            actionText[0] < '0' || actionText[0] > '5' || outputText[0] < '0' || outputText[0] > '3') {
+            server.send(400, "text/plain", "DI" + String(i) + ": choose a valid action and output.");
+            return;
+        }
+        input[i].action = uint8_t(actionText[0] - '0');
+        input[i].output = uint8_t(outputText[0] - '0');
+    }
+    if (!io::setInputConfig(input)) { server.send(503, "text/plain", "Settings storage busy; nothing was changed."); return; }
+    logMessage("[I/O] Digital input settings saved");
+    server.send(200, "text/plain", "Digital input settings saved and applied.");
 }
 
 void handleIoAcknowledge() {

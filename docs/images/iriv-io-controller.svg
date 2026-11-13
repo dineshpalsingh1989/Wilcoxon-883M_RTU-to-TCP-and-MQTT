@@ -64,7 +64,7 @@
 <rect x="48" y="436" width="18" height="18" rx="4" fill="#0e3a52" stroke="#38bdf8" stroke-width="2"/>
 <text x="76" y="451" fill="#f8fafc">Used by the gateway: RS485 A / B / G to the 883M, V+ / V− supply, Ethernet, USB-C (PROG), USER button, USR status LED</text>
 <rect x="48" y="468" width="18" height="18" rx="4" fill="#1e293b" stroke="#475569"/>
-<text x="76" y="483" fill="#a9c2d7">Not used yet: 11 isolated digital inputs, 4 isolated digital outputs, 2 analog inputs (coming soon)</text>
+<text x="76" y="483" fill="#a9c2d7">Configurable: DI0–DI10 actions, DO0–DO3 relay rules, AN0/AN1 analog inputs</text>
 <text x="48" y="524" fill="#7dd3fc" font-size="14">Turn on the RS485 R-Term switch under the IRIV at the end of the bus • DO0–DO3 are isolated two-terminal outputs</text>
 </g>
 </g></svg>

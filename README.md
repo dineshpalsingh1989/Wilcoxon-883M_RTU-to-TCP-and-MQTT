@@ -145,7 +145,7 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
 
-![IRIV IO Controller front panel: the gateway uses RS485 A, B and G, the V+ and V− supply terminals, Ethernet, USB-C, the USER button and the USR LED; the digital inputs, digital outputs and analog inputs are not used yet.](docs/images/iriv-io-controller.svg)
+![IRIV IO Controller front panel: the gateway uses RS485 A, B and G, V+ and V− supply, Ethernet, USB-C, USER button, USR LED and configurable digital and analog I/O.](docs/images/iriv-io-controller.svg)
 
 | IRIV connection | RP2350A pin | Used by the gateway for |
 | --- | --- | --- |
@@ -155,9 +155,13 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 | **USER** button | GP28 | Hold 5 s for the fixed address 192.168.4.1 |
 | **USR** LED | GP29 | Status: on when online, blinking during captures |
 | Buzzer (inside) | GP11 | Start-up beep and network-loss alarm |
-| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Capture and acknowledge inputs, alarm relays and scaled analog inputs (beta), see [IOC I/O](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware) |
+| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Configurable input actions, relay rules and scaled analog inputs (beta), see [IOC I/O](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware) |
 
-> **IRIV I/O (beta).** DI0 can start a capture, DI1 acknowledges alarms, DO0–DO3 follow alarm rules (for example an alarm light) and AN0/AN1 read 4–20 mA or 0–10 V. Set them up under **Settings > IOC I/O**; see the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware). These functions are not yet validated on hardware.
+> **IRIV I/O (beta).** DI0–DI10 can be assigned capture, acknowledge, alarm or DO override actions (defaults: DI0 capture, DI1 acknowledge). DO0–DO3 follow selectable 883M or analog rules, and AN0/AN1 read 4–20 mA or 0–10 V with PCC420V model presets or manual scaling. Enabled analog readings appear on the main dashboard; configure them under **Settings > IOC I/O**. See the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware). These functions are not yet validated on hardware.
+
+![Functional IOC wiring with an 883M on RS485 and a PCC420V on a 4–20 mA input, updated 13 November 2026](docs/images/iriv-pcc420-wiring.svg)
+
+The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) show the loop supply, AN input and AGND connection. The drawing is a functional guide; confirm the exact sensor connector and polarity before wiring.
 
 1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
 2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1. To use a fixed address instead, choose **Static IP address** under **Settings > Network** and enter the IP address, subnet mask and, optionally, gateway and DNS; the gateway restarts with that address, and holding **USER** still reaches 192.168.4.1 if the address is wrong.
@@ -422,7 +426,7 @@ From v4.13.0, each axis capture sends its **whole waveform in one MQTT message**
 | 4 | `spectrum_peaks` | `883M` | Top 5 spectrum peaks (`freq_hz`, `amp_g`); single-axis captures only | under 1 KB |
 | 5 | `combined_spectrum_peaks` | `883M/status` | Top 5 peaks for X, Y and Z; sent once after the Z axis of an XYZ capture | under 1 KB |
 
-An XYZ capture (`trigger_all`, Modbus trigger value 1, the IRIV DI0 input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained. The topics shown are the defaults; with **Custom** topics each message goes to the topic set for its group (see above).
+An XYZ capture (`trigger_all`, Modbus trigger value 1, a configured IRIV DI input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained. The topics shown are the defaults; with **Custom** topics each message goes to the topic set for its group (see above).
 
 The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware (v4.12.0 and earlier), which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
 

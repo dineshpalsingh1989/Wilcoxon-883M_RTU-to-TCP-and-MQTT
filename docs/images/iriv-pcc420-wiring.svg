@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="850" viewBox="0 0 1440 850" role="img" aria-labelledby="title desc">
+<title id="title">IRIV IOC with Wilcoxon PCC420V and 883M wiring</title>
+<desc id="desc">Functional wiring: a 24 V supply powers the PCC420V loop. Supply positive goes to sensor loop positive; sensor loop negative goes to IRIV AN0; IRIV AGND returns to supply negative. The separate 883M RS485 A and B lines go to IRIV RS485 A and B. IOC digital inputs and outputs are configurable in firmware. Updated 13 November 2026.</desc>
+<defs>
+  <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#e8f7fa"/><stop offset="1" stop-color="#f6fbfd"/></linearGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#143445" flood-opacity=".14"/></filter>
+</defs>
+<rect width="1440" height="850" fill="url(#sky)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+  <text x="60" y="65" fill="#123947" font-size="34" font-weight="750">One IOC, two sensor paths</text>
+  <text x="60" y="98" fill="#416171" font-size="17">Wilcoxon 883M on RS485 + PCC420V on a 4–20 mA analog input</text>
+  <rect x="1112" y="36" width="267" height="48" rx="24" fill="#d3f0e9"/>
+  <text x="1245" y="66" text-anchor="middle" fill="#10645d" font-size="15" font-weight="700">UPDATED 13 NOV 2026</text>
+
+  <!-- Power supply -->
+  <rect x="55" y="170" width="305" height="225" rx="24" fill="#fff" stroke="#bad3db" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="80" y="195" width="255" height="54" rx="13" fill="#e9f2f6"/>
+  <text x="207" y="229" text-anchor="middle" fill="#143947" font-size="23" font-weight="700">24 V DC supply</text>
+  <circle cx="289" cy="288" r="21" fill="#fff2ed" stroke="#dc6951" stroke-width="3"/>
+  <text x="289" y="296" text-anchor="middle" fill="#c34c37" font-size="26" font-weight="700">+</text>
+  <circle cx="289" cy="350" r="21" fill="#eaf2ff" stroke="#5079ba" stroke-width="3"/>
+  <text x="289" y="358" text-anchor="middle" fill="#426aa8" font-size="28" font-weight="700">−</text>
+  <text x="82" y="295" fill="#48616d" font-size="16">Loop supply</text>
+  <text x="82" y="357" fill="#48616d" font-size="16">Return</text>
+
+  <!-- PCC420 cartoon -->
+  <rect x="470" y="170" width="342" height="225" rx="24" fill="#fff" stroke="#bad3db" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="515" y="195" width="252" height="44" rx="22" fill="#dfe9ed" stroke="#829eaa" stroke-width="2"/>
+  <rect x="548" y="237" width="186" height="78" rx="19" fill="#d4e0e5" stroke="#829eaa" stroke-width="2"/>
+  <rect x="569" y="249" width="144" height="48" rx="8" fill="#f5fbfb"/>
+  <text x="641" y="271" text-anchor="middle" fill="#123947" font-size="18" font-weight="700">PCC420V</text>
+  <text x="641" y="288" text-anchor="middle" fill="#48616d" font-size="12">RMS or peak velocity</text>
+  <text x="491" y="342" fill="#123947" font-size="17" font-weight="700">4–20 mA loop sensor</text>
+  <text x="491" y="365" fill="#5d7580" font-size="14">4 mA = 0 mm/s · 20 mA = selected full scale</text>
+  <circle cx="493" cy="279" r="8" fill="#dc6951"/><circle cx="788" cy="279" r="8" fill="#e79d32"/>
+  <text x="483" y="260" fill="#b9432e" font-size="13" font-weight="700">LOOP +</text>
+  <text x="730" y="260" fill="#aa6c16" font-size="13" font-weight="700">LOOP −</text>
+
+  <!-- IOC cartoon -->
+  <rect x="956" y="148" width="426" height="560" rx="25" fill="#173747" stroke="#0c2b3a" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="981" y="173" width="376" height="69" rx="14" fill="#e7f0f3"/>
+  <text x="1000" y="204" fill="#123947" font-size="23" font-weight="750">Cytron IRIV IOC</text>
+  <text x="1000" y="225" fill="#42616e" font-size="14">RP2350 · Ethernet · RS485 · industrial I/O</text>
+  <rect x="986" y="263" width="365" height="160" rx="14" fill="#264c5b"/>
+  <text x="1004" y="288" fill="#aee7df" font-size="17" font-weight="700">ANALOG INPUTS</text>
+  <circle cx="980" cy="324" r="8" fill="#e79d32"/>
+  <circle cx="980" cy="382" r="8" fill="#5079ba"/>
+  <text x="1004" y="330" fill="#fff" font-size="20" font-weight="700">AN0</text>
+  <text x="1080" y="330" fill="#d4e6eb" font-size="15">DIP switch: Current</text>
+  <text x="1004" y="388" fill="#fff" font-size="20" font-weight="700">AGND</text>
+  <text x="1080" y="388" fill="#d4e6eb" font-size="15">Loop return</text>
+  <rect x="986" y="442" width="365" height="124" rx="14" fill="#264c5b"/>
+  <text x="1004" y="468" fill="#aee7df" font-size="17" font-weight="700">883M RS485</text>
+  <circle cx="980" cy="493" r="8" fill="#31a984"/><circle cx="980" cy="534" r="8" fill="#9c79c5"/>
+  <text x="1004" y="500" fill="#fff" font-size="18" font-weight="700">A</text>
+  <text x="1004" y="541" fill="#fff" font-size="18" font-weight="700">B</text>
+  <text x="1070" y="515" fill="#d4e6eb" font-size="15">Isolated, built in</text>
+  <rect x="986" y="584" width="365" height="97" rx="14" fill="#264c5b"/>
+  <text x="1004" y="612" fill="#aee7df" font-size="17" font-weight="700">CONFIGURABLE I/O</text>
+  <text x="1004" y="637" fill="#fff" font-size="15">DI0–DI10: actions and alarms</text>
+  <text x="1004" y="660" fill="#fff" font-size="15">DO0–DO3: 883M or analog rules</text>
+
+  <!-- 4-20 mA loop; explicit circuit path -->
+  <path d="M310 288 H402 V279 H493" fill="none" stroke="#dc6951" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M788 279 H860 V324 H980" fill="none" stroke="#e79d32" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M980 382 H898 V429 H405 V350 H310" fill="none" stroke="#5079ba" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="390" y="272" fill="#a53e2a" font-size="14" font-weight="700">24 V +</text>
+  <text x="841" y="263" fill="#9c651a" font-size="14" font-weight="700">4–20 mA</text>
+  <text x="565" y="419" fill="#426aa8" font-size="14" font-weight="700">Supply − / analog return</text>
+
+  <!-- 883M RS485 branch -->
+  <rect x="472" y="480" width="340" height="166" rx="23" fill="#fff" stroke="#bad3db" stroke-width="2" filter="url(#shadow)"/>
+  <circle cx="522" cy="536" r="28" fill="#daedf1" stroke="#70a4ae" stroke-width="3"/>
+  <path d="M502 538 Q513 521 524 537 T545 536" fill="none" stroke="#318c94" stroke-width="4" stroke-linecap="round"/>
+  <text x="567" y="526" fill="#123947" font-size="22" font-weight="700">Wilcoxon 883M</text>
+  <text x="567" y="552" fill="#48616d" font-size="14">RS485 vibration metrics + captures</text>
+  <text x="755" y="496" fill="#338765" font-size="15" font-weight="700">A</text>
+  <text x="755" y="537" fill="#8061a8" font-size="15" font-weight="700">B</text>
+  <text x="490" y="610" fill="#607b86" font-size="14">Power the 883M as its manual specifies.</text>
+  <path d="M812 493 H980" fill="none" stroke="#31a984" stroke-width="6" stroke-linecap="round"/>
+  <path d="M812 534 H980" fill="none" stroke="#9c79c5" stroke-width="6" stroke-linecap="round"/>
+  <text x="831" y="483" fill="#207d60" font-size="13" font-weight="700">RS485 A</text>
+  <text x="831" y="557" fill="#7859a0" font-size="13" font-weight="700">RS485 B</text>
+
+  <!-- Firmware note -->
+  <rect x="55" y="718" width="1327" height="91" rx="18" fill="#fff" stroke="#bad3db" stroke-width="2"/>
+  <text x="82" y="750" fill="#123947" font-size="18" font-weight="700">In firmware</text>
+  <text x="82" y="777" fill="#416171" font-size="15">Select a PCC420V model or manual 4–20 mA scale. The dashboard shows velocity, raw mA and loop faults; DI/DO assignments stay configurable.</text>
+  <text x="82" y="797" fill="#607b86" font-size="12">Functional diagram, not a connector pinout. Confirm the exact sensor connector, supply, IOC terminal labels and polarity before wiring. Hardware validation pending.</text>
+</g>
+</svg>

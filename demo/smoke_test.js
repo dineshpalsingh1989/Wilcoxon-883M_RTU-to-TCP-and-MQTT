@@ -9,6 +9,10 @@ const pages = [
   ['web_system.cpp', 'handleTimeSettings'], ['web_system.cpp', 'handleDeviceInfo'],
   ['web_updates.cpp', 'handleGithubUpdates'],
 ];
+// The IRIV IOC tree also has the Our Libraries page.
+const webDir = process.env.DEMO_WEB_DIR || require('node:path').join(__dirname, '../ESP32 Family/ESP32-S3/src/web');
+if (require('node:fs').existsSync(require('node:path').join(webDir, 'web_libraries.cpp'))) pages.push(['web_libraries.cpp', 'handleLibraries']);
+if (require('node:fs').existsSync(require('node:path').join(webDir, 'web_io.cpp'))) pages.push(['web_io.cpp', 'handleIoPage']);
 for (const [file, handler] of pages) {
   const html = renderPage(file, handler);
   assert(html.includes('</html>'), handler);

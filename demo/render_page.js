@@ -22,6 +22,10 @@ const values = {
 function expression(text) {
   let key = text.trim();
   if (key.startsWith('String(') && key.endsWith(')')) key = key.slice(7, -1);
+  if (key.startsWith('htmlEscape(') && key.endsWith(')')) {
+    return expression(key.slice(11, -1)).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+  }
   const ternary = key.match(/^(\w+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
   if (ternary) return values[ternary[1]] ? ternary[2] : ternary[3];
   if (key === 'getTimestamp()') return new Date().toISOString();
@@ -31,7 +35,8 @@ function expression(text) {
   return String(values[key]);
 }
 module.exports = function renderPage(file, handler) {
-  const source = fs.readFileSync(path.join(__dirname, '../ESP32 Family/ESP32-S3/src/web', file), 'utf8');
+  const webDir = process.env.DEMO_WEB_DIR || path.join(__dirname, '../ESP32 Family/ESP32-S3/src/web');
+  const source = fs.readFileSync(path.join(webDir, file), 'utf8');
   const start = source.indexOf('void ' + handler + '(');
   if (start < 0) throw new Error('Unknown page handler: ' + handler);
   const rest = source.slice(start);

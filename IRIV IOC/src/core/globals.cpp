@@ -28,7 +28,7 @@ String sensor_vendor_url = "Unknown";
 String sensor_part_number = "Unknown";
 String sensor_fw_version = "Unknown";
 #ifndef GATEWAY_RELEASE_VERSION
-#define GATEWAY_RELEASE_VERSION "4.10.0-beta.3"
+#define GATEWAY_RELEASE_VERSION "4.14.0-beta.1"
 #endif
 const char* FIRMWARE_VERSION = GATEWAY_RELEASE_VERSION;
 

@@ -36,13 +36,13 @@ Pins are from the Cytron IRIV IO Controller datasheet (via the board variant). S
 | Terminal | RP2350A | Gateway use |
 | --- | --- | --- |
 | DO0–DO3 | GP12–GP15 | Each relay follows one source chosen on the IOC I/O page (defaults: DO0 dashboard alarm, latched; DO1 sensor fault; DO2/DO3 off) |
-| DI0 | GP0 | Rising edge starts an XYZ capture (ignored while busy or while the sensor is paused) |
-| DI1 | GP1 | Rising edge acknowledges the alarm |
-| DI2–DI10 | GP2–GP10 | Reported only |
-| AN0, AN1 | GP26, GP27 | 4–20 mA or 0–10 V (match the AN-IN MODE DIP switch), scaled to a named value with a unit |
+| DI0–DI10 | GP0–GP10 | Configurable per input: report only, start an 883M XYZ capture, acknowledge, force a chosen DO on, silence a chosen DO, or trigger an alarm. Defaults retain DI0 capture and DI1 acknowledge. |
+| AN0, AN1 | GP26, GP27 | 4–20 mA or 0–10 V (match the AN-IN MODE DIP switch), with PCC420V RMS/peak model presets or manual scaling. |
 | USER button | GP28 | Short press acknowledges; holding 5 s still selects the fixed address 192.168.4.1 |
 
-Relay sources: **Dashboard alarm** (the dashboard's vibration/temperature limits), **Sensor fault** (no answer, or polling stopped after 3 failed reads), **883M value** (one of 14 values the gateway reads, on X, Y, Z or the highest of the three, at or above / at or below a threshold) or **AN0/AN1** (the scaled analog value against a threshold). Each rule has a hysteresis (release margin), a delay and an optional latch. A source, or an 883M value on overlapping axes, can drive only one output; the page greys out choices already in use and the gateway rejects duplicates. 883M rules are off while the sensor has no fresh reading; analog rules are off while the input is disabled or faulted.
+Relay sources: **Dashboard alarm** (the dashboard's vibration/temperature limits or a configured DI alarm), **Sensor fault** (no answer, or polling stopped after 3 failed reads), **883M value** (one of 14 values the gateway reads, on X, Y, Z or the highest of the three, at or above / at or below a threshold) or **AN0/AN1** (the scaled analog value against a threshold). Each rule has a hysteresis (release margin), a delay and an optional latch. Multiple outputs may follow the same source at different thresholds. 883M rules are off while the sensor has no fresh reading; analog rules are off while the input is disabled or faulted.
+
+The DI action applies on a debounced rising edge for capture and acknowledge, and while the input is active for force DO, silence DO and alarm. DI alarm joins the dashboard alarm source for relay rules and I/O reporting. Silence wins if one input forces and another silences the same DO. The physical DO state is reported through MQTT and Modbus. This DI alarm does not create an 883M measurement or capture. The PCC420V presets cover VR/VP output types and all nine full-scale velocity options; 4 mA maps to 0 mm/s and 20 mA maps to the selected full scale. Manual scaling remains available for other transmitters. A PCC420V requires its own 12–30 V loop supply; verify the exact connector and loop wiring against its model datasheet before connecting it.
 
 Acknowledging (web page, USER button or DI1) silences the buzzer, lets latched relays drop once their condition has cleared and retries a paused sensor. A 4–20 mA input below 3.6 mA or above 21 mA, or any over-range reading, is reported as a fault. Analog readings use the nominal ADC reference and are not calibrated. Outputs are solid-state relays rated 50 V / 500 mA (see the datasheet); add a flyback diode across relay coils.
 

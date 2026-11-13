@@ -40,6 +40,7 @@ void registerWebRoutes() {
     server.on("/io_config", HTTP_POST, handleIoConfig);
     server.on("/io_ack", HTTP_POST, handleIoAcknowledge);
     server.on("/io_outputs", HTTP_POST, handleIoOutputs);
+    server.on("/io_inputs", HTTP_POST, handleIoInputs);
 #endif
     server.on("/rs485_settings", HTTP_GET, handleRs485Settings);
     server.on("/save_rs485", HTTP_GET, handleSaveRs485);

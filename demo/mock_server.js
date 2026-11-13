@@ -13,6 +13,7 @@ const pages = {
   '/time_settings': ['web_system.cpp', 'handleTimeSettings'],
   '/device_info': ['web_system.cpp', 'handleDeviceInfo'],
   '/github_updates': ['web_updates.cpp', 'handleGithubUpdates'],
+  '/io': ['web_io.cpp', 'handleIoPage'], // IRIV IOC tree only
 };
 
 const PORT = process.env.PORT || 8080;
@@ -31,6 +32,16 @@ const GROUPS = {
   displRms: [14, 2], displPeak: [40, 2], displLowRms: [15, 2], displLowPeak: [42, 2],
   truePeak: [0.5, 2], crestFactor: [3.1, 2], stdDeviation: [0.12, 2],
 };
+// Simulated IRIV I/O: readings and states are invented for the demo.
+const demoIo = () => ({ ready: true, inputs: Array(11).fill(false), outputs: [false, false, false, false],
+  input_rules: Array.from({ length: 11 }, (_, i) => ({ action: i === 0 ? 1 : i === 1 ? 2 : 0, output: 0 })), input_alarm: false,
+  output_rules: [{ source: 'alarm', source_id: 1, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: true, condition: false, latched: false, acknowledged: false },
+    { source: 'sensor_fault', source_id: 2, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: false, condition: false, latched: false, acknowledged: false },
+    { source: 'off', source_id: 0, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: false, condition: false, acknowledged: false },
+    { source: 'off', source_id: 0, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: false, condition: false, acknowledged: false }],
+  alarm: false, sensor_fault: false, capture_accepted: 0, capture_rejected: 0,
+  analog: [{ name: 'Simulated PCC420V', unit: 'mm/s', mode: '4-20mA', model: 7, minimum: 0, maximum: 20, input: 12, value: 10, fault: false, adc: 1923 },
+    { name: 'AN1', unit: '', mode: 'off', model: 0, minimum: 0, maximum: 100 }] });
 const noisy = base => base * (1 + (Math.random() - 0.5) * 0.1);
 
 function metrics() {
@@ -134,8 +145,17 @@ http.createServer(async (req, res) => {
       return json(res, {
         ...metrics(), status: state.status, traffic_light: state.traffic, capture_busy: capturing, cycle_active: !!state.cycle,
         mqtt_server: 'demo.broker.local', mqtt_topic: '883M', modbus_enabled: true,
-        modbus_port: 502, modbus_id: 1, capturedAxis: state.capturedAxis, mqtt_connected: true,
+        modbus_port: 502, modbus_id: 1, capturedAxis: state.capturedAxis, mqtt_connected: true, sensor_paused: false, io: demoIo(),
       });
+    case '/io_status':
+      return json(res, { ...demoIo(), metrics: [
+        { id: 'velo_rms', label: 'Velocity RMS (10 Hz-1 kHz)', unit: 'mm/s', per_axis: true },
+        { id: 'accel_rms', label: 'Acceleration RMS (2 Hz-1 kHz)', unit: 'g', per_axis: true },
+        { id: 'temperature', label: 'Temperature', unit: 'C', per_axis: false }] });
+    case '/io_config': case '/io_ack': case '/io_outputs': case '/io_inputs':
+      if (req.method !== 'POST') return send(res, 405, 'text/plain', 'Use POST');
+      req.resume();
+      return send(res, 200, 'text/plain', 'Demo: saved/acknowledged (simulated)');
     case '/get_intervals':
       return json(res, { interval: state.captureInterval, metrics_interval: state.metricsInterval });
     case '/set_metrics_interval':

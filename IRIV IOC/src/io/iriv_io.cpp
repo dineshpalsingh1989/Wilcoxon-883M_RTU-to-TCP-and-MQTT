@@ -9,7 +9,6 @@ const uint8_t inputPins[DigitalCount] = {PIN_DI0, PIN_DI1, PIN_DI2, PIN_DI3, PIN
                                          PIN_DI6, PIN_DI7, PIN_DI8, PIN_DI9, PIN_DI10};
 const uint8_t outputPins[OutputCount] = {PIN_DO0, PIN_DO1, PIN_DO2, PIN_DO3};
 const uint8_t analogPins[AnalogCount] = {PIN_AN0, PIN_AN1};
-constexpr int CaptureInput = 0, AcknowledgeInput = 1;
 // Nominal RP2350 ADC reference; readings are not calibrated against a meter.
 constexpr float AdcReferenceMv = 3300.0f;
 
@@ -62,12 +61,31 @@ void loadAnalog(AnalogConfig (&analog)[AnalogCount]) {
         snprintf(analog[i].name, sizeof(analog[i].name), "%s", store.getString((key + "name").c_str(), "AN" + String(i)).c_str());
         snprintf(analog[i].unit, sizeof(analog[i].unit), "%s", store.getString((key + "unit").c_str(), "").c_str());
         analog[i].mode = store.getUChar((key + "mode").c_str(), AnalogOff);
+        analog[i].model = store.getUChar((key + "model").c_str(), 0);
         analog[i].minimum = store.getFloat((key + "min").c_str(), 0);
         analog[i].maximum = store.getFloat((key + "max").c_str(), 100);
-        if (analog[i].mode > AnalogVoltage || !std::isfinite(analog[i].minimum) || !std::isfinite(analog[i].maximum) ||
+        if (analog[i].mode > AnalogVoltage || analog[i].model > 18 ||
+            (analog[i].model && analog[i].mode != AnalogCurrent) ||
+            !std::isfinite(analog[i].minimum) || !std::isfinite(analog[i].maximum) ||
             analog[i].minimum >= analog[i].maximum) {
-            analog[i].mode = AnalogOff; analog[i].minimum = 0; analog[i].maximum = 100;
+            analog[i].mode = AnalogOff; analog[i].model = 0; analog[i].minimum = 0; analog[i].maximum = 100;
         }
+    }
+    store.end();
+}
+
+void loadInputs(InputConfig (&input)[DigitalCount]) {
+    input[0].action = InputCapture;
+    input[1].action = InputAcknowledge;
+    Preferences store;
+    store.begin("io-di", true);
+    const uint32_t first = store.getUInt("di0_5", uint32_t(InputCapture) | (uint32_t(InputAcknowledge) << 5));
+    const uint32_t second = store.getUInt("di6_10", 0);
+    for (int i = 0; i < DigitalCount; ++i) {
+        const uint32_t packed = i < 6 ? first >> (i * 5) : second >> ((i - 6) * 5);
+        const uint8_t action = packed & 7;
+        const uint8_t output = (packed >> 3) & 3;
+        if (action <= InputAlarm && output < OutputCount) { input[i].action = action; input[i].output = output; }
     }
     store.end();
 }
@@ -100,12 +118,11 @@ void sampler(void*) {
     for (;;) {
         const uint32_t now = millis();
         uint16_t mask = 0;
-        bool capture = false, acknowledgeEdge = false;
+        uint16_t edges = 0;
         for (int i = 0; i < DigitalCount; ++i) {
             const bool rising = inputs[i].update(digitalRead(inputPins[i]) != LOW, now); // inputs are active high
             if (inputs[i].stable) mask |= 1u << i;
-            if (rising && i == CaptureInput) capture = true;
-            if (rising && i == AcknowledgeInput) acknowledgeEdge = true;
+            if (rising) edges |= 1u << i;
         }
         AnalogConfig analog[AnalogCount];
         if (xSemaphoreTake(mutex, pdMS_TO_TICKS(20)) != pdTRUE) { vTaskDelay(pdMS_TO_TICKS(10)); continue; }
@@ -132,7 +149,22 @@ void sampler(void*) {
 
         if (xSemaphoreTake(mutex, pdMS_TO_TICKS(20)) == pdTRUE) {
             if (revision != state.revision) { for (auto& l : latches) l = Latch(); revision = state.revision; }
-            const bool acknowledgeNow = ackRequested || acknowledgeEdge;
+            bool acknowledgeInputNow = false;
+            for (int i = 0; i < DigitalCount; ++i) {
+                if (!(edges & (1u << i))) continue;
+                if (state.input[i].action == InputCapture) captureEdge = true;
+                if (state.input[i].action == InputAcknowledge) { ackEdge = true; acknowledgeInputNow = true; }
+            }
+            bool inputAlarm = false;
+            uint8_t force = 0, silence = 0;
+            for (int i = 0; i < DigitalCount; ++i) {
+                if (!(mask & (1u << i))) continue;
+                const InputConfig& c = state.input[i];
+                if (c.action == InputAlarm) inputAlarm = true;
+                if (c.action == InputForceOutput) force |= 1u << c.output;
+                if (c.action == InputSilenceOutput) silence |= 1u << c.output;
+            }
+            const bool acknowledgeNow = ackRequested || acknowledgeInputNow;
             ackRequested = false;
             uint8_t outputs = 0, latched = 0, acknowledged = 0;
             for (int i = 0; i < OutputCount; ++i) {
@@ -145,14 +177,17 @@ void sampler(void*) {
                     if (latches[i].acknowledged) acknowledged |= 1u << i;
                 }
                 if (state.output[i].source == SourceOff) on = false;
+                if (force & (1u << i)) on = true;
+                if (silence & (1u << i)) on = false; // silence wins when two inputs target one DO
                 if (on) outputs |= 1u << i;
                 digitalWrite(outputPins[i], on ? HIGH : LOW);
             }
             const bool changed = !state.ready || state.inputs != mask || state.outputs != outputs ||
                                  state.conditions != conditionInput || state.latched != latched ||
-                                 state.acknowledged != acknowledged;
+                                 state.acknowledged != acknowledged || state.inputAlarm != inputAlarm;
             state.inputs = mask; state.outputs = outputs; state.conditions = conditionInput;
             state.latched = latched; state.acknowledged = acknowledged;
+            state.inputAlarm = inputAlarm;
             if (sampleAnalog) {
                 for (int i = 0; i < AnalogCount; ++i) {
                     state.adc[i] = adc[i]; state.measured[i] = measured[i];
@@ -161,8 +196,6 @@ void sampler(void*) {
             }
             if (changed) state.sequence++;
             state.ready = true;
-            captureEdge |= capture;
-            ackEdge |= acknowledgeEdge;
             xSemaphoreGive(mutex);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -183,14 +216,6 @@ const char* validateOutputs(const OutputConfig (&output)[OutputCount]) {
         if (!std::isfinite(o.threshold) || fabsf(o.threshold) > 1000000.0f) return "Threshold out of range.";
         if (!std::isfinite(o.hysteresis) || o.hysteresis < 0 || o.hysteresis > 1000000.0f) return "Hysteresis must be 0 or more.";
         if (o.delaySeconds > 3600) return "Delay must be 0-3600 s.";
-        // One output per source: the same alarm, value and axis cannot drive two relays.
-        for (int j = 0; j < i; ++j) {
-            const OutputConfig& p = output[j];
-            if (p.source != o.source) continue;
-            if (o.source != SourceMetric) return "Each source can drive only one output.";
-            const bool sameAxis = p.axis == o.axis || p.axis == AxisAny || o.axis == AxisAny || !Metrics[o.metric].perAxis;
-            if (p.metric == o.metric && sameAxis) return "This 883M value and axis already drives another output.";
-        }
     }
     return nullptr;
 }
@@ -199,6 +224,7 @@ bool begin() {
     mutex = xSemaphoreCreateMutex();
     if (!mutex) return false;
     loadAnalog(state.analog);
+    loadInputs(state.input);
     loadOutputs(state.output);
     for (uint8_t pin : inputPins) pinMode(pin, INPUT);
     for (uint8_t pin : outputPins) { digitalWrite(pin, LOW); pinMode(pin, OUTPUT); }
@@ -253,6 +279,7 @@ bool setAnalogConfig(const AnalogConfig (&analog)[AnalogCount]) {
         ok &= store.putString((key + "name").c_str(), analog[i].name) == strlen(analog[i].name);
         ok &= store.putString((key + "unit").c_str(), analog[i].unit) == strlen(analog[i].unit);
         ok &= store.putUChar((key + "mode").c_str(), analog[i].mode) == 1;
+        ok &= store.putUChar((key + "model").c_str(), analog[i].model) == 1;
         ok &= store.putFloat((key + "min").c_str(), analog[i].minimum) == 4;
         ok &= store.putFloat((key + "max").c_str(), analog[i].maximum) == 4;
     }
@@ -263,6 +290,35 @@ bool setAnalogConfig(const AnalogConfig (&analog)[AnalogCount]) {
         state.analog[i] = analog[i];
         state.adc[i] = 0; state.measured[i] = state.value[i] = 0; state.analogFault[i] = false;
     }
+    state.sequence++; state.revision++;
+    xSemaphoreGive(mutex);
+    return true;
+}
+
+bool applyPcc420Preset(AnalogConfig& a) {
+    static const float scales[] = {12.7f, 25.4f, 50.8f, 76.2f, 127.0f, 10.0f, 20.0f, 25.0f, 50.0f};
+    if (a.model == 0 || a.model > 18) return false;
+    a.mode = AnalogCurrent;
+    a.minimum = 0;
+    a.maximum = scales[(a.model - 1) % 9];
+    snprintf(a.unit, sizeof(a.unit), "mm/s");
+    return true;
+}
+
+bool setInputConfig(const InputConfig (&input)[DigitalCount]) {
+    for (const InputConfig& c : input) if (c.action > InputAlarm || c.output >= OutputCount) return false;
+    uint32_t first = 0, second = 0;
+    for (int i = 0; i < DigitalCount; ++i) {
+        const uint32_t packed = uint32_t(input[i].action) | (uint32_t(input[i].output) << 3);
+        if (i < 6) first |= packed << (i * 5);
+        else second |= packed << ((i - 6) * 5);
+    }
+    Preferences store;
+    if (!store.begin("io-di", false)) return false;
+    const bool ok = store.putUInt("di0_5", first) == 4 && store.putUInt("di6_10", second) == 4;
+    store.end();
+    if (!ok || xSemaphoreTake(mutex, pdMS_TO_TICKS(100)) != pdTRUE) return false;
+    for (int i = 0; i < DigitalCount; ++i) state.input[i] = input[i];
     state.sequence++; state.revision++;
     xSemaphoreGive(mutex);
     return true;
@@ -299,6 +355,14 @@ void writeJson(JsonObject out, const Snapshot& s, bool formFields) {
     out["ready"] = s.ready;
     JsonArray inputs = out.createNestedArray("inputs");
     for (int i = 0; i < DigitalCount; ++i) inputs.add(bool((s.inputs >> i) & 1));
+    if (formFields) {
+        JsonArray inputRules = out.createNestedArray("input_rules");
+        for (const InputConfig& c : s.input) {
+            JsonObject row = inputRules.createNestedObject();
+            row["action"] = c.action; row["output"] = c.output;
+        }
+    }
+    out["input_alarm"] = s.inputAlarm;
     JsonArray outputs = out.createNestedArray("outputs");
     for (int i = 0; i < OutputCount; ++i) outputs.add(bool((s.outputs >> i) & 1));
     JsonArray rules = out.createNestedArray("output_rules");
@@ -335,6 +399,7 @@ void writeJson(JsonObject out, const Snapshot& s, bool formFields) {
         row["name"] = s.analog[i].name;
         row["unit"] = s.analog[i].unit;
         row["mode"] = s.analog[i].mode == AnalogCurrent ? "4-20mA" : s.analog[i].mode == AnalogVoltage ? "0-10V" : "off";
+        row["model"] = s.analog[i].model;
         row["minimum"] = s.analog[i].minimum;
         row["maximum"] = s.analog[i].maximum;
         if (s.analog[i].mode != AnalogOff) {

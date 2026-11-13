@@ -35,7 +35,7 @@ void acknowledgeAlarms(const char* source) {
 }
 
 namespace {
-// DI0 starts an XYZ capture, the same flow as the dashboard's Capture All button.
+// A configured DI can start an XYZ capture, the same flow as the dashboard's Capture All button.
 void startCaptureFromInput() {
     bool accepted = false;
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
@@ -52,7 +52,7 @@ void startCaptureFromInput() {
         xSemaphoreGive(dataMutex);
     }
     io::recordCapture(accepted);
-    logMessage(accepted ? "[I/O] DI0: starting XYZ capture" : "[I/O] DI0: capture ignored, gateway busy or sensor paused");
+    logMessage(accepted ? "[I/O] DI: starting XYZ capture" : "[I/O] DI: capture ignored, gateway busy or sensor paused");
 }
 
 // Works out each relay's condition from its rule. 883M values count only while the sensor answers;
@@ -101,7 +101,7 @@ void serviceIo() {
     uint8_t conditions = 0;
     bool alarm = false, fault = false;
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-        alarm = monitoringAlarmActive();
+        alarm = monitoringAlarmActive() || s.inputAlarm;
         fault = sensorPaused || monitoringCommunicationFault();
         conditions = evaluateOutputs(s, alarm, fault, !sensorPaused && monitoringFreshReading());
         xSemaphoreGive(dataMutex);
@@ -109,7 +109,7 @@ void serviceIo() {
         return; // keep the previous relay states until the next pass
     }
     const io::Requests requests = io::service(conditions, alarm, fault);
-    if (requests.acknowledge) acknowledgeAlarms("DI1");
+    if (requests.acknowledge) acknowledgeAlarms("digital input");
     if (requests.capture) startCaptureFromInput();
     static uint32_t lastRegisters = 0;
     if (millis() - lastRegisters >= 500) { lastRegisters = millis(); syncIoModbusRegisters(); }

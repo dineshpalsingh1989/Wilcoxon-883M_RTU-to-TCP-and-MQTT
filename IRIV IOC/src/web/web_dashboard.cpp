@@ -102,6 +102,7 @@ void handleRoot() {
         h1{font-size:28px;letter-spacing:-1px;line-height:1.2;margin:0 0 6px}.overview-heading p{margin:0;color:#667e8c}
         .connection{display:inline-flex;align-items:center;gap:8px;background:#e6eef2;color:#506774;padding:7px 12px;border-radius:30px;font-size:12px;font-weight:600;white-space:nowrap}
         .io-strip{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:-10px 0 22px;padding:10px 14px;border:1px solid var(--medium-gray);border-radius:12px;background:white;color:inherit;text-decoration:none;font-size:13px}.io-strip[hidden]{display:none}.io-strip #io-relays{display:flex;flex-wrap:wrap;gap:8px 18px}.io-strip .on{color:#a34536;font-weight:700}.io-strip .io-link{margin-left:auto;color:#147d78;font-weight:600}
+        .analog-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:-10px 0 22px}.analog-overview[hidden],.analog-card[hidden]{display:none}.analog-card{min-width:0;background:white;border:1px solid var(--medium-gray);border-top:3px solid #147d78;border-radius:12px;padding:16px 20px}.analog-card.fault{border-top-color:#b3261e;background:#fff7f5}.analog-card .analog-label{font-size:13px;color:#506774;font-weight:700}.analog-card .analog-value{font-size:28px;font-weight:700;line-height:1.25;margin:4px 0}.analog-card .analog-value small{font-size:15px;font-weight:500}.analog-card .analog-detail{font-size:13px;color:#5b6b75}
         .sensor-paused{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:14px 16px;border-radius:12px;background:#fce9e4;color:#7a2a1e;border:1px solid #f3c7bd}.sensor-paused[hidden]{display:none}.sensor-paused button{min-height:44px}
         .connection:before{content:'';height:7px;width:7px;border-radius:50%;background:currentColor}.connection.live{color:#11745f;background:#e1f2eb}.connection.offline{color:#a34536;background:#fce9e4}
         .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:26px}
@@ -124,7 +125,7 @@ void handleRoot() {
         .footer{display:flex;justify-content:space-between;gap:12px;text-align:left;padding:16px 0;color:#6b8290}.footer p{margin:0}
         #toast-notification{font-size:13px;max-width:calc(100vw - 32px);min-width:0;background:#173c49;box-shadow:0 8px 32px #122c3a30}
         #progressBarContainer{background:#dcece8}#progressBar{font-size:12px;min-width:fit-content;padding:0 8px}
-        @media(max-width:760px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.trans-grid{grid-template-columns:1fr}.header{padding:16px 20px}.time-container{display:none}.main-content{padding:22px 16px}.overview-heading{align-items:flex-start;flex-direction:column}h1{font-size:25px}.actions-panel[style]{flex-wrap:wrap;gap:14px}.footer{flex-direction:column}.summary-card{padding:16px}.summary-value{font-size:28px}.status-grid{gap:8px}.status-box{padding:12px 6px}.status-box .box-label{font-size:13px}.status-box .box-value{font-size:10px}}
+        @media(max-width:760px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.analog-overview{grid-template-columns:1fr}.trans-grid{grid-template-columns:1fr}.header{padding:16px 20px}.time-container{display:none}.main-content{padding:22px 16px}.overview-heading{align-items:flex-start;flex-direction:column}h1{font-size:25px}.actions-panel[style]{flex-wrap:wrap;gap:14px}.footer{flex-direction:column}.summary-card{padding:16px}.summary-value{font-size:28px}.status-grid{gap:8px}.status-box{padding:12px 6px}.status-box .box-label{font-size:13px}.status-box .box-value{font-size:10px}}
         @media(prefers-reduced-motion:reduce){*{transition:none!important}}
         .monitor-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}.monitor-card{background:white;border:1px solid var(--medium-gray);border-radius:12px;padding:20px;min-width:0}.monitor-card h2{font-size:16px;margin:0 0 12px}.monitor-card p{color:#637c8b}.monitor-card canvas{width:100%;height:200px;display:block}.monitor-card label{display:block;margin:10px 0 4px}.monitor-card input{max-width:100%;padding:8px;border:1px solid #cbd8df;border-radius:6px}.monitor-card button{padding:9px 14px;background:#147d78;color:white;border:0;border-radius:6px;cursor:pointer}.monitor-card .legend{font-size:12px;color:#637c8b}.monitor-card table{width:100%;border-collapse:collapse;font-size:12px}.monitor-card td,.monitor-card th{padding:10px 6px;text-align:left;border-bottom:1px solid #e2e9ed}.full-width{grid-column:1/-1}#alarm-state{font-weight:600}.alarm-active{color:#b03f32!important}.health-details{font-variant-numeric:tabular-nums}.monitor-card .history-wrap{overflow:auto}@media(max-width:760px){.monitor-grid{grid-template-columns:1fr}}
 
@@ -182,6 +183,10 @@ void handleRoot() {
             <div class="summary-card"><div class="summary-label">Z-axis velocity <span>Z</span></div><div class="summary-value"><span id="summary-z">--</span> <small>mm/s</small></div><div class="summary-note">RMS &middot; 10 Hz &ndash; 1 kHz</div></div>
             <div class="summary-card"><div class="summary-label">Sensor temperature <span>TEMP</span></div><div class="summary-value"><span id="summary-temp">--</span> <small>&deg;C</small></div><div class="summary-note">Internal sensor reading</div></div>
         </div>
+        <section id="analog-overview" class="analog-overview" aria-label="IOC analog inputs" hidden>
+            <div id="analog-card-0" class="analog-card" hidden><div id="analog-label-0" class="analog-label">AN0</div><div id="analog-value-0" class="analog-value">--</div><div id="analog-detail-0" class="analog-detail">Waiting for reading</div></div>
+            <div id="analog-card-1" class="analog-card" hidden><div id="analog-label-1" class="analog-label">AN1</div><div id="analog-value-1" class="analog-value">--</div><div id="analog-detail-1" class="analog-detail">Waiting for reading</div></div>
+        </section>
         <a id="io-strip" class="io-strip" href="/io" hidden aria-label="IOC I/O status, open the I/O page"><span id="io-relays">Relays: --</span><span id="io-an0"></span><span id="io-an1"></span><span class="io-link">IOC I/O &rarr;</span></a>
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'Metrics')">Overall Metrics</button>
@@ -439,6 +444,33 @@ void handleRoot() {
                 .finally(() => { button.disabled = false; });
         }
 
+        function renderAnalogOverview(io) {
+            const overview = document.getElementById('analog-overview');
+            const ranges = ['05', '10', '20', '30', '50', '10mm', '20mm', '25mm', '50mm'];
+            let enabled = 0;
+            for (let i = 0; i < 2; i++) {
+                const a = io && io.analog && io.analog[i];
+                const card = document.getElementById('analog-card-' + i);
+                card.hidden = !a || a.mode === 'off';
+                if (card.hidden) continue;
+                enabled++;
+                card.classList.toggle('fault', !!a.fault);
+                const model = Number(a.model);
+                const modelName = model >= 1 && model <= 18 ?
+                    ' · PCC420V' + (model <= 9 ? 'R' : 'P') + '-' + ranges[(model - 1) % 9] : '';
+                document.getElementById('analog-label-' + i).textContent =
+                    'AN' + i + ' · ' + (a.name || 'Analog input') + modelName;
+                const value = typeof a.value === 'number' && Number.isFinite(a.value) ? a.value.toFixed(2) : '--';
+                document.getElementById('analog-value-' + i).textContent =
+                    a.fault ? 'Loop fault' : value + (a.unit ? ' ' + a.unit : '');
+                const raw = typeof a.input === 'number' && Number.isFinite(a.input) ?
+                    a.input.toFixed(2) + (a.mode === '4-20mA' ? ' mA' : ' V') : 'waiting for sample';
+                document.getElementById('analog-detail-' + i).textContent =
+                    a.mode + ' · Raw input: ' + raw + (a.fault ? ' · Check sensor loop' : '');
+            }
+            overview.hidden = enabled === 0;
+        }
+
         function updateDashboardData() {
             if (updateDashboardData.pending) return;
             updateDashboardData.pending = true;
@@ -458,6 +490,7 @@ void handleRoot() {
                 const isCapturing = typeof data.capture_busy === 'boolean' ? data.capture_busy : /collecting|waiting|requesting|downloading|calculating/i.test(statusText);
                 const ioStrip = document.getElementById('io-strip');
                 ioStrip.hidden = !data.io;
+                renderAnalogOverview(data.io);
                 if (data.io) {
                     const labels = {alarm: 'alarm', sensor_fault: 'sensor fault', '883m': '883M value', an0: 'AN0', an1: 'AN1'};
                     const relays = document.getElementById('io-relays');
@@ -578,6 +611,7 @@ void handleRoot() {
                 wasCapturing = isCapturing;
             })
             .catch(err => {
+                document.getElementById('analog-overview').hidden = true;
                 const connection = document.getElementById('connection-state');
                 connection.textContent = 'Updates unavailable · retrying';
                 connection.className = 'connection offline';
@@ -611,7 +645,7 @@ void handleRoot() {
 }
 
 void handleMetrics() {
-    DynamicJsonDocument doc(6144); // metrics plus the IRIV I/O block
+    DynamicJsonDocument doc(8192); // metrics plus the IRIV I/O block
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
         
         // --- 1. Populate All Metrics (Full Table Support) ---
