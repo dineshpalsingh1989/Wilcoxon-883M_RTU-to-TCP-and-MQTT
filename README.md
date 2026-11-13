@@ -37,7 +37,7 @@ Topics and `type` names are unchanged, and `total_chunks` is now `1`, so back en
 
 ![Choose your own MQTT topics: in Settings, MQTT, set Topics to Custom and type a topic for metrics, waveform, spectrum, status and command; the gateway then sends each kind of message to its own topic and listens for commands on the command topic.](docs/images/mqtt-custom-topics.svg)
 
-In **Settings → MQTT**, set **Topics** to **Custom** to send metrics, waveforms, spectra and health status to topics you choose, and to choose the topic the gateway listens to for commands. **Default** keeps today's topics, and the message contents do not change. Details: [MQTT](#mqtt).
+In **Settings → MQTT**, set **Topics** to **Custom** to send metrics, waveforms, spectra and health status to topics you choose, and to choose the command topic, where your own system sends commands such as `trigger_all` to the gateway. **Default** keeps today's topics, and the message contents do not change. Details: [MQTT](#mqtt).
 
 ## Watch the film
 
@@ -367,11 +367,28 @@ These are the **Default** topics. To send each kind of message to your own topic
 | Waveform topic | `waveform_preview`, `waveform_chunk` | Base Topic |
 | Spectrum topic | `spectrum_chunk`, `spectrum_peaks` | Base Topic |
 | Status topic | `health_status`, `combined_spectrum_peaks` | `883M/status` |
-| Command topic | commands the gateway listens to | `883M/command` |
+| Command topic | Commands from your system to the gateway (see below) | `883M/command` |
 
 Custom topics must not contain `#` or `+`, can be up to 128 characters, and the command topic must differ from the other four. On the IRIV IO Controller, `io_status` stays on `<Base Topic>/io`.
 
-Every command must include a **`serial_number` matching the connected sensor**.
+### What the command topic is for
+
+The other topics carry data **from** the gateway. The command topic works the other way: the gateway **listens** on it, so your own system (back end, SCADA, Node-RED or a script) can control the gateway over MQTT without opening its web page. Use it to:
+
+- start a waveform and spectrum capture now, for one axis or X, Y and Z;
+- ask for the latest metrics now instead of waiting for the next reading;
+- change how often captures run automatically;
+- restart the gateway remotely.
+
+If you never send commands, leave the command topic as it is; the gateway still sends its data on schedule. Example with the Mosquitto command-line client:
+
+```sh
+mosquitto_pub -h <broker> -p 1883 -u <user> -P <password> -t 883M/command -m '{"serial_number":"<sensor serial>","command":"trigger_all"}'
+```
+
+With **Custom** topics, publish to the command topic you set instead of `883M/command`.
+
+Every command must include a **`serial_number` matching the connected sensor**; the gateway ignores commands for other serial numbers, so several gateways can share one command topic. The serial number is shown on the MQTT settings page.
 
 ```json
 {
