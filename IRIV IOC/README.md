@@ -29,7 +29,9 @@ All are alpha libraries requiring hardware validation. IRIVIOCHardware remains a
 
 The gateway's **Settings → Our Libraries** page (`/libraries`) shows the version of each library built into the firmware, their live state and last errors, and has one-click tests: a sensor register read and identity read, MQTT test messages and a settings-storage write and read-back. **Copy diagnostics** copies the whole page as text for a problem report.
 
-## IOC I/O (beta, not yet validated on hardware)
+## IOC I/O
+
+Physical PCC420V and IOC I/O operation has not yet been validated on hardware.
 
 Pins are from the Cytron IRIV IO Controller datasheet (via the board variant). Settings → **IOC I/O** (`/io`) shows the live state, acknowledges the alarm and sets up the analog inputs.
 

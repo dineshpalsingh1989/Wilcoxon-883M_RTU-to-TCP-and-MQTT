@@ -36,7 +36,7 @@ Use the installer's **Wilcoxon 883M** selection. ESP32 chips are detected automa
 | Cytron Maker ESP32 (8 MB) | [Factory image: flash at 0x0]({assets}/factory-cytron_maker_esp32.bin) |
 | Cytron IRIV IO Controller | [Copy 883M UF2 to RP2350 drive]({assets}/firmware-cytron_iriv_io_controller.uf2) |
 
-**IRIV IOC 4–20 mA update (13 November 2026):** AN0/AN1 can use PCC420V RMS or peak model presets, or a manual current scale. The main dashboard shows the scaled value, raw mA and loop faults. DI0–DI10 actions and DO0–DO3 measurement rules are configurable. This I/O remains hardware beta; confirm the loop supply, AN-IN MODE switch and connector before use. [Cartoon wiring and connection steps]({base}/blob/{tag}/docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1).
+**IRIV IOC 4–20 mA update (13 November 2026):** AN0/AN1 can use PCC420V RMS or peak model presets, or a manual current scale. The main dashboard shows the scaled value, raw mA and loop faults. DI0–DI10 actions and DO0–DO3 measurement rules are configurable. Physical I/O validation is still pending; confirm the loop supply, AN-IN MODE switch and connector before use. [Cartoon wiring and connection steps]({base}/blob/{tag}/docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1).
 
 ### File types and checksums
 

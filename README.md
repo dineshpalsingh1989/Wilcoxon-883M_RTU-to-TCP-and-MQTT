@@ -14,11 +14,19 @@ Vibration monitoring for your browser, PLC and MQTT broker.
 [![MQTT](https://img.shields.io/badge/MQTT-Metrics_%26_alarms-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[What's new](#whats-new-in-v4130) | [Watch the film](#watch-the-film) | [Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
+[What's new](#whats-new-in-v4140) | [Watch the film](#watch-the-film) | [Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
 
 </div>
 
-## What's new in v4.13.0
+## What's new in v4.14.0
+
+![Cartoon wiring for the IRIV IOC with a Wilcoxon PCC420V 4–20 mA sensor and a separate 883M RS485 sensor, updated 13 November 2026](docs/images/iriv-pcc420-wiring.svg)
+
+The IRIV IO Controller firmware now lets you select a PCC420V RMS or peak model for AN0/AN1, or enter a manual 4–20 mA scale. Enabled inputs appear on the main dashboard with the scaled value, raw current and loop fault state. DI0–DI10 actions and DO0–DO3 measurement rules are configurable. See the [wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) and [IOC I/O settings](IRIV%20IOC/README.md#ioc-io). Physical PCC420V and IOC I/O operation still needs bench validation.
+
+[Download v4.14.0 firmware](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.14.0).
+
+## Earlier update: v4.13.0
 
 ![What's new in v4.13.0: 1. each waveform and spectrum is one MQTT message; 2. spectrum peaks above 32.767 g fixed; 3. messages state their unit, time or frequency step and point count; 4. the waveform preview keeps impacts; 5. failed sends are reported; 6. capture IDs stay unique after a reboot.](docs/images/whats-new-v4.13.0.svg)
 
@@ -155,11 +163,9 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 | **USER** button | GP28 | Hold 5 s for the fixed address 192.168.4.1 |
 | **USR** LED | GP29 | Status: on when online, blinking during captures |
 | Buzzer (inside) | GP11 | Start-up beep and network-loss alarm |
-| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Configurable input actions, relay rules and scaled analog inputs (beta), see [IOC I/O](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware) |
+| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Configurable input actions, relay rules and scaled analog inputs, see [IOC I/O](IRIV%20IOC/README.md#ioc-io) |
 
-> **IRIV I/O (beta).** DI0–DI10 can be assigned capture, acknowledge, alarm or DO override actions (defaults: DI0 capture, DI1 acknowledge). DO0–DO3 follow selectable 883M or analog rules, and AN0/AN1 read 4–20 mA or 0–10 V with PCC420V model presets or manual scaling. Enabled analog readings appear on the main dashboard; configure them under **Settings > IOC I/O**. See the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io-beta-not-yet-validated-on-hardware). These functions are not yet validated on hardware.
-
-![Functional IOC wiring with an 883M on RS485 and a PCC420V on a 4–20 mA input, updated 13 November 2026](docs/images/iriv-pcc420-wiring.svg)
+> **IRIV I/O.** DI0–DI10 can be assigned capture, acknowledge, alarm or DO override actions (defaults: DI0 capture, DI1 acknowledge). DO0–DO3 follow selectable 883M or analog rules, and AN0/AN1 read 4–20 mA or 0–10 V with PCC420V model presets or manual scaling. Enabled analog readings appear on the main dashboard; configure them under **Settings > IOC I/O**. See the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io). These functions are not yet validated on hardware.
 
 The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) show the loop supply, AN input and AGND connection. The drawing is a functional guide; confirm the exact sensor connector and polarity before wiring.
 
