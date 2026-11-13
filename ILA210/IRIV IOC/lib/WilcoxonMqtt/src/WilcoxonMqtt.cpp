@@ -209,12 +209,17 @@ bool WilcoxonMqttClient::publish(const char* topic, const char* payload, bool re
 }
 
 bool WilcoxonMqttClient::publish(const char* topic, const uint8_t* payload, unsigned int length, bool retained) {
-    if (!topic || (!payload && length) || !connected()) return false;
+    if (!payload && length) return false;
+    return beginPublish(topic, length, retained) && (!length || writeAll(payload, length));
+}
+
+bool WilcoxonMqttClient::beginPublish(const char* topic, unsigned int length, bool retained) {
+    if (!topic || !connected()) return false;
     const size_t topicLength = strlen(topic);
     if (MaxHeader + 2 + topicLength > bufferSize_ || 2 + topicLength + length > MaxRemaining) return false;
     size_t n = putHeader(Publish | (retained ? 1 : 0), 2 + topicLength + length);
     n += putString(buffer_ + n, topic, topicLength);
-    return writeAll(buffer_, n) && (!length || writeAll(payload, length));
+    return writeAll(buffer_, n);
 }
 
 bool WilcoxonMqttClient::subscribe(const char* topic, uint8_t qos) {

@@ -4,8 +4,9 @@
 void publishDeviceHealth();
 void publishMetrics();
 void publishDownsampledWaveform();
-void publishFullWaveformInChunks(Axis capturedAxis);
-void publishFullSpectrumInChunks(Axis capturedAxis);
+// Whole waveform / spectrum of one axis as one MQTT message; false if it was not fully sent.
+bool publishFullWaveform(Axis capturedAxis);
+bool publishFullSpectrum(Axis capturedAxis);
 void publishSpectrumPeaks(Axis capturedAxis, const std::vector<SpectrumPeak>& peaks);
 void publishCombinedSpectrumPeaks();
 void mqttCallback(char* topic, byte* payload, unsigned int length);

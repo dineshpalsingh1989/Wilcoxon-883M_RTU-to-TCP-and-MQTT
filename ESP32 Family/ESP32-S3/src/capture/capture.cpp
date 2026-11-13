@@ -1,5 +1,8 @@
 #include "core/modules.h"
 
+// True when the waveform of the axis being captured was fully sent to MQTT; checked after the spectrum.
+static bool waveformSent = false;
+
 void logMetrics() {
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
         MetricsSnapshot& entry = metricsLog[metricsLogIndex];
@@ -86,9 +89,10 @@ void handleLongReads() {
             }
             xSemaphoreGive(dataMutex);
         }
+        waveformSent = false;
         if (success && mqttClient && mqttClient->connected()) {
             publishDownsampledWaveform();
-            publishFullWaveformInChunks(local_requestedAxis);
+            waveformSent = publishFullWaveform(local_requestedAxis);
         }
     } 
     else if (local_isReadingSpectrum) {
@@ -161,7 +165,7 @@ void handleLongReads() {
             
             if (success) {
                  if(mqttClient && mqttClient->connected()) {
-                    publishFullSpectrumInChunks(local_requestedAxis);
+                    const bool captureSent = publishFullSpectrum(local_requestedAxis) && waveformSent;
                     
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
                         memcpy(globalScratchBuffer, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(int16_t));
@@ -184,7 +188,7 @@ void handleLongReads() {
                         publishCombinedSpectrumPeaks(); 
                     }
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                        recordCaptureResult(local_requestedAxis, "Complete", "MQTT publish attempted");
+                        recordCaptureResult(local_requestedAxis, "Complete", captureSent ? "MQTT publish attempted" : "MQTT send incomplete - see log");
                         xSemaphoreGive(dataMutex);
                     }
                 } else {

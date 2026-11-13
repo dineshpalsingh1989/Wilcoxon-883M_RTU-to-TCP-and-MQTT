@@ -54,6 +54,12 @@ public:
     bool publish(const char* topic, const char* payload, bool retained);
     bool publish(const char* topic, const uint8_t* payload, unsigned int length) { return publish(topic, payload, length, false); }
     bool publish(const char* topic, const uint8_t* payload, unsigned int length, bool retained);
+    // Streaming publish, as in PubSubClient: send the header for exactly `length` payload bytes,
+    // write() them in pieces, then endPublish(). For payloads built while sending.
+    // Writing fewer bytes than announced leaves the broker stream out of step: disconnect() then.
+    bool beginPublish(const char* topic, unsigned int length, bool retained);
+    size_t write(const uint8_t* data, size_t length) { return connected_ && writeAll(data, length) ? length : 0; }
+    int endPublish() { return connected_ ? 1 : 0; }
     bool subscribe(const char* topic, uint8_t qos = 0);
     bool unsubscribe(const char* topic);
 

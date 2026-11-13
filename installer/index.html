@@ -166,6 +166,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <p class="notice"><strong>MQTT:</strong> the IRIV IO Controller supports plain MQTT on port <code>1883</code> only. MQTT over TLS (port <code>8883</code>) is not supported, so cloud brokers that require TLS need an ESP32 board.</p>
     <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
   </section>
+  <p class="notice"><strong>MQTT waveforms:</strong> from the next firmware release, each waveform and each spectrum is sent as one complete MQTT message (up to about 110 KB), so your back end no longer joins pieces. Make sure your broker accepts messages of that size. <a class="mqtt-guide" href="#">How the messages look</a></p>
   </div>
 
   <footer>
@@ -223,7 +224,7 @@ function channelHeader(card, c) {
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
-                    guide: "/blob/main/docs/installing-firmware.md", "ila-guide": "/blob/main/ILA210/README.md",
+                    guide: "/blob/main/docs/installing-firmware.md", "mqtt-guide": "#waveform-and-spectrum-messages", "ila-guide": "/blob/main/ILA210/README.md",
                     "ila-wiring": "/blob/main/ILA210/docs/wiring.md", "ila-readiness": "/blob/main/ILA210/docs/ioc-readiness.md" };
     for (const [cls, path] of Object.entries(links))
       for (const a of document.querySelectorAll("a." + cls)) a.href = data.repo + path;

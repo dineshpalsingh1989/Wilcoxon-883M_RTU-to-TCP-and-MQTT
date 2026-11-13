@@ -227,7 +227,7 @@ The Modbus library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilco
 | Sensor health | Connection status, failed reads, timeouts and age of the last successful reading |
 | Configurable alarms | Velocity RMS and temperature thresholds with a configurable delay |
 | Capture tools | Single-axis or XYZ captures, capture history and CSV export |
-| MQTT integration | Scalar metrics, chunked waveform/spectrum data, health status and remote commands |
+| MQTT integration | Scalar metrics, whole waveform and spectrum per message, health status and remote commands |
 | Modbus TCP server | Cached measurements and capture buffers for up to 8 PLC and SCADA clients |
 | Gateway management | Wi-Fi, RS485, MQTT and time settings, plus GitHub firmware installation |
 
@@ -334,7 +334,7 @@ python scripts/mqtt_check.py --host <broker> --port 8883 --tls --insecure --user
 
 | Topic | Direction | Content |
 | --- | --- | --- |
-| `883M` | Gateway → broker | Metrics, waveform chunks and spectrum chunks |
+| `883M` | Gateway → broker | Metrics, waveforms and spectra (one message each) |
 | `883M/status` | Gateway → broker | Health status, normally every five minutes |
 | `883M/command` | Broker → gateway | Commands addressed to the sensor serial number |
 
@@ -358,9 +358,73 @@ Every command must include a **`serial_number` matching the connected sensor**.
 
 Set `interval_ms` to `2147483647` to use the firmware's disabled auto-capture interval. Captures are refused while another capture or firmware update is active.
 
-Waveform and spectrum messages use `type`, `axis`, `capture_id`, `chunk_index`, `total_chunks` and `data`. Reassemble chunks in index order for each capture and axis. Chunks carry up to **200 points**: 67 chunks for a 13,334-point waveform and 31 for a 6,145-point spectrum.
+### Waveform and spectrum messages
 
-For plots, waveform values represent acceleration in g; time depends on the sample interval. Spectrum values represent amplitude in g; frequency is the bin index multiplied by the firmware's frequency resolution (`13333.333 / 16384` Hz). Timestamps use configured local time and do not carry a UTC `Z` suffix.
+![Before: each axis capture was split into 98 small MQTT pieces that the back end had to collect. Now: the gateway counts the message size, then sends the whole waveform as one message in 1 KB pieces, using about 3 KB of RAM.](docs/images/mqtt-one-message.svg)
+
+Each axis capture sends its **whole waveform in one MQTT message** and its **whole spectrum in one MQTT message**. Your back end does not need to collect or join pieces. The messages, in the order they are sent:
+
+| Order | `type` | Topic | Content | Typical size |
+| --- | --- | --- | --- | --- |
+| 1 | `waveform_preview` | `883M` | 134 points, one per 100 samples, for a quick plot | about 1 KB |
+| 2 | `waveform_chunk` | `883M` | Whole waveform: 13,334 points, 1 second | about 60–107 KB |
+| 3 | `spectrum_chunk` | `883M` | Whole spectrum: 6,145 bins, 0–5 kHz | about 15–45 KB |
+| 4 | `spectrum_peaks` | `883M` | Top 5 spectrum peaks (`freq_hz`, `amp_g`); single-axis captures only | under 1 KB |
+| 5 | `combined_spectrum_peaks` | `883M/status` | Top 5 peaks for X, Y and Z; sent once after the Z axis of an XYZ capture | under 1 KB |
+
+An XYZ capture (`trigger_all`, Modbus trigger value 1, the IRIV DI0 input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained.
+
+The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware, which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
+
+Fields in every `waveform_chunk` and `spectrum_chunk` message:
+
+| Field | Example | Meaning |
+| --- | --- | --- |
+| `model`, `serial_number` | `"Wilcoxon 883M"`, `"ENTER_DEVICE_SERIAL_HERE"` | Sensor that produced the data, as read from the sensor |
+| `timestamp` | `"2026-11-13T10:15:02"` | Gateway local time when the message was sent (no UTC `Z`), or `"No Time Sync"` |
+| `type` | `"waveform_chunk"` | `waveform_chunk` (waveform) or `spectrum_chunk` (spectrum) |
+| `unit` | `"g"` | Unit of every value in `data` |
+| `sample_rate_hz` | `13333.33` | Waveform only. Point `n` of `data` is at `n / sample_rate_hz` seconds |
+| `freq_resolution_hz` | `0.813802` | Spectrum only (`13333.333 / 16384`). Point `n` of `data` is at `n * freq_resolution_hz` Hz |
+| `axis` | `"X"` | `X`, `Y` or `Z` |
+| `capture_id` | `"1794118502-3600512"` | `<Unix seconds>-<gateway uptime ms>`; identifies the capture |
+| `chunk_index`, `total_chunks` | `0`, `1` | Always `0` and `1` (see above) |
+| `points` | `13334` | Number of values in `data`: 13,334 for a waveform, 6,145 for a spectrum |
+| `data` | `[0.012, -0.034, …]` | All values in g, exact to 0.001 g as read from the sensor |
+
+```json
+{
+  "model": "Wilcoxon 883M",
+  "serial_number": "ENTER_DEVICE_SERIAL_HERE",
+  "timestamp": "2026-11-13T10:15:02",
+  "type": "spectrum_chunk",
+  "unit": "g",
+  "freq_resolution_hz": 0.813802,
+  "axis": "X",
+  "capture_id": "1794118502-3600512",
+  "chunk_index": 0,
+  "total_chunks": 1,
+  "points": 6145,
+  "data": [0, 0.011, 0.002]
+}
+```
+
+The `data` array above is shortened; a real message holds all `points` values. The `waveform_preview` message has `model`, `serial_number`, `timestamp`, `type` and `data` only, with no `axis` or `capture_id`. Each preview point is the sample with the largest magnitude in its block of 100, so short impacts stay visible.
+
+In your back end, read one message and use it directly: `data` is the full waveform or spectrum, and `sample_rate_hz` or `freq_resolution_hz` gives the time or frequency axis. Check that `data` has `points` values.
+
+What to expect:
+
+- **Your broker must accept messages of up to about 110 KB.** The largest possible message is a waveform with every sample at the register limit, about 107 KB. Mosquitto and EMQX accept this by default, and so does AWS IoT Core (128 KB limit); check the limit on other brokers or cloud services.
+- One axis is about 75–150 KB in total, and an XYZ capture about 230–450 KB. The exact size depends on the vibration level, because values are sent as text.
+- A waveform should take under a second to send on a normal network (not yet measured on hardware). On the IRIV IO Controller, web pages and Modbus TCP wait until the message has been sent.
+- If a message cannot be sent completely (for example the connection drops), the gateway reconnects to the broker, logs the failure and continues with the capture. The Monitoring page shows **MQTT send incomplete - see log** for that axis instead of **MQTT publish attempted**. The broker discards a message that was cut off, so a subscriber never receives part of a waveform.
+- `capture_id` stays unique across reboots once NTP time has synced. Without time sync its first part is a small number and IDs can repeat after a reboot.
+- Spectrum values are read as unsigned 16-bit registers (883M manual), so they are never negative.
+
+How it fits in memory: the gateway does not build the whole message in RAM, because a JSON copy of one waveform would need about 300 KB. It first counts the message length, because MQTT sends the length before the data. It then formats the values and sends them in 1 KB pieces. This needs about 3 KB of extra RAM on every board.
+
+Timestamps use configured local time and do not carry a UTC `Z` suffix.
 
 ## Modbus TCP
 
@@ -409,7 +473,7 @@ See the [update guide](demo/README.md#github-firmware-installation) for release 
 
 ## Watchdog protection
 
-The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and MQTT chunk publishing. This is intended to recover from a subscribed task that stops servicing the watchdog.
+The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and while sending waveform and spectrum messages over MQTT. This is intended to recover from a subscribed task that stops servicing the watchdog.
 
 The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](ESP32%20Family/ESP32-S3/src/tasks/tasks.cpp).
 

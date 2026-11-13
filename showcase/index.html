@@ -371,7 +371,7 @@
     <div class="tablewrap"><table>
       <thead><tr><th>Topic</th><th>Direction</th><th>Content</th></tr></thead>
       <tbody>
-        <tr><td><code>883M</code></td><td>Gateway → broker</td><td>Metrics, waveform chunks and spectrum chunks</td></tr>
+        <tr><td><code>883M</code></td><td>Gateway → broker</td><td>Metrics, and each waveform and spectrum as one complete message (up to about 110 KB)</td></tr>
         <tr><td><code>883M/status</code></td><td>Gateway → broker</td><td>Health status, normally every five minutes</td></tr>
         <tr><td><code>883M/io</code></td><td>Gateway → broker</td><td><code>io_status</code>: inputs, outputs, latched and acknowledged, on every change and at least once a minute</td></tr>
         <tr><td><code>883M/command</code></td><td>Broker → gateway</td><td>Commands such as <code>trigger_all</code> and <code>get_metrics</code>, with the sensor serial number</td></tr>

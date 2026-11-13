@@ -1,8 +1,11 @@
 #include "core/modules.h"
 
+// True when the waveform of the axis being captured was fully sent to MQTT; checked after the spectrum.
+static bool waveformSent = false;
+
 namespace {
-// Marks capture data as still being sent over MQTT. The IRIV serves web pages between chunks,
-// so saves, uploads and new captures must stay blocked until the send has finished.
+// Marks capture data as still being sent over MQTT, so saves, uploads and new captures
+// stay blocked until the send has finished.
 struct PublishingGuard {
     PublishingGuard() { isPublishingCapture = true; }
     ~PublishingGuard() { isPublishingCapture = false; }
@@ -95,10 +98,11 @@ void handleLongReads() {
             }
             xSemaphoreGive(dataMutex);
         }
+        waveformSent = false;
         if (success && mqttClient && mqttClient->connected()) {
             PublishingGuard publishing;
             publishDownsampledWaveform();
-            publishFullWaveformInChunks(local_requestedAxis);
+            waveformSent = publishFullWaveform(local_requestedAxis);
         }
     } 
     else if (local_isReadingSpectrum) {
@@ -172,7 +176,7 @@ void handleLongReads() {
             if (success) {
                  if(mqttClient && mqttClient->connected()) {
                     PublishingGuard publishing;
-                    publishFullSpectrumInChunks(local_requestedAxis);
+                    const bool captureSent = publishFullSpectrum(local_requestedAxis) && waveformSent;
                     
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
                         memcpy(globalScratchBuffer, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(int16_t));
@@ -195,7 +199,7 @@ void handleLongReads() {
                         publishCombinedSpectrumPeaks(); 
                     }
                     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                        recordCaptureResult(local_requestedAxis, "Complete", "MQTT publish attempted");
+                        recordCaptureResult(local_requestedAxis, "Complete", captureSent ? "MQTT publish attempted" : "MQTT send incomplete - see log");
                         xSemaphoreGive(dataMutex);
                     }
                 } else {

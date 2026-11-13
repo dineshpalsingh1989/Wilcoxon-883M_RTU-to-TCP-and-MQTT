@@ -142,7 +142,12 @@ void publishDownsampledWaveform() {
         return;
     }
     for (int i = 0; i < WAVEFORM_TOTAL_POINTS; i += DOWNSAMPLE_FACTOR) {
-      data.add(fullWaveform[i] * scaleFactor);
+      // Largest |sample| of each block, so short impacts are not skipped by the downsampling.
+      int16_t peak = fullWaveform[i];
+      for (int j = i + 1; j < i + DOWNSAMPLE_FACTOR && j < WAVEFORM_TOTAL_POINTS; j++) {
+        if (abs(fullWaveform[j]) > abs(peak)) peak = fullWaveform[j];
+      }
+      data.add(peak * scaleFactor);
     }
     xSemaphoreGive(dataMutex);
   } else { return; }
@@ -152,118 +157,123 @@ void publishDownsampledWaveform() {
   publishLogged(mqtt_topic_str, payload, n, "publishDownsampledWaveform");
 }
 
-void publishFullWaveformInChunks(Axis capturedAxis) {
-    if (!mqttClient || !mqttClient->connected()) return;
-    
-    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(500)) == pdTRUE) {
-        if (!newWaveformAvailable) {
-            xSemaphoreGive(dataMutex);
-            return;
-        }
-        memcpy(globalScratchBuffer, fullWaveform, WAVEFORM_TOTAL_POINTS * sizeof(int16_t));
-        xSemaphoreGive(dataMutex);
-    } else {
-        return;
+namespace {
+// Writes raw * 0.001 exactly, without float rounding: -1234 -> "-1.234", 50 -> "0.05", 0 -> "0".
+size_t formatMilli(int32_t raw, char* out) {
+    size_t n = 0;
+    if (raw < 0) { out[n++] = '-'; raw = -raw; }
+    n += snprintf(out + n, 8, "%ld", (long)(raw / 1000));
+    int frac = raw % 1000;
+    if (frac) {
+        out[n++] = '.';
+        for (int div = 100; frac; div /= 10) { out[n++] = char('0' + frac / div); frac %= div; }
     }
-
-    // ArduinoJson v6 needs ~16 bytes per array element on ESP32; 200 points fit the 4096-byte document and MQTT buffer.
-    const int POINTS_PER_CHUNK = 200;
-    const float scaleFactor = 0.001;
-    String captureId = String(millis());
-    int totalChunks = (WAVEFORM_TOTAL_POINTS + POINTS_PER_CHUNK - 1) / POINTS_PER_CHUNK;
-    String axisStr = "N/A";
-    switch(capturedAxis) {
-        case AXIS_X: axisStr = "X"; break;
-        case AXIS_Y: axisStr = "Y"; break;
-        case AXIS_Z: axisStr = "Z"; break;
-        default: break;
-    }
-
-    for (int i = 0; i < totalChunks; i++) {
-        gw::watchdogFeed();
-        
-        DynamicJsonDocument doc(4096); 
-        doc["model"] = sensor_model;
-        doc["serial_number"] = sensor_serial;
-        doc["timestamp"] = getTimestamp();
-        doc["type"] = "waveform_chunk";
-        doc["axis"] = axisStr;
-        doc["capture_id"] = captureId;
-        doc["chunk_index"] = i;
-        doc["total_chunks"] = totalChunks;
-        JsonArray data = doc.createNestedArray("data");
-        int startIndex = i * POINTS_PER_CHUNK;
-        int endIndex = min(startIndex + POINTS_PER_CHUNK, (int)WAVEFORM_TOTAL_POINTS);
-        for (int j = startIndex; j < endIndex; j++) {
-            data.add(globalScratchBuffer[j] * scaleFactor);
-        }
-        char payload[4096];
-        size_t n = serializeJson(doc, payload);
-        publishLogged(mqtt_topic_str, payload, n, "publishFullWaveformInChunks");
-#if GATEWAY_ETHERNET
-        // loop() also runs the web server and Modbus TCP; keep them answering between chunks.
-        pollModbusTCPServer();
-        webServerStep();
-#endif
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
+    return n;
 }
 
-void publishFullSpectrumInChunks(Axis capturedAxis) {
-    if (!mqttClient || !mqttClient->connected()) return;
-
-    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(500)) == pdTRUE) {
-        if (!newSpectrumAvailable) {
-            xSemaphoreGive(dataMutex);
-            return;
+// Counts the JSON bytes (send = false) or sends them to the open MQTT publish in 1 KB pieces.
+struct JsonSink {
+    bool send;
+    size_t total = 0;
+    bool ok = true;
+    char buf[1024];
+    size_t used = 0;
+    explicit JsonSink(bool sendIt) : send(sendIt) {}
+    void put(const char* s, size_t n) {
+        total += n;
+        if (!send || !ok) return;
+        if (used + n > sizeof(buf)) flush();
+        memcpy(buf + used, s, n); // n is at most a header (< 512) or one number
+        used += n;
+    }
+    bool flush() {
+        if (send && ok && used) {
+            ok = mqttClient->write(reinterpret_cast<const uint8_t*>(buf), used) == used;
+            used = 0;
+            gw::watchdogFeed();
         }
-        memcpy(globalScratchBuffer, spectrumData, SPECTRUM_TOTAL_POINTS * sizeof(int16_t));
-        xSemaphoreGive(dataMutex);
-    } else {
-        return;
+        return ok;
+    }
+};
+
+// header is the message's JSON without "data"; the points go in a "data" array at its end.
+void writeCaptureJson(JsonSink& out, const char* header, size_t headerLength, int points, bool isUnsigned) {
+    out.put(header, headerLength - 1); // drop the closing '}'
+    out.put(",\"data\":[", 9);
+    char number[12];
+    for (int i = 0; i < points; i++) {
+        if (i) out.put(",", 1);
+        // FFT registers are unsigned int16 (883M manual); waveform registers are signed.
+        const int32_t raw = isUnsigned ? int32_t(uint16_t(globalScratchBuffer[i])) : int32_t(globalScratchBuffer[i]);
+        out.put(number, formatMilli(raw, number));
+    }
+    out.put("]}", 2);
+}
+
+// Sends a whole waveform or spectrum (already copied to globalScratchBuffer) as ONE MQTT message.
+// The JSON is formatted while it is sent, so it never has to fit in RAM (about 90 KB for a waveform).
+// chunk_index 0 / total_chunks 1 keep subscribers written for the older 200-point chunks working.
+bool publishWholeCapture(const char* type, Axis capturedAxis, int points, bool isUnsigned,
+                         const char* stepKey, float stepValue) {
+    DynamicJsonDocument doc(768);
+    doc["model"] = sensor_model;
+    doc["serial_number"] = sensor_serial;
+    doc["timestamp"] = getTimestamp();
+    doc["type"] = type;
+    doc["unit"] = "g";
+    doc[stepKey] = stepValue;
+    doc["axis"] = capturedAxis == AXIS_X ? "X" : capturedAxis == AXIS_Y ? "Y" : capturedAxis == AXIS_Z ? "Z" : "N/A";
+    // Unix seconds (once NTP has synced) keep the ID unique across reboots; uptime ms separates captures.
+    doc["capture_id"] = String((unsigned long)time(nullptr)) + "-" + String(millis());
+    doc["chunk_index"] = 0;
+    doc["total_chunks"] = 1;
+    doc["points"] = points;
+    char header[512];
+    const size_t headerLength = serializeJson(doc, header, sizeof(header));
+    if (headerLength < 2 || headerLength >= sizeof(header) - 1) {
+        logMessage(String("[MQTT] ") + type + " not sent: message header too long");
+        return false;
     }
 
-    // ArduinoJson v6 needs ~16 bytes per array element on ESP32; 200 points fit the 4096-byte document and MQTT buffer.
-    const int POINTS_PER_CHUNK = 200;
-    const float scaleFactor = 0.001;
-    String captureId = String(millis());
-    int totalChunks = (SPECTRUM_TOTAL_POINTS + POINTS_PER_CHUNK - 1) / POINTS_PER_CHUNK;
-    String axisStr = "N/A";
-    switch(capturedAxis) {
-        case AXIS_X: axisStr = "X"; break;
-        case AXIS_Y: axisStr = "Y"; break;
-        case AXIS_Z: axisStr = "Z"; break;
-        default: break;
+    JsonSink count(false); // MQTT needs the message length before the first payload byte
+    writeCaptureJson(count, header, headerLength, points, isUnsigned);
+    if (!mqttClient->beginPublish(mqtt_topic_str.c_str(), count.total, false)) {
+        logMessage(String("[MQTT] ") + type + " not sent (" + String(count.total) + " bytes)");
+        return false;
     }
+    JsonSink out(true);
+    writeCaptureJson(out, header, headerLength, points, isUnsigned);
+    if (!out.flush() || !mqttClient->endPublish()) {
+        // A message cut off part-way leaves the broker stream out of step, so start a fresh connection.
+        mqttClient->disconnect();
+        logMessage(String("[MQTT] ") + type + " send failed part-way (" + String(count.total) + " bytes); reconnecting");
+        return false;
+    }
+    return true;
+}
 
-    for (int i = 0; i < totalChunks; i++) {
-        gw::watchdogFeed();
-        
-        DynamicJsonDocument doc(4096); 
-        doc["model"] = sensor_model;
-        doc["serial_number"] = sensor_serial;
-        doc["timestamp"] = getTimestamp();
-        doc["type"] = "spectrum_chunk";
-        doc["axis"] = axisStr;
-        doc["capture_id"] = captureId;
-        doc["chunk_index"] = i;
-        doc["total_chunks"] = totalChunks;
-        JsonArray data = doc.createNestedArray("data");
-        int startIndex = i * POINTS_PER_CHUNK;
-        int endIndex = min(startIndex + POINTS_PER_CHUNK, (int)SPECTRUM_TOTAL_POINTS);
-        for (int j = startIndex; j < endIndex; j++) {
-            data.add(abs(globalScratchBuffer[j] * scaleFactor));
-        }
-        char payload[4096];
-        size_t n = serializeJson(doc, payload);
-        publishLogged(mqtt_topic_str, payload, n, "publishFullSpectrumInChunks");
-#if GATEWAY_ETHERNET
-        // loop() also runs the web server and Modbus TCP; keep them answering between chunks.
-        pollModbusTCPServer();
-        webServerStep();
-#endif
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
+// Copies a finished capture under the mutex so the sensor task can start the next one meanwhile.
+bool copyCapture(const int16_t* source, int points, const bool& available) {
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(500)) != pdTRUE) return false;
+    const bool ok = available;
+    if (ok) memcpy(globalScratchBuffer, source, points * sizeof(int16_t));
+    xSemaphoreGive(dataMutex);
+    return ok;
+}
+} // namespace
+
+bool publishFullWaveform(Axis capturedAxis) {
+    if (!mqttClient || !mqttClient->connected()) return false;
+    if (!copyCapture(fullWaveform, WAVEFORM_TOTAL_POINTS, newWaveformAvailable)) return false;
+    return publishWholeCapture("waveform_chunk", capturedAxis, WAVEFORM_TOTAL_POINTS, false,
+                               "sample_rate_hz", WAVEFORM_SAMPLE_RATE_HZ);
+}
+
+bool publishFullSpectrum(Axis capturedAxis) {
+    if (!mqttClient || !mqttClient->connected()) return false;
+    if (!copyCapture(spectrumData, SPECTRUM_TOTAL_POINTS, newSpectrumAvailable)) return false;
+    return publishWholeCapture("spectrum_chunk", capturedAxis, SPECTRUM_TOTAL_POINTS, true,
+                               "freq_resolution_hz", SPECTRUM_FREQ_RESOLUTION);
 }
 
 void publishSpectrumPeaks(Axis capturedAxis, const std::vector<SpectrumPeak>& peaks) {

@@ -42,7 +42,8 @@ std::vector<SpectrumPeak> findSpectrumPeaks(const int16_t* spectrum_buffer, int 
     // Only local maxima count as peaks, otherwise the top N bins are just neighbours of one peak.
     std::vector<SpectrumPeak> all_points;
     for (int i = 1; i < SPECTRUM_TOTAL_POINTS - 1; i++) {
-        int16_t prev = abs(spectrum_buffer[i - 1]), cur = abs(spectrum_buffer[i]), next = abs(spectrum_buffer[i + 1]);
+        // FFT registers are unsigned int16 (883M manual); as int16, bins above 32.767 g would wrap.
+        uint16_t prev = spectrum_buffer[i - 1], cur = spectrum_buffer[i], next = spectrum_buffer[i + 1];
         if (cur > prev && cur >= next) {
             all_points.push_back({ .frequency_hz = i * SPECTRUM_FREQ_RESOLUTION, .amplitude_g = cur * SPECTRUM_SCALE_FACTOR });
         }

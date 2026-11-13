@@ -65,7 +65,7 @@ The static increase is mainly the PLC copies of the waveform and spectrum (about
 These checks need real hardware and have **not** been performed:
 
 1. **Sensor link:** dashboard metrics match the sensor at 9600 and 115200 baud, identity (model, serial, part number) appears on Device Diagnostics, and an MQTT command addressed to that serial number is accepted.
-2. **Captures:** X, Y, Z and XYZ captures complete; MQTT chunk counts are 67 (waveform) and 31 (spectrum); unplugging RS485 mid-download reports a failed capture.
+2. **Captures:** X, Y, Z and XYZ captures complete; each axis sends one complete waveform message (13,334 points) and one spectrum message (6,145 points); unplugging RS485 mid-download reports a failed capture.
 3. **PLC:** using Modbus Poll, QModMaster or a PLC, read 0–60, 90–91, 1000–1124 and 20000–20124; confirm values and scaling against the dashboard; connect several clients; check reconnect after Wi-Fi loss.
 4. **Endurance:** run for 24 hours with periodic captures and a polling PLC, watching for watchdog resets and Free RAM trends.
 

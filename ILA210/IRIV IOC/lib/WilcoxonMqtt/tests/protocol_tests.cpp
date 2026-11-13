@@ -138,6 +138,21 @@ static void testLargePayloadAndPartialWrites() {
     CHECK(!mqtt.publish(longTopic, "x") && net.outLength == before && mqtt.connected());
 }
 
+static void testStreamingPublish() {
+    FakeClient net;
+    WilcoxonMqttClient mqtt(net);
+    CHECK(!mqtt.beginPublish("t", 1, false)); // not connected
+    connectOk(mqtt, net);
+    net.writeLimit = 3;
+    // Same bytes as publish("a/b", "hello"), sent as header + two pieces.
+    CHECK(mqtt.beginPublish("a/b", 5, false));
+    CHECK(mqtt.write(reinterpret_cast<const uint8_t*>("he"), 2) == 2);
+    CHECK(mqtt.write(reinterpret_cast<const uint8_t*>("llo"), 3) == 3);
+    CHECK(mqtt.endPublish() == 1);
+    const uint8_t expected[] = {0x30, 10, 0, 3, 'a', '/', 'b', 'h', 'e', 'l', 'l', 'o'};
+    CHECK(net.outLength == sizeof(expected) && !memcmp(net.out, expected, sizeof(expected)));
+}
+
 static void testStalledWrite() {
     FakeClient net;
     WilcoxonMqttClient mqtt(net);
@@ -236,6 +251,7 @@ int main() {
     testConnectFailures();
     testPublish();
     testLargePayloadAndPartialWrites();
+    testStreamingPublish();
     testStalledWrite();
     testIncoming();
     testKeepAlive();

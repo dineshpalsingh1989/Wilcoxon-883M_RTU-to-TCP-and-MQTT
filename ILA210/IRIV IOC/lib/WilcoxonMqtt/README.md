@@ -34,6 +34,7 @@ void loop() {
 | `connect(id[, user, pass])` | Clean session. User and password are sent when non-null, even when empty. Blocks for at most the socket timeout while waiting for the broker. |
 | `loop()` | Sends keep-alive pings and handles up to four waiting packets per call. |
 | `publish(topic, payload[, length][, retained])` | QoS 0. Overloads match PubSubClient, including `publish(topic, const char*, size)` selecting the retained-flag overload. |
+| `beginPublish(topic, length, retained)`, `write(data, size)`, `endPublish()` | Streaming QoS 0 publish, as in PubSubClient (from 0.2.0): announce exactly `length` payload bytes, write them in pieces, then end. Use it for a payload formatted while it is sent. If you cannot write all announced bytes, call `disconnect()`. |
 | `subscribe(topic[, qos])`, `unsubscribe(topic)` | QoS 0 or 1. Incoming QoS 1 messages are acknowledged after the callback. |
 | `connected()`, `disconnect()`, `state()` | `state()` uses PubSubClient's numbers: -4 timeout, -3 lost, -2 connect failed, -1 disconnected, 0 connected, 1-5 broker refusal codes. |
 | `connectCount()`, `droppedPackets()` | Diagnostics: successful connections, and incoming packets dropped for being larger than the buffer. |
@@ -42,7 +43,7 @@ void loop() {
 
 - Payloads are written straight from your memory after the header and topic, so a publish may be larger than the buffer and is never copied. Only the topic must fit in the buffer.
 - Every write and read has a time limit. A partial write or a packet cut off mid-way closes the connection (`state()` -3) rather than leaving the broker stream out of step.
-- Not supported: QoS 1/2 publishing, last-will messages, persistent sessions, `publish_P` and streaming `beginPublish()`.
+- Not supported: QoS 1/2 publishing, last-will messages, persistent sessions and `publish_P`.
 - Not thread-safe: use one task for all calls on a client.
 
 ## Checks
