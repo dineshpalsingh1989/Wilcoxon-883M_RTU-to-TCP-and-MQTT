@@ -10,6 +10,7 @@ without any installer bundle are skipped. UF2_BOARDS are offered as a link to th
 .uf2 file, since their bootloader appears as a USB drive.
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -123,7 +124,13 @@ def main(out):
             channels.append({"sensor": "ila210", "channel": name, "tag": tag,
                              "manifest": f"ila210/{name}/manifest.json" if manifest else None,
                              "notes": f"{repo}/releases/tag/{tag}", "uf2": downloads})
-    (out / "channels.json").write_text(json.dumps({"repo": repo, "channels": channels}, indent=2) + "\n")
+    site_data = {"repo": repo, "channels": channels}
+    registry_endpoint = os.environ.get("INSTALL_REGISTRY_ENDPOINT", "").strip()
+    if registry_endpoint:
+        if not registry_endpoint.startswith("https://"):
+            raise RuntimeError("INSTALL_REGISTRY_ENDPOINT must use HTTPS")
+        site_data["registry_endpoint"] = registry_endpoint
+    (out / "channels.json").write_text(json.dumps(site_data, indent=2) + "\n")
     if not channels:
         print("No release has an installer bundle yet; the page will say so.")
 

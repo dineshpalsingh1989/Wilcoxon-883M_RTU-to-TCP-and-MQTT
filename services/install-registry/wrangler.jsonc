@@ -1,0 +1,8 @@
+{
+  "name": "wilcoxon-install-registry",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-14",
+  "vars": {
+    "ALLOWED_ORIGIN": "https://dineshpalsingh1989.github.io"
+  }
+}
