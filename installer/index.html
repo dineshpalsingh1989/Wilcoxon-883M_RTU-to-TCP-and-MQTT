@@ -415,8 +415,9 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <div id="registry-controls" hidden>
       <label for="registry-key">Private installation key</label>
       <input id="registry-key" type="password" autocomplete="off" placeholder="Enter the key provided by the installer owner">
-      <button type="button" id="registry-save" disabled>Save record to private GitHub</button>
-      <p id="registry-status" role="status">Record has not been saved to GitHub.</p>
+      <button type="button" id="registry-retry" hidden>Retry GitHub save</button>
+      <p id="registry-status" role="status">Enter the key once. Device records then save automatically when detected over USB.</p>
+      <p id="registry-link"></p>
     </div>
     <pre id="serial-output" class="serial-output" aria-label="Gateway serial log output"></pre>
   </section>
@@ -436,14 +437,59 @@ const serialStatus = document.getElementById('serial-status');
 const deviceSummary = document.getElementById('device-summary');
 const receiptDownload = document.getElementById('receipt-download');
 const registryKey = document.getElementById('registry-key');
-const registrySave = document.getElementById('registry-save');
+const registryRetry = document.getElementById('registry-retry');
 const registryStatus = document.getElementById('registry-status');
+const registryLink = document.getElementById('registry-link');
 let serialPort = null;
 let serialReader = null;
 let serialReading = false;
 let serialLine = '';
 let deviceRecord = null;
 let registryEndpoint = '';
+let savedSignature = '';
+let savingSignature = '';
+function recordSignature(record) {
+  return [record.board_id, record.mac_address, record.firmware_version, record.sensor_serial || ''].join('|');
+}
+async function saveRecordAutomatically() {
+  if (!deviceRecord || !registryEndpoint || !registryKey.value) return;
+  const record = {...deviceRecord};
+  const signature = recordSignature(record);
+  if (signature === savedSignature || savingSignature) return;
+  savingSignature = signature;
+  registryRetry.hidden = true;
+  registryLink.textContent = '';
+  registryStatus.textContent = 'Saving device record to private GitHub…';
+  try {
+    const response = await fetch(registryEndpoint, {
+      method: 'POST', headers: {'Content-Type':'application/json','X-Install-Key':registryKey.value},
+      body: JSON.stringify(record)
+    });
+    if (!response.ok) throw new Error('Registry returned HTTP ' + response.status);
+    const result = await response.json();
+    if (!result.saved) throw new Error('Registry did not confirm the save');
+    savedSignature = signature;
+    registryStatus.textContent = 'Saved automatically to the private GitHub installation registry.';
+    try {
+      const issueUrl = new URL(result.issue_url);
+      if (issueUrl.protocol === 'https:' && issueUrl.hostname === 'github.com') {
+        const link = document.createElement('a');
+        link.href = issueUrl.href;
+        link.textContent = 'Open saved serial number record in GitHub';
+        registryLink.append(link);
+      }
+    } catch (error) { /* A saved record can still be confirmed without a link. */ }
+  } catch (error) {
+    registryStatus.textContent = 'Record was not saved: ' + error.message + '. Check the key or connection, then retry.';
+    registryRetry.hidden = false;
+  } finally {
+    savingSignature = '';
+    if (deviceRecord && recordSignature(deviceRecord) !== signature) saveRecordAutomatically();
+  }
+}
+registryKey.addEventListener('change', saveRecordAutomatically);
+registryKey.addEventListener('keydown', event => { if (event.key === 'Enter') registryKey.blur(); });
+registryRetry.addEventListener('click', saveRecordAutomatically);
 function updateSerialVisibility() {
   document.getElementById('serial-console').hidden =
     document.querySelector('.sensor[data-sensor="883m"]').getAttribute('aria-pressed') !== 'true';
@@ -472,7 +518,7 @@ function consumeSerialText(chunk) {
       deviceSummary.textContent = 'Board: ' + deviceRecord.board + ' | MAC: ' + deviceRecord.mac_address +
         ' | Firmware: ' + deviceRecord.firmware_version + ' | 883M serial: ' + (deviceRecord.sensor_serial || 'unavailable');
       receiptDownload.disabled = false;
-      registrySave.disabled = !registryEndpoint;
+      saveRecordAutomatically();
     } catch (error) { /* Ignore malformed serial output. */ }
   }
 }
@@ -484,26 +530,6 @@ receiptDownload.addEventListener('click', () => {
   link.download = 'gateway-' + deviceRecord.board_id.replace(/[^a-zA-Z0-9_-]/g, '') + '.json';
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-});
-registrySave.addEventListener('click', async () => {
-  if (!deviceRecord || !registryEndpoint || !registryKey.value) {
-    registryStatus.textContent = 'Enter the private installation key first.';
-    return;
-  }
-  registrySave.disabled = true;
-  registryStatus.textContent = 'Saving record…';
-  try {
-    const response = await fetch(registryEndpoint, {
-      method: 'POST', headers: {'Content-Type':'application/json','X-Install-Key':registryKey.value},
-      body: JSON.stringify(deviceRecord)
-    });
-    if (!response.ok) throw new Error('Registry returned HTTP ' + response.status);
-    registryStatus.textContent = 'Saved to the private GitHub installation registry.';
-    registryKey.value = '';
-  } catch (error) {
-    registryStatus.textContent = 'Record was not saved: ' + error.message + '. Download a copy and try again.';
-    registrySave.disabled = false;
-  }
 });
 function showSensor(sensor) {
   for (const b of sensorButtons) b.setAttribute("aria-pressed", String(b.dataset.sensor === sensor));
@@ -613,7 +639,7 @@ function channelHeader(card, c) {
     if (typeof data.registry_endpoint === 'string' && data.registry_endpoint.startsWith('https://')) {
       registryEndpoint = data.registry_endpoint;
       document.getElementById('registry-controls').hidden = false;
-      registrySave.disabled = !deviceRecord;
+      saveRecordAutomatically();
     }
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
                     guide: "/blob/main/docs/installing-firmware.md", "mqtt-guide": "#waveform-and-spectrum-messages", "mqtt-topics-guide": "#mqtt", "ila-guide": "/blob/main/ILA210/README.md",
