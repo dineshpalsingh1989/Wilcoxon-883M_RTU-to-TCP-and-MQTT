@@ -169,7 +169,7 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 
 The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) show the loop supply, AN input and AGND connection. The drawing is a functional guide; confirm the exact sensor connector and polarity before wiring.
 
-1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
+1. **Install:** on the web installer choose **IRIV IO Controller**, confirm the printed board name, enter device and company names, then click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
 2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1. To use a fixed address instead, choose **Static IP address** under **Settings > Network** and enter the IP address, subnet mask and, optionally, gateway and DNS; the gateway restarts with that address, and holding **USER** still reaches 192.168.4.1 if the address is wrong.
 3. **Wire the sensor** to the IRIV's RS485 **A, B, G** terminals, see [the wiring guide](docs/wiring.md#cytron-iriv-io-controller).
 4. **Update:** upload `firmware-cytron_iriv_io_controller.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)**, or copy a new `.uf2`. Both keep settings. **Settings > GitHub Firmware Updates** cannot install directly on this board yet.
@@ -182,7 +182,7 @@ The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) s
 
 1. **Open the [web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)** in Chrome or Edge on a computer.
 2. **Plug the board in** with a USB-C data cable.
-3. **Click Install** and pick the board's port. It takes about a minute. If no port appears, hold **BOOT**, tap **RESET** (labelled **EN** on the Maker ESP32), release **BOOT** and try again.
+3. **Click Check USB and firmware** for the release you want, select the board's port, confirm the printed board name, and enter device and company names. Then click **Install** and pick the same port. If no port appears, hold **BOOT**, tap **RESET** (labelled **EN** on the Maker ESP32), release **BOOT** and try again.
 4. **Press RESET** (or **EN**), join the Wi-Fi network **`ILA_Sensor_AP`** (password `12345678`), open **http://192.168.4.1** and enter your own Wi-Fi under **Settings > Wi-Fi**.
 
 <table>
@@ -198,7 +198,7 @@ The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) s
 
 After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring).
 
-After flashing, the installer can read a USB startup report and download a JSON record with the board ID, MAC address, firmware version and available 883M identity. Once the [private installation registry](docs/install-registry.md) is configured and its key entered, the record is saved to GitHub automatically when detected.
+After flashing, the installer can read a USB startup report and download a JSON record with the generated gateway serial, board ID, MAC address, firmware version, device and company names, and available 883M identity. Once the [private installation registry](docs/install-registry.md) is configured and its key entered, the record is saved to GitHub automatically when detected.
 
 ### If the install does not work
 

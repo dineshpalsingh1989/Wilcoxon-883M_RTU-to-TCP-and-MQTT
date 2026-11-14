@@ -1,6 +1,6 @@
 # Installing the gateway firmware
 
-The firmware is built for two boards and already contains everything the gateway needs, including the Wilcoxon883MRTU Modbus RTU/TCP library. Use the web installer unless it does not work for you; every other method installs the same images.
+The firmware is built for three boards and already contains everything the gateway needs, including the Wilcoxon883MRTU Modbus RTU/TCP library. Use the web installer unless it does not work for you; every other method installs the same images.
 
 | Board | Chip | `<board>` in file names |
 | --- | --- | --- |
@@ -67,7 +67,7 @@ After installing in download mode, press **RESET** to start the firmware.
 
 1. Open **https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/** in Chrome or Edge on Windows, macOS, Linux or ChromeOS.
 2. Plug the board in with a USB-C **data** cable.
-3. Click **Install** next to the version you want and pick the board's port. The installer reads the chip and installs the Feather ESP32-S3 or Maker ESP32 build to match.
+3. Click **Check USB and firmware** next to the version you want. Select the board's port. The installer reads its chip and actual flash size, checks that the image fits, and verifies SHA-256 checksums. Confirm the printed board name, enter device and company names, then click **Install** and select the **same port**.
    - **Stable** is the Latest release and is recommended.
    - **Beta** appears only when a newer beta pre-release exists. Use it for testing.
 4. Leave *Erase device* unticked to keep saved settings. Tick it for a clean first install or if the gateway misbehaves.
@@ -75,7 +75,7 @@ After installing in download mode, press **RESET** to start the firmware.
 
 ### Check the installed device
 
-The installer checks the ESP32 chip family when it connects, before writing the selected image. It cannot prove that the board wiring, flash capacity or 883M sensor is healthy before the firmware runs. On an already running gateway with this startup report, you may run the USB check before reinstalling to see its current version and IDs. After installation, close the install dialog, use **Check the running gateway over USB** at the bottom of the installer, and press RESET. The gateway reports its firmware version, board ID, MAC address and the 883M serial when the sensor responds. **Download device record** saves this report as JSON on your computer. A missing sensor serial means the sensor was not identified; it is not a successful sensor check.
+The USB check rejects an unsupported chip, unreadable or insufficient flash, an image that exceeds flash, or a checksum mismatch. Erasing settings cannot fix insufficient flash. The check cannot prove board wiring or 883M sensor health before firmware runs. ESP Web Tools asks for the USB port again when Install is clicked, so select the **same port**; a different board has not had its flash size checked. On an already running gateway with this startup report, you may run the USB check before reinstalling to see its current version and IDs. After installation, close the install dialog, use **Check the running gateway over USB** at the bottom of the installer, and press RESET. The gateway reports its firmware version, gateway serial, board ID, MAC address and the 883M serial when the sensor responds. **Download device record** saves this report with the device and company names as JSON on your computer. A missing sensor serial means the sensor was not identified; it does not stop installation.
 
 For IRIV, the record contains the RP2350 board ID and the Ethernet MAC. These are different identifiers. Its USB boot drive is a manual UF2 install and does not itself confirm that the application or sensor started. The same USB startup check can be used after it reboots. Automatic storage of records in a private GitHub repository requires a separate authenticated service; the public installer page does not contain a GitHub write token.
 
@@ -140,7 +140,7 @@ The IRIV IO Controller's RP2350A bootloader appears as a USB drive, so no flashi
 | `firmware-cytron_iriv_io_controller.uf2` | Install over USB by copying it to the bootloader drive. Keeps saved settings. |
 | `firmware-cytron_iriv_io_controller.bin` | Update a running gateway under **Settings > Device Diagnostics > Firmware Update (OTA)**. It is stored in the gateway's file system and installed at the next restart. |
 
-1. On the web installer choose **IRIV IO Controller** and click **Download .uf2**, or download the file from the release.
+1. On the web installer choose **IRIV IO Controller**, confirm the printed board name, enter device and company names, then click **Download .uf2**, or download the file from the release.
 2. Connect the IRIV's **USB-C (PROG)** port to the computer.
 3. With a paperclip, hold the **BOOT** pinhole button, press and release **RESET**, then release **BOOT**.
 4. Copy the `.uf2` file to the **RP2350** drive. The drive disappears and the IRIV restarts.

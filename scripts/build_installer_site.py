@@ -10,6 +10,7 @@ without any installer bundle are skipped. UF2_BOARDS are offered as a link to th
 .uf2 file, since their bootloader appears as a USB drive.
 """
 import json
+import hashlib
 import os
 import re
 import shutil
@@ -98,10 +99,13 @@ def main(out):
             continue
         manifest["version"] = tag
         (out / name / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+        checksums = {part["path"]: hashlib.sha256((out / name / part["path"]).read_bytes()).hexdigest()
+                     for build in manifest["builds"] for part in build["parts"]}
         assets = {a["name"] for a in json.loads(gh("release", "view", tag, "--json", "assets"))["assets"]}
         downloads = {board: f"{repo}/releases/download/{tag}/firmware-{board}.uf2"
                      for board in UF2_BOARDS if f"firmware-{board}.uf2" in assets}
         channels.append({"sensor": "883m", "channel": name, "tag": tag, "manifest": f"{name}/manifest.json",
+                         "checksums": checksums,
                          "notes": f"{repo}/releases/tag/{tag}", "uf2": downloads})
         print(f"{name}: {tag}")
     # ILA images live in separate paths and assets: never reuse an 883M build.

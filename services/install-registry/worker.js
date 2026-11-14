@@ -30,10 +30,13 @@ async function sameSecret(a, b) {
 function validRecord(record) {
   return record && typeof record === 'object' &&
     typeof record.board === 'string' && record.board.length <= 64 &&
+    typeof record.device_name === 'string' && !!record.device_name.trim() && record.device_name.length <= 80 && !/[\x00-\x1f]/.test(record.device_name) &&
+    typeof record.company_name === 'string' && !!record.company_name.trim() && record.company_name.length <= 80 && !/[\x00-\x1f]/.test(record.company_name) &&
     typeof record.firmware_version === 'string' && record.firmware_version.length <= 40 &&
     typeof record.board_id === 'string' && BOARD_ID.test(record.board_id) &&
     typeof record.mac_address === 'string' && MAC.test(record.mac_address) &&
     ['wifi', 'ethernet'].includes(record.mac_type) &&
+    record.gateway_serial === (record.mac_type === 'ethernet' ? 'GW-IRIV-' : 'GW-ESP32-') + record.board_id &&
     (record.sensor_serial === null ||
       (typeof record.sensor_serial === 'string' && record.sensor_serial.length <= 80)) &&
     ['gateway_booted_sensor_identified', 'gateway_booted_sensor_not_identified'].includes(record.result) &&
@@ -61,8 +64,10 @@ export default {
     try { record = JSON.parse(raw); } catch { return reply(400, 'Invalid JSON', origin, env); }
     if (!validRecord(record)) return reply(400, 'Invalid device record', origin, env);
     const clean = {
-      checked_at: record.checked_at, board: record.board, firmware_version: record.firmware_version,
-      board_id: record.board_id, mac_address: record.mac_address, mac_type: record.mac_type,
+      checked_at: record.checked_at, board: record.board, device_name: record.device_name.trim(),
+      company_name: record.company_name.trim(), firmware_version: record.firmware_version,
+      board_id: record.board_id, gateway_serial: record.gateway_serial,
+      mac_address: record.mac_address, mac_type: record.mac_type,
       sensor_serial: record.sensor_serial, result: record.result,
     };
     const body = 'Gateway startup record\n\n' + JSON.stringify(clean, null, 2).split('\n').map(line => '    ' + line).join('\n');
@@ -72,7 +77,7 @@ export default {
         'Authorization':`Bearer ${env.GITHUB_TOKEN}`, 'User-Agent':'wilcoxon-install-registry',
         'X-GitHub-Api-Version':'2022-11-28',
       },
-      body:JSON.stringify({title:`Gateway ${clean.board} ${clean.mac_address} ${clean.firmware_version}`, body}),
+      body:JSON.stringify({title:`${clean.gateway_serial} - ${clean.device_name}`, body}),
     });
     if (!github.ok) return reply(502, 'GitHub did not save the record', origin, env);
     const issue = await github.json();

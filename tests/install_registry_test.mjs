@@ -9,7 +9,8 @@ const env = {
 };
 const record = {
   checked_at:'2026-11-14T00:00:00.000Z', board:'cytron_iriv_io_controller',
-  firmware_version:'v5.0.0', board_id:'ABC12345', mac_address:'12:34:56:78:9A:BC',
+  device_name:'Pump 3 gateway', company_name:'ABC Manufacturing',
+  firmware_version:'v5.0.0', board_id:'ABC12345', gateway_serial:'GW-IRIV-ABC12345', mac_address:'12:34:56:78:9A:BC',
   mac_type:'ethernet', sensor_serial:null, result:'gateway_booted_sensor_not_identified',
 };
 const post = (key, body=record, origin=env.ALLOWED_ORIGIN) => new Request('https://registry.example/installations', {
