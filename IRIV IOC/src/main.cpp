@@ -146,10 +146,11 @@ void setup() {
     server.begin();
     logMessage("Web Server Started");
     {
-        StaticJsonDocument<256> installInfo;
+        StaticJsonDocument<384> installInfo;
         installInfo["board"] = GATEWAY_BOARD;
         installInfo["version"] = FIRMWARE_VERSION;
         installInfo["board_id"] = gw::deviceId();
+        installInfo["gateway_serial"] = String("GW-IRIV-") + gw::deviceId();
         installInfo["ethernet_mac"] = gw::ethernetMac();
         installInfo["sensor_serial"] = sensor_serial == "Unknown" ? "" : sensor_serial;
         Serial.print("INSTALL_INFO ");

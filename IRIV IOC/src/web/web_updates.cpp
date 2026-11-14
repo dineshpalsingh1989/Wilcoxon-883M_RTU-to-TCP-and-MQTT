@@ -71,6 +71,7 @@ void handleFirmwareInfo() {
     doc["version"] = FIRMWARE_VERSION;
     doc["board"] = GATEWAY_BOARD;
     doc["board_id"] = gw::deviceId();
+    doc["gateway_serial"] = String("GW-IRIV-") + gw::deviceId();
     doc["ethernet_mac"] = gw::ethernetMac();
     doc["sensor_serial"] = currentSerial == "Unknown" ? "" : currentSerial;
 #if GATEWAY_ETHERNET

@@ -53,6 +53,15 @@ h3 { font-size: 1.02rem; margin: 22px 0 8px; }
 .serial-actions button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
 .serial-actions button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .serial-actions button:disabled { opacity: .55; cursor: not-allowed; }
+button.preflight-start { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+button.preflight-start:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button.install:disabled { opacity: .55; cursor: not-allowed; }
+a.install[aria-disabled="true"] { opacity: .55; pointer-events: none; }
+.preflight-confirm { display: block; margin-top: 8px; }
+.registration-fields { display: grid; gap: 10px; }
+.registration-fields label { display: grid; gap: 4px; }
+.registration-fields input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--text); font: inherit; }
+.registration-fields input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .serial-output { min-height: 90px; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 12px/1.45 ui-monospace, monospace; }
 ol { padding-left: 22px; } li { margin: 6px 0; }
 code { font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
@@ -229,6 +238,16 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     </button>
   </div>
 
+  <section id="registration-details" class="checklist" hidden>
+    <h3>Installation details</h3>
+    <div class="registration-fields">
+      <label>Device name <input id="device-name" type="text" maxlength="80" autocomplete="off" placeholder="Example: Pump 3 gateway"></label>
+      <label>Company name <input id="company-name" type="text" maxlength="80" autocomplete="organization" placeholder="Example: ABC Manufacturing"></label>
+      <label id="ioc-board-confirm" hidden><input id="ioc-board-checked" type="checkbox"> I checked the printed board name is Cytron IRIV IO Controller.</label>
+    </div>
+    <p id="registration-status" role="status">Enter both names before installing. They will be saved with the device record after it boots.</p>
+  </section>
+
   <section id="esp32-section">
     <h2>ESP32 boards</h2>
     <p>The installer reads the chip on the connected board and installs the matching build automatically.</p>
@@ -277,7 +296,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li><strong><a href="https://my.cytron.io/p-maker-esp32-bundle">Cytron Maker ESP32</a></strong> (original ESP32 chip, ESP32-WROOM-32E). Status is shown on the onboard GPIO2 LED, the buzzer is GPIO26 and the user button is GPIO4.</li>
     </ul>
     <p class="notice">Other boards are not tested. An ESP32-S3 board with at least 4 MB flash receives the Feather build and may work; another original-ESP32 board receives the Maker ESP32 build, which needs 8 MB flash. ESP32-S2, C3 and C6 boards are not supported; the installer will say so.</p>
-    <div class="checklist"><h3>Check your board and wiring before flashing</h3><ol><li>Read the board name printed on the hardware: <strong>Adafruit Feather ESP32-S3</strong> or <strong>Cytron Maker ESP32</strong>.</li><li>Feather needs an ESP32-S3 and at least <strong>4 MB flash</strong>; Maker needs an original ESP32 and <strong>8 MB flash</strong>. Chip detection cannot confirm the board or flash size.</li><li>Check your RS485 transceiver and sensor connections against the <a class="wiring" href="#">883M wiring guide</a>. The installer cannot check these wires.</li></ol></div>
+    <div class="checklist"><h3>Check your board and wiring before flashing</h3><ol><li>Read the board name printed on the hardware: <strong>Adafruit Feather ESP32-S3</strong> or <strong>Cytron Maker ESP32</strong>.</li><li>Feather needs an ESP32-S3 and at least <strong>4 MB flash</strong>; Maker needs an original ESP32 and <strong>8 MB flash</strong>. The USB check reads the chip and flash size; it cannot prove the exact board model.</li><li>Check your RS485 transceiver and sensor connections against the <a class="wiring" href="#">883M wiring guide</a>. The installer cannot check these wires.</li></ol></div>
 
     <h3>1. Before you start</h3>
     <ol>
@@ -287,6 +306,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     </ol>
 
     <h3>2. Install</h3>
+    <p>For each release, run the USB check first. It verifies the chip, actual flash size, image fit and downloaded image checksums. Then confirm the board name printed on your device. Choose the <strong>same USB port</strong> when the install dialog opens.</p>
     <div id="channels"><div class="card">Loading available versions…</div></div>
     <p class="notice"><strong>Board not listed in the port window?</strong> Put it into download mode: hold <strong>BOOT</strong>, tap <strong>RESET</strong> (labelled <strong>EN</strong> on the Maker ESP32), release <strong>BOOT</strong>, then click Install again. After installing, press <strong>RESET</strong>/<strong>EN</strong> once to start the new firmware.</p>
     <figure class="bootfig anim">
@@ -337,6 +357,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <p>The <strong>Cytron IRIV IO Controller</strong> uses a Raspberry Pi RP2350A chip, isolated RS485 and wired Ethernet. Its bootloader shows up on your computer as a USB drive, so you install by copying one file. This works in any browser on any computer.</p>
 
     <h3>1. Download</h3>
+    <p>Confirm the printed board name and enter the installation details above before downloading the UF2 file. The browser cannot identify a blank IRIV by board model from its RP2350 boot drive.</p>
     <div id="ioc-channels"><div class="card">Loading available versions…</div></div>
 
     <h3>2. Install</h3>
@@ -448,12 +469,50 @@ let deviceRecord = null;
 let registryEndpoint = '';
 let savedSignature = '';
 let savingSignature = '';
+const deviceName = document.getElementById('device-name');
+const companyName = document.getElementById('company-name');
+const iocBoardChecked = document.getElementById('ioc-board-checked');
+function updateRegistrationVisibility() {
+  const is883m = document.querySelector('.sensor[data-sensor="883m"]').getAttribute('aria-pressed') === 'true';
+  const isIoc = document.querySelector('.board[data-board="ioc"]').getAttribute('aria-pressed') === 'true';
+  document.getElementById('registration-details').hidden = !is883m || (!isIoc && !document.querySelector('#channels .preflight-confirm:not([hidden])'));
+  document.getElementById('ioc-board-confirm').hidden = !isIoc;
+}
+function registrationValid() {
+  const isIoc = document.querySelector('.board[data-board="ioc"]').getAttribute('aria-pressed') === 'true';
+  return !!deviceName.value.trim() && !!companyName.value.trim() && (!isIoc || iocBoardChecked.checked);
+}
+function enrichedRecord() {
+  if (!deviceRecord || !registrationValid()) return null;
+  const isIoc = document.querySelector('.board[data-board="ioc"]').getAttribute('aria-pressed') === 'true';
+  if ((deviceRecord.mac_type === 'ethernet') !== isIoc) return null;
+  return {...deviceRecord, device_name:deviceName.value.trim(), company_name:companyName.value.trim()};
+}
+function updateRegistrationState() {
+  const valid = registrationValid();
+  document.getElementById('registration-status').textContent = !valid ? 'Enter device and company names, and confirm the printed board name.' :
+    deviceRecord && !enrichedRecord() ? 'The selected board does not match the USB startup report. Select the matching board before saving.' :
+    'Details ready. The record will save after the gateway boots.';
+  for (const card of document.querySelectorAll('#channels .card.channel')) {
+    const confirmed = !!card.querySelector('.preflight-confirm input')?.checked;
+    card.querySelector('button.install').disabled = card.dataset.preflightPassed !== 'true' || !confirmed || !valid;
+  }
+  for (const link of document.querySelectorAll('#ioc-channels a.install')) {
+    if (valid) link.href = link.dataset.uf2;
+    else link.removeAttribute('href');
+    link.setAttribute('aria-disabled', String(!valid));
+  }
+  receiptDownload.disabled = !enrichedRecord();
+  if (valid) saveRecordAutomatically();
+}
+for (const field of [deviceName, companyName, iocBoardChecked]) field.addEventListener('input', updateRegistrationState);
 function recordSignature(record) {
   return [record.board_id, record.mac_address, record.firmware_version, record.sensor_serial || ''].join('|');
 }
 async function saveRecordAutomatically() {
-  if (!deviceRecord || !registryEndpoint || !registryKey.value) return;
-  const record = {...deviceRecord};
+  if (!registryEndpoint || !registryKey.value) return;
+  const record = enrichedRecord();
+  if (!record) return;
   const signature = recordSignature(record);
   if (signature === savedSignature || savingSignature) return;
   savingSignature = signature;
@@ -484,7 +543,8 @@ async function saveRecordAutomatically() {
     registryRetry.hidden = false;
   } finally {
     savingSignature = '';
-    if (deviceRecord && recordSignature(deviceRecord) !== signature) saveRecordAutomatically();
+    const latest = enrichedRecord();
+    if (latest && recordSignature(latest) !== signature) saveRecordAutomatically();
   }
 }
 registryKey.addEventListener('change', saveRecordAutomatically);
@@ -505,29 +565,31 @@ function consumeSerialText(chunk) {
     if (!line.startsWith('INSTALL_INFO ')) continue;
     try {
       const data = JSON.parse(line.slice(13));
-      if (typeof data.board !== 'string' || typeof data.version !== 'string' || typeof data.board_id !== 'string') continue;
+      if (typeof data.board !== 'string' || typeof data.version !== 'string' || typeof data.board_id !== 'string' || typeof data.gateway_serial !== 'string') continue;
       if (!data.wifi_mac && !data.ethernet_mac) continue;
+      if (data.gateway_serial !== (data.ethernet_mac ? 'GW-IRIV-' : 'GW-ESP32-') + data.board_id) continue;
       deviceRecord = {
         checked_at: new Date().toISOString(),
         board: data.board, firmware_version: data.version, board_id: data.board_id,
+        gateway_serial: data.gateway_serial,
         mac_address: data.ethernet_mac || data.wifi_mac,
         mac_type: data.ethernet_mac ? 'ethernet' : 'wifi',
         sensor_serial: data.sensor_serial || null,
         result: data.sensor_serial ? 'gateway_booted_sensor_identified' : 'gateway_booted_sensor_not_identified'
       };
-      deviceSummary.textContent = 'Board: ' + deviceRecord.board + ' | MAC: ' + deviceRecord.mac_address +
+      deviceSummary.textContent = 'Gateway serial: ' + deviceRecord.gateway_serial + ' | Board: ' + deviceRecord.board + ' | MAC: ' + deviceRecord.mac_address +
         ' | Firmware: ' + deviceRecord.firmware_version + ' | 883M serial: ' + (deviceRecord.sensor_serial || 'unavailable');
-      receiptDownload.disabled = false;
-      saveRecordAutomatically();
+      updateRegistrationState();
     } catch (error) { /* Ignore malformed serial output. */ }
   }
 }
 receiptDownload.addEventListener('click', () => {
-  if (!deviceRecord) return;
-  const blob = new Blob([JSON.stringify(deviceRecord, null, 2) + '\n'], {type: 'application/json'});
+  const record = enrichedRecord();
+  if (!record) return;
+  const blob = new Blob([JSON.stringify(record, null, 2) + '\n'], {type: 'application/json'});
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = 'gateway-' + deviceRecord.board_id.replace(/[^a-zA-Z0-9_-]/g, '') + '.json';
+  link.download = 'gateway-' + record.board_id.replace(/[^a-zA-Z0-9_-]/g, '') + '.json';
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 });
@@ -536,6 +598,7 @@ function showSensor(sensor) {
   document.getElementById("sensor-883m").hidden = sensor !== "883m";
   document.getElementById("ila210-section").hidden = sensor !== "ila210";
   updateSerialVisibility();
+  updateRegistrationVisibility();
 }
 for (const b of sensorButtons) b.addEventListener("click", () => showSensor(b.dataset.sensor));
 if (["#ila210", "#ila200"].includes(location.hash)) showSensor("ila210");
@@ -553,12 +616,16 @@ function showBoard(board) {
   document.getElementById("ioc-section").hidden = board !== "ioc";
   try { localStorage.setItem("board", board); } catch (e) {}
   updateSerialVisibility();
+  updateRegistrationVisibility();
+  updateRegistrationState();
 }
 for (const b of boardButtons) b.addEventListener("click", () => showBoard(b.dataset.board));
 let savedBoard = null;
 try { savedBoard = localStorage.getItem("board"); } catch (e) {}
 if (location.hash === "#iriv" || savedBoard === "ioc") showBoard("ioc");
 updateSerialVisibility();
+updateRegistrationVisibility();
+updateRegistrationState();
 
 if (!navigator.serial) {
   serialConnect.disabled = true;
@@ -630,6 +697,79 @@ function channelHeader(card, c) {
   note.append(link);
 }
 
+async function inspectEsp32Release(c, card) {
+  for (const other of document.querySelectorAll('#channels .card.channel')) {
+    other.dataset.preflightPassed = 'false';
+    other.querySelector('button.install').disabled = true;
+    other.querySelector('.preflight-confirm').hidden = true;
+    other.querySelector('.preflight-confirm input').checked = false;
+    if (other !== card) other.querySelector('.preflight-status').textContent = 'Run the USB check for this release before installing.';
+  }
+  const status = card.querySelector('.preflight-status');
+  const install = card.querySelector('button.install');
+  const confirm = card.querySelector('.preflight-confirm');
+  card.dataset.preflightPassed = 'false';
+  install.disabled = true;
+  confirm.hidden = true;
+  confirm.querySelector('input').checked = false;
+  updateRegistrationVisibility();
+  if (!navigator.serial || !crypto.subtle) {
+    status.textContent = 'USB and checksum checks need Chrome or Edge on an HTTPS page.';
+    return;
+  }
+  let transport, loader;
+  try {
+    status.textContent = 'Select the ESP32 USB port to check…';
+    // Requesting the port must happen directly from this click for browser permission.
+    const port = await navigator.serial.requestPort();
+    const {ESPLoader, Transport} = await import('https://unpkg.com/esptool-js@0.7.1/bundle.js');
+    transport = new Transport(port, true);
+    loader = new ESPLoader({transport, baudrate:115200, terminal:{clean(){},write(){},writeLine(){}}});
+    status.textContent = 'Reading chip and flash size…';
+    const detected = await loader.main();
+    const chip = String(loader.chip?.CHIP_NAME || detected).toUpperCase();
+    const family = chip === 'ESP32-S3' ? 'ESP32-S3' : chip === 'ESP32' ? 'ESP32' : null;
+    if (!family) throw new Error('Unsupported chip: ' + chip + '. Use an ESP32-S3 Feather or original Maker ESP32.');
+    const flash = await loader.detectFlashSize();
+    const match = /^(\d+)(MB|KB)$/.exec(String(flash || ''));
+    if (!match) throw new Error('Flash size could not be read. Check USB connection and try again. No size is assumed.');
+    const flashBytes = Number(match[1]) * (match[2] === 'MB' ? 1048576 : 1024);
+    const requiredBytes = family === 'ESP32-S3' ? 4 * 1048576 : 8 * 1048576;
+    if (flashBytes < requiredBytes) throw new Error('Only ' + flash + ' flash detected; this build needs ' + (requiredBytes / 1048576) + ' MB. Erasing cannot increase flash capacity.');
+    status.textContent = 'Checking firmware image and SHA-256 checksums…';
+    const manifestUrl = new URL(c.manifest, location.href);
+    const manifestResponse = await fetch(manifestUrl, {cache:'no-store'});
+    if (!manifestResponse.ok) throw new Error('Firmware manifest could not be downloaded.');
+    const manifest = await manifestResponse.json();
+    const build = manifest.builds?.find(item => item.chipFamily === family);
+    if (!build || !Array.isArray(build.parts) || !build.parts.length) throw new Error('This release has no image for ' + family + '.');
+    for (const part of build.parts) {
+      if (!Number.isSafeInteger(part.offset) || part.offset < 0 || typeof part.path !== 'string') throw new Error('Invalid firmware image layout.');
+      const expected = c.checksums?.[part.path];
+      if (!/^[0-9a-f]{64}$/i.test(expected || '')) throw new Error('Firmware checksum is missing.');
+      const response = await fetch(new URL(part.path, manifestUrl), {cache:'no-store'});
+      if (!response.ok) throw new Error('Firmware image could not be downloaded: ' + part.path);
+      const bytes = await response.arrayBuffer();
+      if (part.offset + bytes.byteLength > flashBytes) throw new Error('Firmware image exceeds detected flash size.');
+      const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), byte => byte.toString(16).padStart(2, '0')).join('');
+      if (digest.toLowerCase() !== expected.toLowerCase()) throw new Error('Firmware checksum mismatch: ' + part.path);
+    }
+    const boardName = family === 'ESP32-S3' ? 'Adafruit Feather ESP32-S3' : 'Cytron Maker ESP32';
+    confirm.querySelector('span').textContent = 'I checked the printed board name is ' + boardName + ' and will select the same USB port for installation.';
+    confirm.hidden = false;
+    card.dataset.preflightPassed = 'true';
+    updateRegistrationVisibility();
+    status.textContent = chip + ', ' + flash + ' flash. Firmware images verified. Confirm the printed board name to enable Install.';
+    confirm.querySelector('input').onchange = updateRegistrationState;
+    updateRegistrationState();
+  } catch (error) {
+    status.textContent = error.name === 'NotFoundError' ? 'No USB port selected.' : 'Check stopped: ' + error.message;
+  } finally {
+    if (loader) { try { await loader.after('hard_reset'); } catch (error) {} }
+    if (transport) { try { await transport.disconnect(); } catch (error) {} }
+  }
+}
+
 (async () => {
   const box = document.getElementById("channels");
   const iocBox = document.getElementById("ioc-channels");
@@ -659,6 +799,7 @@ function channelHeader(card, c) {
       card.className = "card channel";
       card.innerHTML =
         '<div><h3></h3><p></p></div>' +
+        (isIla ? '' : '<div><button type="button" class="preflight-start">Check USB and firmware</button><p class="preflight-status" role="status">Check required before installation.</p><label class="preflight-confirm" hidden><input type="checkbox"> <span></span></label></div>') +
         '<esp-web-install-button>' +
         '<button slot="activate" class="install">Install</button>' +
         '<span slot="unsupported">This browser cannot flash over USB. Use Chrome or Edge on a computer.</span>' +
@@ -666,7 +807,12 @@ function channelHeader(card, c) {
         '</esp-web-install-button>';
       channelHeader(card, c);
       card.querySelector("esp-web-install-button").setAttribute("manifest", c.manifest);
-      card.querySelector("button").setAttribute("aria-label", "Install " + c.tag);
+      card.querySelector("button.install").setAttribute("aria-label", "Install " + c.tag);
+      if (!isIla) {
+        const install = card.querySelector('button.install');
+        install.disabled = true;
+        card.querySelector('.preflight-start').addEventListener('click', () => inspectEsp32Release(c, card));
+      }
       espTarget.append(card);
       }
 
@@ -678,10 +824,12 @@ function channelHeader(card, c) {
       channelHeader(iocCard, c);
       const download = iocCard.querySelector("a.install");
       download.href = uf2;
+      download.dataset.uf2 = uf2;
       download.textContent = "Download .uf2";
       download.setAttribute("aria-label", "Download " + c.tag + " for IRIV IO Controller");
       if(!iocTarget.querySelector("a.install"))iocTarget.textContent="";
       iocTarget.append(iocCard);
+      if (!isIla) updateRegistrationState();
     }
     if (!iocBox.children.length)
       iocBox.innerHTML = '<div class="card">No release with IRIV IO Controller firmware is published yet. Check the <a href="' + data.repo + '/releases">releases page</a>.</div>';

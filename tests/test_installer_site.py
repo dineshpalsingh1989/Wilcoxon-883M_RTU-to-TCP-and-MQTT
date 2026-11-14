@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import tempfile
@@ -39,6 +40,8 @@ class InstallerTests(unittest.TestCase):
                     for part in build['parts']:
                         payload = (out / c['manifest']).parent / part['path']
                         self.assertEqual(payload.read_bytes(), b'ILA' if c['sensor'] == 'ila210' else b'883M')
+                        if c['sensor'] == '883m':
+                            self.assertEqual(c['checksums'][part['path']], hashlib.sha256(payload.read_bytes()).hexdigest())
                 if c['sensor'] == 'ila210':
                     self.assertEqual([b['chipFamily'] for b in manifest['builds']], ['ESP32-S3'])
                     self.assertIn('firmware-ila210-', c['uf2']['cytron_iriv_io_controller'])

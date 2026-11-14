@@ -70,6 +70,7 @@ void handleFirmwareInfo() {
     doc["version"] = FIRMWARE_VERSION;
     doc["board"] = GATEWAY_BOARD;
     doc["board_id"] = gw::deviceId();
+    doc["gateway_serial"] = String("GW-ESP32-") + gw::deviceId();
     doc["wifi_mac"] = WiFi.macAddress();
     doc["sensor_serial"] = currentSerial == "Unknown" ? "" : currentSerial;
     String json;

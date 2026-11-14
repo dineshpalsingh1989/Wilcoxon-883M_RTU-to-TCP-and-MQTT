@@ -137,10 +137,11 @@ void setup() {
     server.begin();
     logMessage("Web Server Started");
     {
-        StaticJsonDocument<256> installInfo;
+        StaticJsonDocument<384> installInfo;
         installInfo["board"] = GATEWAY_BOARD;
         installInfo["version"] = FIRMWARE_VERSION;
         installInfo["board_id"] = gw::deviceId();
+        installInfo["gateway_serial"] = String("GW-ESP32-") + gw::deviceId();
         installInfo["wifi_mac"] = WiFi.macAddress();
         installInfo["sensor_serial"] = sensor_serial == "Unknown" ? "" : sensor_serial;
         Serial.print("INSTALL_INFO ");
