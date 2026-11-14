@@ -200,6 +200,8 @@ After saving, the gateway restarts and joins your network. Open its new IP addre
 
 After flashing, the installer can read a USB startup report and download a JSON record with the generated gateway serial, board ID, MAC address, firmware version, device and company names, and available 883M identity. Once the [private installation registry](docs/install-registry.md) is configured and its key entered, the record is saved to GitHub automatically when detected.
 
+The [installation wiki source](docs/wiki/Home.md) explains the preflight, identity, IRIV I/O and remaining hardware validation in short pages.
+
 ### If the install does not work
 
 Re-installing is always safe: the ESP32's built-in loader cannot be erased, so you can simply try again.
