@@ -345,11 +345,11 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li><strong>No port appears:</strong> use a USB-C data cable and another USB socket (no hub), then hold BOOT, tap RESET, release BOOT.</li>
       <li><strong>"Failed to connect" or timeout:</strong> close the Arduino IDE, PlatformIO or any serial monitor using the port, then use BOOT + RESET.</li>
       <li><strong>Stops halfway:</strong> change the cable and install again.</li>
-      <li><strong>Finished but nothing happens:</strong> press RESET. Still no <code>ILA_Sensor_AP</code>? Install again with <em>Erase device</em> ticked.</li>
+      <li><strong>Finished but nothing happens:</strong> press RESET and check USB startup logs. If the board and flash checks passed and saved settings appear to be the problem, install again with <em>Erase device</em> ticked.</li>
       <li><strong>"This device is not supported":</strong> the board's chip is not one of the supported boards above, or the release predates support for it. For an IRIV IO Controller, choose <em>IRIV IO Controller</em> at the top instead.</li>
     </ul>
     <p><strong>Other ways:</strong> download <code>factory-adafruit_feather_esp32s3.bin</code> (Feather) or <code>factory-cytron_maker_esp32.bin</code> (Maker ESP32) from the <a class="releases" href="#">releases page</a> and write it at address <code>0x0</code> with <a href="https://espressif.github.io/esptool-js/">Espressif's browser flasher</a>, esptool or Espressif's Flash Download Tool. This clears saved settings. Step-by-step instructions: <a class="guide" href="#">installation guide</a>.</p>
-    <p class="small">Choosing <em>Erase device</em> during install clears saved Wi-Fi, MQTT and alarm settings. Leave it unticked to keep them.</p>
+    <p class="small">Leave <em>Erase device</em> unticked to keep Wi-Fi, MQTT and alarm settings. Use it only after a successful USB check when saved settings are causing a startup problem; erasing cannot fix insufficient flash.</p>
   </section>
 
   <section id="ioc-section" hidden>
