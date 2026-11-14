@@ -9,14 +9,29 @@ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
  try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'serial', {value: {requestPort: async () => ({
+      open: async () => {}, close: async () => {}, readable: {getReader: () => {
+        let reads = 0;
+        return {read: async () => reads++ === 0 ? {value: new TextEncoder().encode('ESP32 ready\n'), done: false} : {done: true}, cancel: async () => {}, releaseLock: () => {}};
+      }}
+    })}});
+  });
   await page.route('https://unpkg.com/**',r=>r.fulfill({contentType:'application/javascript',body:''}));
   await page.goto(`http://127.0.0.1:${server.address().port}`);
   await page.waitForSelector('#channels esp-web-install-button');
   assert.equal(await page.locator('#channels esp-web-install-button').getAttribute('manifest'),'stable/manifest.json');
+  assert(await page.locator('#serial-console').isVisible());
+  assert(await page.getByText('Check your board and wiring before flashing').isVisible());
+  await page.getByRole('button',{name:'Connect to logs'}).click();
+  await page.waitForFunction(() => document.querySelector('#serial-output').textContent.includes('ESP32 ready'));
+  await page.getByRole('button',{name:'Clear logs'}).click();
+  assert.equal(await page.locator('#serial-output').textContent(),'');
   await page.getByRole('button',{name:/Wilcoxon ILA210/}).click();
   assert(await page.locator('#ila210-section').isVisible());assert(!await page.locator('#sensor-883m').isVisible());
   assert.equal(await page.locator('#ila-channels esp-web-install-button').getAttribute('manifest'),'ila210/beta/manifest.json');
   await page.locator('.ila-board[data-board="ioc"]').click();
+  assert(!await page.locator('#serial-console').isVisible());
   assert.equal(await page.locator('#ila-ioc-channels a.install').getAttribute('href'),'https://example.com/ila210.uf2');
   await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.keyboard.press('Tab');assert(await page.evaluate(()=>document.activeElement!==document.body));

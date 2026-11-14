@@ -46,6 +46,14 @@ h3 { font-size: 1.02rem; margin: 22px 0 8px; }
 .channel h3 { margin: 0; }
 .small { color: var(--muted); font-size: .85rem; }
 .notice { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 8px; padding: 10px 14px; font-size: .93rem; }
+.checklist { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin: 16px 0; }
+.checklist h3 { margin-top: 0; }
+.checklist ol { margin-bottom: 0; }
+.serial-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.serial-actions button { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+.serial-actions button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.serial-actions button:disabled { opacity: .55; cursor: not-allowed; }
+.serial-output { min-height: 90px; max-height: 260px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font: 12px/1.45 ui-monospace, monospace; }
 ol { padding-left: 22px; } li { margin: 6px 0; }
 code { font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
@@ -197,13 +205,15 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <section id="ila-esp32-section"><h3>ESP32-S3 installation</h3>
       <div id="ila-channels"><div class="card">Loading available versions...</div></div>
       <p>Use Chrome or Edge on a computer and a USB data cable. Select Install, choose the port and reset the board afterwards. If needed, hold BOOT and tap RESET to enter download mode.</p>
-      <p>Only the ESP32-S3 chip is accepted. Chip detection cannot verify your board wiring: this is the ILA DevKitC build, not the 883M Feather build. Check the <a class="ila-wiring" href="#">ILA wiring guide</a>.</p>
+      <p class="notice"><strong>Check the physical board before flashing:</strong> this build is for the ESP32-S3 DevKitC-1-N8 with the <a class="ila-wiring" href="#">ILA210 wiring</a>. The installer detects an ESP32-S3 chip but cannot identify a DevKitC or check its wiring. The 883M Feather firmware is a different build.</p>
       <p>On first boot, connect to <code>ILA_Sensor_AP</code> (password <code>12345678</code>), open <a href="http://192.168.4.1">192.168.4.1</a> and save Wi-Fi settings.</p>
+      <div class="checklist"><h3>After installing</h3><ol><li>Press RESET, then join <code>ILA_Sensor_AP</code> and open <a href="http://192.168.4.1">192.168.4.1</a>.</li><li>Save Wi-Fi settings and reopen the dashboard at the board's network address.</li><li>Check the sensor status and a live reading. If startup fails, use the USB serial log viewer below.</li></ol></div>
     </section>
     <section id="ila-ioc-section" hidden><h3>IRIV installation</h3>
       <div id="ila-ioc-channels"><div class="card">Loading available versions...</div></div>
       <ol><li>Connect the IRIV USB-C PROG port with a data cable.</li><li>Hold BOOT, press and release RESET, then release BOOT.</li><li>Copy the ILA210 <code>.uf2</code> onto the RP2350 drive.</li><li>Connect Ethernet and open the DHCP address listed by your router. Without DHCP, use <code>192.168.4.1</code> with the laptop at <code>192.168.4.2/24</code>.</li></ol>
       <p>IRIV MQTT uses plain port 1883. Inputs, analog channels and spare outputs start disabled. Configure them on the separate IOC pages after verifying wiring.</p>
+      <div class="checklist"><h3>After installing</h3><ol><li>Confirm the RP2350 drive disappears and the IRIV restarts.</li><li>Open its dashboard at the DHCP or fallback address above.</li><li>Check sensor status and a live reading before enabling I/O or alarm rules.</li></ol></div>
     </section>
     <p><a class="ila-guide" href="#">ILA setup, board pins and MQTT</a> ? <a class="ila-readiness" href="#">Readiness and pending hardware checks</a></p>
   </section>
@@ -267,6 +277,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li><strong><a href="https://my.cytron.io/p-maker-esp32-bundle">Cytron Maker ESP32</a></strong> (original ESP32 chip, ESP32-WROOM-32E). Status is shown on the onboard GPIO2 LED, the buzzer is GPIO26 and the user button is GPIO4.</li>
     </ul>
     <p class="notice">Other boards are not tested. An ESP32-S3 board with at least 4 MB flash receives the Feather build and may work; another original-ESP32 board receives the Maker ESP32 build, which needs 8 MB flash. ESP32-S2, C3 and C6 boards are not supported; the installer will say so.</p>
+    <div class="checklist"><h3>Check your board and wiring before flashing</h3><ol><li>Read the board name printed on the hardware: <strong>Adafruit Feather ESP32-S3</strong> or <strong>Cytron Maker ESP32</strong>.</li><li>Feather needs an ESP32-S3 and at least <strong>4 MB flash</strong>; Maker needs an original ESP32 and <strong>8 MB flash</strong>. Chip detection cannot confirm the board or flash size.</li><li>Check your RS485 transceiver and sensor connections against the <a class="wiring" href="#">883M wiring guide</a>. The installer cannot check these wires.</li></ol></div>
 
     <h3>1. Before you start</h3>
     <ol>
@@ -305,6 +316,7 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li>Go to <strong>Settings &gt; Wi-Fi</strong>, save your network, then open the gateway at its new local IP address.</li>
       <li>Wire the RS485 module and sensor as shown in the <a class="wiring" href="#">wiring guide</a>.</li>
     </ol>
+    <div class="checklist"><h3>After installing</h3><ol><li>Press RESET/EN, join <code>ILA_Sensor_AP</code> and open the dashboard at <a href="http://192.168.4.1">192.168.4.1</a>.</li><li>Save Wi-Fi settings, then reopen the dashboard at the new local IP address.</li><li>With the 883M wired and powered, confirm X/Y/Z velocity and temperature update. If the dashboard does not start, use the USB serial log viewer below.</li></ol></div>
     <p>Already installed? Later updates can be done from the gateway itself under <strong>Settings &gt; GitHub Firmware Updates</strong>, which keeps your settings.</p>
 
     <h3>Trouble installing?</h3>
@@ -386,12 +398,21 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
       <li>No DHCP server, or a laptop plugged in directly? After 10 seconds without DHCP the gateway uses <code>192.168.4.1</code>. Set your laptop to <code>192.168.4.2</code>, mask <code>255.255.255.0</code>, and open <a href="http://192.168.4.1">http://192.168.4.1</a>. Holding the <strong>USER</strong> button for 5 seconds also switches to this address.</li>
       <li>Wire the sensor's RS485 A, B and ground to the IRIV's <strong>RS485 A, B, G</strong> terminals, as in the <a class="wiring" href="#">wiring guide</a>. Turn on the RS485 termination switch underneath if the IRIV is at the end of the bus.</li>
     </ol>
+    <div class="checklist"><h3>After installing</h3><ol><li>Confirm the RP2350 drive disappears and the IRIV restarts.</li><li>Open the dashboard at the DHCP or fallback address above and confirm X/Y/Z velocity and temperature update.</li><li>If using a PCC420V, enable its AN input under <strong>Settings &gt; IOC I/O</strong>, then check both raw mA and scaled value on the dashboard. Physical I/O validation is still pending.</li></ol></div>
     <p class="notice"><strong>MQTT:</strong> the IRIV IO Controller supports plain MQTT on port <code>1883</code> only. MQTT over TLS (port <code>8883</code>) is not supported, so cloud brokers that require TLS need an ESP32 board.</p>
     <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
   </section>
   <p class="notice"><strong>MQTT waveforms:</strong> from v4.13.0, each waveform and each spectrum is sent as one complete MQTT message (up to about 110 KB), so your back end no longer joins pieces. Make sure your broker accepts messages of that size. <a class="mqtt-guide" href="#">How the messages look</a></p>
   <p class="notice"><strong>MQTT topics:</strong> v4.13.0 also lets you choose your own topics. In <strong>Settings &gt; MQTT</strong>, set <strong>Topics</strong> to <strong>Custom</strong> to send metrics, waveforms, spectra and health status to topics you pick, and to set the command topic your system uses to control the gateway. <strong>Default</strong> keeps today's topics. <a class="mqtt-topics-guide" href="#">How topics and commands work</a></p>
   </div>
+
+  <section id="serial-console" class="checklist" hidden aria-labelledby="serial-heading">
+    <h2 id="serial-heading">USB serial logs (ESP32)</h2>
+    <p>For startup problems, connect the ESP32 by USB, close the installer dialog or any other serial monitor, then choose its port. Logs use 115200 baud. This reads logs only; it does not flash firmware.</p>
+    <div class="serial-actions"><button type="button" id="serial-connect">Connect to logs</button><button type="button" id="serial-disconnect" disabled>Disconnect</button><button type="button" id="serial-clear">Clear logs</button></div>
+    <p id="serial-status" role="status">Not connected.</p>
+    <pre id="serial-output" class="serial-output" aria-label="ESP32 serial log output"></pre>
+  </section>
 
   <footer>
     Source, release notes and manual install files: <a class="repo" href="#">GitHub repository</a>.
@@ -401,10 +422,28 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
 <script>
 // Sensor and board choice: per-viewer conveniences, so storage failures are ignored.
 const sensorButtons = document.querySelectorAll(".sensor");
+const serialConnect = document.getElementById('serial-connect');
+const serialDisconnect = document.getElementById('serial-disconnect');
+const serialOutput = document.getElementById('serial-output');
+const serialStatus = document.getElementById('serial-status');
+let serialPort = null;
+let serialReader = null;
+let serialReading = false;
+function updateSerialVisibility() {
+  const ila = document.querySelector('.sensor[data-sensor="ila210"]').getAttribute('aria-pressed') === 'true';
+  const selected = document.querySelector(ila ? '.ila-board[aria-pressed="true"]' : '.board[aria-pressed="true"]');
+  const hidden = !selected || selected.dataset.board !== 'esp32';
+  document.getElementById('serial-console').hidden = hidden;
+  if (hidden && serialReader) {
+    serialReading = false;
+    serialReader.cancel().catch(() => {});
+  }
+}
 function showSensor(sensor) {
   for (const b of sensorButtons) b.setAttribute("aria-pressed", String(b.dataset.sensor === sensor));
   document.getElementById("sensor-883m").hidden = sensor !== "883m";
   document.getElementById("ila210-section").hidden = sensor !== "ila210";
+  updateSerialVisibility();
 }
 for (const b of sensorButtons) b.addEventListener("click", () => showSensor(b.dataset.sensor));
 if (["#ila210", "#ila200"].includes(location.hash)) showSensor("ila210");
@@ -412,6 +451,7 @@ for (const button of document.querySelectorAll('.ila-board')) button.addEventLis
   for (const other of document.querySelectorAll('.ila-board')) other.setAttribute('aria-pressed',String(other===button));
   document.getElementById('ila-esp32-section').hidden=button.dataset.board!=='esp32';
   document.getElementById('ila-ioc-section').hidden=button.dataset.board!=='ioc';
+  updateSerialVisibility();
 });
 
 const boardButtons = document.querySelectorAll(".board");
@@ -420,11 +460,65 @@ function showBoard(board) {
   document.getElementById("esp32-section").hidden = board !== "esp32";
   document.getElementById("ioc-section").hidden = board !== "ioc";
   try { localStorage.setItem("board", board); } catch (e) {}
+  updateSerialVisibility();
 }
 for (const b of boardButtons) b.addEventListener("click", () => showBoard(b.dataset.board));
 let savedBoard = null;
 try { savedBoard = localStorage.getItem("board"); } catch (e) {}
 if (location.hash === "#iriv" || savedBoard === "ioc") showBoard("ioc");
+updateSerialVisibility();
+
+if (!navigator.serial) {
+  serialConnect.disabled = true;
+  serialStatus.textContent = 'USB serial logs need a browser with Web Serial, such as Chrome or Edge on a computer.';
+}
+serialConnect.addEventListener('click', async () => {
+  if (!navigator.serial || serialPort) return;
+  serialConnect.disabled = true;
+  let port = null;
+  try {
+    port = await navigator.serial.requestPort();
+    if (document.getElementById('serial-console').hidden) return;
+    await port.open({baudRate: 115200});
+    serialPort = port;
+    serialReading = true;
+    serialDisconnect.disabled = false;
+    serialStatus.textContent = 'Connected at 115200 baud.';
+    const decoder = new TextDecoder();
+    serialReader = port.readable.getReader();
+    while (serialReading) {
+      const {value, done} = await serialReader.read();
+      if (done) break;
+      if (value) {
+        const follow = serialOutput.scrollTop + serialOutput.clientHeight >= serialOutput.scrollHeight - 16;
+        serialOutput.textContent = (serialOutput.textContent + decoder.decode(value, {stream: true})).slice(-32768);
+        if (follow) serialOutput.scrollTop = serialOutput.scrollHeight;
+      }
+    }
+    serialStatus.textContent = 'Disconnected.';
+  } catch (error) {
+    serialStatus.textContent = error.name === 'NotFoundError' ? 'No port selected.' : 'Serial connection failed: ' + error.message;
+  } finally {
+    serialReading = false;
+    if (serialReader) {
+      serialReader.releaseLock();
+      serialReader = null;
+    }
+    if (port) {
+      try { await port.close(); } catch (error) {}
+    }
+    serialPort = null;
+    serialDisconnect.disabled = true;
+    serialConnect.disabled = !navigator.serial;
+  }
+});
+serialDisconnect.addEventListener('click', async () => {
+  serialReading = false;
+  if (serialReader) {
+    try { await serialReader.cancel(); } catch (error) {}
+  }
+});
+document.getElementById('serial-clear').addEventListener('click', () => { serialOutput.textContent = ''; });
 
 function channelHeader(card, c) {
   const beta = c.channel === "beta";
