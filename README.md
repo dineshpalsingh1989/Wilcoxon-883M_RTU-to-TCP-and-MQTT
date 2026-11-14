@@ -198,6 +198,8 @@ The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) s
 
 After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring).
 
+After flashing, the installer can read a USB startup report and download a JSON record with the board ID, MAC address, firmware version and available 883M identity. Private GitHub registration requires the separate [installation registry setup](docs/install-registry.md).
+
 ### If the install does not work
 
 Re-installing is always safe: the ESP32's built-in loader cannot be erased, so you can simply try again.

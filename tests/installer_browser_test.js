@@ -3,17 +3,27 @@ const {chromium}=require('../.tools/node_modules/playwright');
 const fs=require('node:fs'),http=require('node:http'),assert=require('node:assert/strict');
 let channels=[{sensor:'883m',channel:'stable',tag:'v5.0.0',manifest:'stable/manifest.json',notes:'https://example.com/notes',uf2:{cytron_iriv_io_controller:'https://example.com/883m.uf2'}},
  {sensor:'ila210',channel:'beta',tag:'v5.0.1-beta.1',manifest:'ila210/beta/manifest.json',notes:'https://example.com/notes',uf2:{cytron_iriv_io_controller:'https://example.com/ila210.uf2'}}];
-const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.startsWith('/channels.json')?'application/json':'text/html');res.end(req.url.startsWith('/channels.json')?JSON.stringify({repo:'https://github.com/example/gateway',channels}):fs.readFileSync('installer/index.html'));});
+const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.startsWith('/channels.json')?'application/json':'text/html');res.end(req.url.startsWith('/channels.json')?JSON.stringify({repo:'https://github.com/example/gateway',registry_endpoint:'https://registry.example/installations',channels}):fs.readFileSync('installer/index.html'));});
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
  try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  let savedRecord=null;
+  await page.route('https://registry.example/installations',async route=>{
+    savedRecord=JSON.parse(route.request().postData());
+    assert.equal(route.request().headers()['x-install-key'],'test-key');
+    await route.fulfill({status:201,contentType:'application/json',body:'{"saved":true}'});
+  });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'serial', {value: {requestPort: async () => ({
       open: async () => {}, close: async () => {}, readable: {getReader: () => {
         let reads = 0;
-        return {read: async () => reads++ === 0 ? {value: new TextEncoder().encode('ESP32 ready\n'), done: false} : {done: true}, cancel: async () => {}, releaseLock: () => {}};
+        return {read: async () => {
+          const chunks=['ESP32 ready\nINSTALL_INFO {"board":"maker","version":"v5.0.0","board_id":"AABB',
+            'CC","wifi_mac":"AA:BB:CC:DD:EE:FF","sensor_serial":"883M123"}\n'];
+          return reads < chunks.length ? {value:new TextEncoder().encode(chunks[reads++]),done:false} : {done:true};
+        }, cancel: async () => {}, releaseLock: () => {}};
       }}
     })}});
   });
@@ -23,8 +33,15 @@ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.
   assert.equal(await page.locator('#channels esp-web-install-button').getAttribute('manifest'),'stable/manifest.json');
   assert(await page.locator('#serial-console').isVisible());
   assert(await page.getByText('Check your board and wiring before flashing').isVisible());
-  await page.getByRole('button',{name:'Connect to logs'}).click();
+  await page.getByRole('button',{name:'Connect to USB'}).click();
   await page.waitForFunction(() => document.querySelector('#serial-output').textContent.includes('ESP32 ready'));
+  await page.waitForFunction(() => !document.querySelector('#receipt-download').disabled);
+  assert((await page.locator('#device-summary').textContent()).includes('AA:BB:CC:DD:EE:FF'));
+  await page.locator('#registry-key').fill('test-key');
+  await page.locator('#registry-save').click();
+  await page.waitForFunction(() => document.querySelector('#registry-status').textContent.includes('Saved to the private GitHub'));
+  assert.equal(savedRecord.sensor_serial,'883M123');
+  assert((await page.locator('#registry-status').textContent()).includes('Saved to the private GitHub'));
   await page.getByRole('button',{name:'Clear logs'}).click();
   assert.equal(await page.locator('#serial-output').textContent(),'');
   await page.getByRole('button',{name:/Wilcoxon ILA210/}).click();

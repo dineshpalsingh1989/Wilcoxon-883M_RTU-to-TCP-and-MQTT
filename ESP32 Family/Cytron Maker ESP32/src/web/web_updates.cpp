@@ -61,9 +61,17 @@ pollUpdate();setInterval(pollUpdate,2000);
 }
 
 void handleFirmwareInfo() {
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument doc(512);
+    String currentSerial;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        currentSerial = sensor_serial;
+        xSemaphoreGive(dataMutex);
+    }
     doc["version"] = FIRMWARE_VERSION;
     doc["board"] = GATEWAY_BOARD;
+    doc["board_id"] = gw::deviceId();
+    doc["wifi_mac"] = WiFi.macAddress();
+    doc["sensor_serial"] = currentSerial == "Unknown" ? "" : currentSerial;
     String json;
     serializeJson(doc, json);
     server.send(200, "application/json", json);

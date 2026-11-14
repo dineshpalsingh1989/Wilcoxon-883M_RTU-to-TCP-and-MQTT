@@ -28,6 +28,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          INSTALL_REGISTRY_ENDPOINT: ${{ vars.INSTALL_REGISTRY_ENDPOINT }}
         run: python3 scripts/build_installer_site.py site
       - uses: actions/upload-pages-artifact@v5
         with:

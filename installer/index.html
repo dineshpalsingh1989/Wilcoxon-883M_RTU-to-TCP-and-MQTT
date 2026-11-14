@@ -406,12 +406,19 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
   <p class="notice"><strong>MQTT topics:</strong> v4.13.0 also lets you choose your own topics. In <strong>Settings &gt; MQTT</strong>, set <strong>Topics</strong> to <strong>Custom</strong> to send metrics, waveforms, spectra and health status to topics you pick, and to set the command topic your system uses to control the gateway. <strong>Default</strong> keeps today's topics. <a class="mqtt-topics-guide" href="#">How topics and commands work</a></p>
   </div>
 
-  <section id="serial-console" class="checklist" hidden aria-labelledby="serial-heading">
-    <h2 id="serial-heading">USB serial logs (ESP32)</h2>
-    <p>For startup problems, connect the ESP32 by USB, close the installer dialog or any other serial monitor, then choose its port. Logs use 115200 baud. This reads logs only; it does not flash firmware.</p>
-    <div class="serial-actions"><button type="button" id="serial-connect">Connect to logs</button><button type="button" id="serial-disconnect" disabled>Disconnect</button><button type="button" id="serial-clear">Clear logs</button></div>
+  <section id="serial-console" class="checklist" aria-labelledby="serial-heading">
+    <h2 id="serial-heading">Check the running gateway over USB</h2>
+    <p>After flashing, close the installer dialog, connect to the gateway's USB port, then press RESET. The gateway reports its board ID, MAC address, firmware version and 883M serial if the sensor answers. A blank board cannot report startup or sensor health before firmware is installed.</p>
+    <div class="serial-actions"><button type="button" id="serial-connect">Connect to USB</button><button type="button" id="serial-disconnect" disabled>Disconnect</button><button type="button" id="serial-clear">Clear logs</button><button type="button" id="receipt-download" disabled>Download device record</button></div>
     <p id="serial-status" role="status">Not connected.</p>
-    <pre id="serial-output" class="serial-output" aria-label="ESP32 serial log output"></pre>
+    <p id="device-summary" role="status">No gateway startup report yet. Connect and reset the board.</p>
+    <div id="registry-controls" hidden>
+      <label for="registry-key">Private installation key</label>
+      <input id="registry-key" type="password" autocomplete="off" placeholder="Enter the key provided by the installer owner">
+      <button type="button" id="registry-save" disabled>Save record to private GitHub</button>
+      <p id="registry-status" role="status">Record has not been saved to GitHub.</p>
+    </div>
+    <pre id="serial-output" class="serial-output" aria-label="Gateway serial log output"></pre>
   </section>
 
   <footer>
@@ -426,19 +433,78 @@ const serialConnect = document.getElementById('serial-connect');
 const serialDisconnect = document.getElementById('serial-disconnect');
 const serialOutput = document.getElementById('serial-output');
 const serialStatus = document.getElementById('serial-status');
+const deviceSummary = document.getElementById('device-summary');
+const receiptDownload = document.getElementById('receipt-download');
+const registryKey = document.getElementById('registry-key');
+const registrySave = document.getElementById('registry-save');
+const registryStatus = document.getElementById('registry-status');
 let serialPort = null;
 let serialReader = null;
 let serialReading = false;
+let serialLine = '';
+let deviceRecord = null;
+let registryEndpoint = '';
 function updateSerialVisibility() {
-  const ila = document.querySelector('.sensor[data-sensor="ila210"]').getAttribute('aria-pressed') === 'true';
-  const selected = document.querySelector(ila ? '.ila-board[aria-pressed="true"]' : '.board[aria-pressed="true"]');
-  const hidden = !selected || selected.dataset.board !== 'esp32';
-  document.getElementById('serial-console').hidden = hidden;
-  if (hidden && serialReader) {
+  document.getElementById('serial-console').hidden =
+    document.querySelector('.sensor[data-sensor="883m"]').getAttribute('aria-pressed') !== 'true';
+  if (document.getElementById('serial-console').hidden && serialReader) {
     serialReading = false;
     serialReader.cancel().catch(() => {});
   }
 }
+function consumeSerialText(chunk) {
+  const lines = (serialLine + chunk).split(/\r?\n/);
+  serialLine = lines.pop().slice(-2048);
+  for (const line of lines) {
+    if (!line.startsWith('INSTALL_INFO ')) continue;
+    try {
+      const data = JSON.parse(line.slice(13));
+      if (typeof data.board !== 'string' || typeof data.version !== 'string' || typeof data.board_id !== 'string') continue;
+      if (!data.wifi_mac && !data.ethernet_mac) continue;
+      deviceRecord = {
+        checked_at: new Date().toISOString(),
+        board: data.board, firmware_version: data.version, board_id: data.board_id,
+        mac_address: data.ethernet_mac || data.wifi_mac,
+        mac_type: data.ethernet_mac ? 'ethernet' : 'wifi',
+        sensor_serial: data.sensor_serial || null,
+        result: data.sensor_serial ? 'gateway_booted_sensor_identified' : 'gateway_booted_sensor_not_identified'
+      };
+      deviceSummary.textContent = 'Board: ' + deviceRecord.board + ' | MAC: ' + deviceRecord.mac_address +
+        ' | Firmware: ' + deviceRecord.firmware_version + ' | 883M serial: ' + (deviceRecord.sensor_serial || 'unavailable');
+      receiptDownload.disabled = false;
+      registrySave.disabled = !registryEndpoint;
+    } catch (error) { /* Ignore malformed serial output. */ }
+  }
+}
+receiptDownload.addEventListener('click', () => {
+  if (!deviceRecord) return;
+  const blob = new Blob([JSON.stringify(deviceRecord, null, 2) + '\n'], {type: 'application/json'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'gateway-' + deviceRecord.board_id.replace(/[^a-zA-Z0-9_-]/g, '') + '.json';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+registrySave.addEventListener('click', async () => {
+  if (!deviceRecord || !registryEndpoint || !registryKey.value) {
+    registryStatus.textContent = 'Enter the private installation key first.';
+    return;
+  }
+  registrySave.disabled = true;
+  registryStatus.textContent = 'Saving record…';
+  try {
+    const response = await fetch(registryEndpoint, {
+      method: 'POST', headers: {'Content-Type':'application/json','X-Install-Key':registryKey.value},
+      body: JSON.stringify(deviceRecord)
+    });
+    if (!response.ok) throw new Error('Registry returned HTTP ' + response.status);
+    registryStatus.textContent = 'Saved to the private GitHub installation registry.';
+    registryKey.value = '';
+  } catch (error) {
+    registryStatus.textContent = 'Record was not saved: ' + error.message + '. Download a copy and try again.';
+    registrySave.disabled = false;
+  }
+});
 function showSensor(sensor) {
   for (const b of sensorButtons) b.setAttribute("aria-pressed", String(b.dataset.sensor === sensor));
   document.getElementById("sensor-883m").hidden = sensor !== "883m";
@@ -491,7 +557,9 @@ serialConnect.addEventListener('click', async () => {
       if (done) break;
       if (value) {
         const follow = serialOutput.scrollTop + serialOutput.clientHeight >= serialOutput.scrollHeight - 16;
-        serialOutput.textContent = (serialOutput.textContent + decoder.decode(value, {stream: true})).slice(-32768);
+        const chunk = decoder.decode(value, {stream: true});
+        serialOutput.textContent = (serialOutput.textContent + chunk).slice(-32768);
+        consumeSerialText(chunk);
         if (follow) serialOutput.scrollTop = serialOutput.scrollHeight;
       }
     }
@@ -542,6 +610,11 @@ function channelHeader(card, c) {
   const ilaBox=document.getElementById("ila-channels"), ilaIocBox=document.getElementById("ila-ioc-channels");
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
+    if (typeof data.registry_endpoint === 'string' && data.registry_endpoint.startsWith('https://')) {
+      registryEndpoint = data.registry_endpoint;
+      document.getElementById('registry-controls').hidden = false;
+      registrySave.disabled = !deviceRecord;
+    }
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
                     guide: "/blob/main/docs/installing-firmware.md", "mqtt-guide": "#waveform-and-spectrum-messages", "mqtt-topics-guide": "#mqtt", "ila-guide": "/blob/main/ILA210/README.md",
                     "ila-wiring": "/blob/main/ILA210/docs/wiring.md", "ila-readiness": "/blob/main/ILA210/docs/ioc-readiness.md" };

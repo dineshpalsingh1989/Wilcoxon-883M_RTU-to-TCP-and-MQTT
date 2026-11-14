@@ -62,9 +62,17 @@ pollUpdate();setInterval(pollUpdate,2000);
 }
 
 void handleFirmwareInfo() {
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument doc(512);
+    String currentSerial;
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        currentSerial = sensor_serial;
+        xSemaphoreGive(dataMutex);
+    }
     doc["version"] = FIRMWARE_VERSION;
     doc["board"] = GATEWAY_BOARD;
+    doc["board_id"] = gw::deviceId();
+    doc["ethernet_mac"] = gw::ethernetMac();
+    doc["sensor_serial"] = currentSerial == "Unknown" ? "" : currentSerial;
 #if GATEWAY_ETHERNET
     doc["mqtt_tls"] = mqtt_use_tls ? (mqtt_skip_cert_validation ? "certificate-unchecked" : "certificate-verified") : "disabled";
     doc["watchdog_enabled"] = !GATEWAY_DISABLE_WATCHDOG;

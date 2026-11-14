@@ -15,6 +15,7 @@ jobs:
         with:
           node-version: '22'
       - run: node demo/smoke_test.js
+      - run: node tests/install_registry_test.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

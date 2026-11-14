@@ -73,6 +73,12 @@ After installing in download mode, press **RESET** to start the firmware.
 4. Leave *Erase device* unticked to keep saved settings. Tick it for a clean first install or if the gateway misbehaves.
 5. When it finishes, press **RESET**, then [connect to Wi-Fi](../README.md#connect-to-wi-fi).
 
+### Check the installed device
+
+The installer checks the ESP32 chip family when it connects, before writing the selected image. It cannot prove that the board wiring, flash capacity or 883M sensor is healthy before the firmware runs. On an already running gateway with this startup report, you may run the USB check before reinstalling to see its current version and IDs. After installation, close the install dialog, use **Check the running gateway over USB** at the bottom of the installer, and press RESET. The gateway reports its firmware version, board ID, MAC address and the 883M serial when the sensor responds. **Download device record** saves this report as JSON on your computer. A missing sensor serial means the sensor was not identified; it is not a successful sensor check.
+
+For IRIV, the record contains the RP2350 board ID and the Ethernet MAC. These are different identifiers. Its USB boot drive is a manual UF2 install and does not itself confirm that the application or sensor started. The same USB startup check can be used after it reboots. Automatic storage of records in a private GitHub repository requires a separate authenticated service; the public installer page does not contain a GitHub write token.
+
 ## 2. Espressif browser flasher
 
 Use this if the web installer page fails but Chrome or Edge works.

@@ -145,6 +145,17 @@ void setup() {
     
     server.begin();
     logMessage("Web Server Started");
+    {
+        StaticJsonDocument<256> installInfo;
+        installInfo["board"] = GATEWAY_BOARD;
+        installInfo["version"] = FIRMWARE_VERSION;
+        installInfo["board_id"] = gw::deviceId();
+        installInfo["ethernet_mac"] = gw::ethernetMac();
+        installInfo["sensor_serial"] = sensor_serial == "Unknown" ? "" : sensor_serial;
+        Serial.print("INSTALL_INFO ");
+        serializeJson(installInfo, Serial);
+        Serial.println();
+    }
 
     if(connected_to_wifi && mqttEnabled){
         if (mqtt_use_tls) {
