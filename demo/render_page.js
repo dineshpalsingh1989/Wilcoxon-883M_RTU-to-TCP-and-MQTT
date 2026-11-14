@@ -7,6 +7,8 @@ const values = {
   mqttClass: 'connected', mqttText: 'Connected', mbClass: 'connected', mbText: 'Enabled',
   statusMsg: 'Connected to Demo Wi-Fi', ipMsg: '127.0.0.1',
   mqtt_server_str: 'demo.broker.local', mqtt_port_val: '1883', mqtt_user_str: '', mqtt_pass_str: '', mqtt_topic_str: '883M',
+  mqtt_custom_topics: false, mqtt_metrics_topic: '883M', mqtt_waveform_topic: '883M', mqtt_spectrum_topic: '883M',
+  mqtt_status_topic: '883M/status', mqtt_command_topic: '883M/command',
   mqttEnabled: true, mqtt_use_tls: false, mqtt_skip_cert_validation: false, mqtt_publish_progress: true,
   modbus_slave_id_val: '1', modbus_baud_rate_val: '115200', modbusTcpEnabled: true, modbusTcpPort: '502',
   gmtOffset_sec: '28800', d_model: 'Wilcoxon 883M', d_pn: '883M', d_serial: 'DEMO-883M-001',
@@ -14,12 +16,16 @@ const values = {
   ipAddr: '127.0.0.1', ipAddress: '127.0.0.1', rssiVal: '-55 dBm', uptime: 'Demo session',
   FIRMWARE_VERSION: '4.8.0', localLog: 'Demo mode: no hardware connected.',
   // Read from the library so the demo shows the version the firmware is built with.
-  WILCOXON883M_LIBRARY_VERSION: fs.readFileSync(path.join(__dirname, '../experiments/Wilcoxon883MRTU-beta/src/Wilcoxon883MVersion.h'), 'utf8')
+  WILCOXON883M_LIBRARY_VERSION: fs.readFileSync(path.join(__dirname, '../ESP32 Family/ESP32-S3/lib/Wilcoxon883MRTU/src/Wilcoxon883MVersion.h'), 'utf8')
     .match(/WILCOXON883M_LIBRARY_VERSION "([^"]+)"/)[1],
 };
 function expression(text) {
   let key = text.trim();
   if (key.startsWith('String(') && key.endsWith(')')) key = key.slice(7, -1);
+  if (key.startsWith('htmlEscape(') && key.endsWith(')')) {
+    return expression(key.slice(11, -1)).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+  }
   const ternary = key.match(/^(\w+)\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"$/);
   if (ternary) return values[ternary[1]] ? ternary[2] : ternary[3];
   if (key === 'getTimestamp()') return new Date().toISOString();
@@ -29,7 +35,8 @@ function expression(text) {
   return String(values[key]);
 }
 module.exports = function renderPage(file, handler) {
-  const source = fs.readFileSync(path.join(__dirname, '../src/web', file), 'utf8');
+  const webDir = process.env.DEMO_WEB_DIR || path.join(__dirname, '../ESP32 Family/ESP32-S3/src/web');
+  const source = fs.readFileSync(path.join(webDir, file), 'utf8');
   const start = source.indexOf('void ' + handler + '(');
   if (start < 0) throw new Error('Unknown page handler: ' + handler);
   const rest = source.slice(start);

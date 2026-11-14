@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="645" viewBox="0 0 1200 645" role="img" aria-labelledby="t d">
+<title id="t">Choose your own MQTT topics</title>
+<desc id="d">Two cartoon panels. 1: in Settings, MQTT, the Topics switch is set to Custom and a topic is typed for metrics, waveform, spectrum, status and command. 2: the gateway sends metrics, waveform, spectrum and health messages to their own topics and listens for commands such as trigger_all on the command topic. Default keeps the topics 883M, 883M/status and 883M/command; message contents do not change.</desc>
+<defs>
+<linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#16364a"/></linearGradient>
+<marker id="ag" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#34d399"/></marker>
+<marker id="aa" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#fbbf24"/></marker>
+<marker id="as" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#38bdf8"/></marker>
+<marker id="av" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#a78bfa"/></marker>
+<marker id="ao" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#fb923c"/></marker>
+<g id="box"><rect x="-23" y="-17" width="46" height="34" rx="10"/><rect x="-4" y="17" width="8" height="10" fill="#64748b"/><rect x="21" y="-24" width="4" height="15" fill="#f87171"/><rect x="25" y="-24" width="9" height="7" fill="#f87171"/><path d="M-12 -4 H12" stroke="#0f172a" stroke-width="3" stroke-linecap="round" opacity=".45"/></g>
+<g id="env"><rect x="-39" y="-14" width="78" height="28" rx="4"/><path d="M-39 -14 L0 0 L39 -14" fill="none" stroke="#0f172a" stroke-width="1.5" opacity=".35"/></g>
+</defs>
+<rect width="1200" height="645" rx="20" fill="url(#bg)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+<text x="48" y="52" fill="#38bdf8" font-size="15" letter-spacing="3">NEW · 883M FIRMWARE v4.13.0 · MQTT SETTINGS</text>
+<text x="48" y="92" fill="#f8fafc" font-size="30" font-weight="700">Choose your own MQTT topics</text>
+<text x="48" y="120" fill="#a9c2d7" font-size="16">Adafruit Feather ESP32-S3, Cytron Maker ESP32 and IRIV IO Controller</text>
+
+<!-- 1: choose Custom -->
+<g transform="translate(40 150)">
+<rect width="360" height="400" rx="16" fill="#16283e" stroke="#35516b" stroke-width="2"/>
+<circle cx="32" cy="34" r="16" fill="#34d399"/><text x="32" y="40" fill="#064e3b" font-size="16" font-weight="700" text-anchor="middle">1</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Choose Custom</text>
+<rect x="24" y="64" width="312" height="266" rx="12" fill="#e2e8f0"/>
+<rect x="24" y="64" width="312" height="28" rx="12" fill="#94a3b8"/><rect x="24" y="80" width="312" height="12" fill="#94a3b8"/>
+<text x="40" y="83" fill="#0f172a" font-size="13" font-weight="700">Settings · MQTT</text>
+<text x="40" y="114" fill="#0f172a" font-size="13" font-weight="700">Topics</text>
+<rect x="40" y="122" width="280" height="32" rx="16" fill="#cbd5e1"/>
+<rect x="181" y="124" width="137" height="28" rx="14" fill="#147d78"/>
+<text x="110" y="143" fill="#475569" font-size="13" text-anchor="middle">Default</text>
+<text x="249" y="143" fill="#ffffff" font-size="13" font-weight="700" text-anchor="middle">Custom ✓</text>
+<g font-size="12" fill="#334155">
+<text x="40" y="181">Metrics</text><text x="40" y="211">Waveform</text><text x="40" y="241">Spectrum</text><text x="40" y="271">Status</text><text x="40" y="301">Command</text>
+</g>
+<g fill="#ffffff" stroke="#94a3b8">
+<rect x="114" y="166" width="206" height="22" rx="4"/><rect x="114" y="196" width="206" height="22" rx="4"/><rect x="114" y="226" width="206" height="22" rx="4"/><rect x="114" y="256" width="206" height="22" rx="4"/><rect x="114" y="286" width="206" height="22" rx="4"/>
+</g>
+<g font-size="11.5" fill="#0f172a" font-family="Consolas,Menlo,monospace">
+<text x="121" y="181">plant1/pump3/metrics</text><text x="121" y="211">plant1/pump3/waveform</text><text x="121" y="241">plant1/pump3/spectrum</text><text x="121" y="271">plant1/pump3/status</text><text x="121" y="301">plant1/pump3/command</text>
+</g>
+<text x="24" y="360" fill="#a9c2d7" font-size="14">Settings → MQTT → Topics: Custom.</text>
+<text x="24" y="382" fill="#a9c2d7" font-size="14">Type a topic for each kind of message.</text>
+</g>
+
+<!-- 2: each message to its own topic -->
+<g transform="translate(420 150)">
+<rect width="740" height="400" rx="16" fill="#16283e" stroke="#35516b" stroke-width="2"/>
+<circle cx="32" cy="34" r="16" fill="#38bdf8"/><text x="32" y="40" fill="#082f49" font-size="16" font-weight="700" text-anchor="middle">2</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Each message goes to its own topic</text>
+
+<!-- gateway -->
+<line x1="85" y1="140" x2="85" y2="118" stroke="#94a3b8" stroke-width="3"/><circle cx="85" cy="114" r="6" fill="#fbbf24"/>
+<rect x="30" y="140" width="110" height="96" rx="18" fill="#2563eb"/>
+<circle cx="64" cy="176" r="8" fill="#fff"/><circle cx="106" cy="176" r="8" fill="#fff"/>
+<circle cx="66" cy="178" r="3.5" fill="#0f172a"/><circle cx="108" cy="178" r="3.5" fill="#0f172a"/>
+<path d="M60 204 Q85 222 110 204" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<text x="85" y="260" fill="#e2e8f0" font-size="13" text-anchor="middle">gateway</text>
+
+<!-- routes -->
+<g fill="none" stroke-width="3">
+<path d="M142 160 C260 160 300 90 462 90" stroke="#34d399" marker-end="url(#ag)"/>
+<path d="M142 174 C260 174 300 146 462 146" stroke="#fbbf24" marker-end="url(#aa)"/>
+<path d="M142 188 C260 188 300 202 462 202" stroke="#38bdf8" marker-end="url(#as)"/>
+<path d="M142 202 C260 202 300 258 462 258" stroke="#a78bfa" marker-end="url(#av)"/>
+<path d="M462 314 C300 314 260 216 146 216" stroke="#fb923c" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+</g>
+
+<!-- envelopes -->
+<g font-size="11" font-weight="700" text-anchor="middle">
+<use href="#env" x="378" y="97" fill="#34d399"/><text x="378" y="108" fill="#064e3b">metrics</text>
+<use href="#env" x="378" y="149" fill="#fbbf24"/><text x="378" y="160" fill="#451a03">waveform</text>
+<use href="#env" x="378" y="200" fill="#38bdf8"/><text x="378" y="211" fill="#082f49">spectrum</text>
+<use href="#env" x="378" y="252" fill="#a78bfa"/><text x="378" y="263" fill="#2e1065">health</text>
+<use href="#env" x="378" y="304" fill="#fb923c"/><text x="378" y="315" fill="#431407">trigger_all</text>
+</g>
+
+<!-- mailboxes = topics -->
+<text x="470" y="64" fill="#94a3b8" font-size="12">topics on your broker</text>
+<use href="#box" x="493" y="90" fill="#34d399"/>
+<use href="#box" x="493" y="146" fill="#fbbf24"/>
+<use href="#box" x="493" y="202" fill="#38bdf8"/>
+<use href="#box" x="493" y="258" fill="#a78bfa"/>
+<use href="#box" x="493" y="314" fill="#fb923c"/>
+<g font-size="14" fill="#f8fafc" font-family="Consolas,Menlo,monospace">
+<text x="536" y="95">plant1/pump3/metrics</text>
+<text x="536" y="151">plant1/pump3/waveform</text>
+<text x="536" y="207">plant1/pump3/spectrum</text>
+<text x="536" y="263">plant1/pump3/status</text>
+<text x="536" y="319">plant1/pump3/command</text>
+</g>
+<text x="24" y="360" fill="#a9c2d7" font-size="14">Metrics, waveform, spectrum and health status each get their own topic.</text>
+<text x="24" y="382" fill="#a9c2d7" font-size="14">The gateway listens for commands, such as trigger_all, on the command topic.</text>
+</g>
+
+<text x="600" y="590" fill="#a9c2d7" font-size="14" text-anchor="middle">Default keeps today's topics: 883M, 883M/status and 883M/command. Message contents and type names do not change.</text>
+<text x="600" y="618" fill="#94a3b8" font-size="13" text-anchor="middle">Rules: no # or +  ·  up to 128 characters  ·  the command topic must differ from the other four</text>
+</g>
+</svg>

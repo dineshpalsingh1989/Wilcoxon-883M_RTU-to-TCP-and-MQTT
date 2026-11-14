@@ -21,7 +21,7 @@ for pem in re.findall(r"-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----"
         os.unlink(cert_path)
 if len(certs) < 4:
     raise RuntimeError("GitHub HTTPS trust roots unavailable")
-target = root / "include/generated/github_roots.h"
+target = Path(env.subst("$PROJECT_INCLUDE_DIR")) / "generated/github_roots.h"
 target.parent.mkdir(parents=True, exist_ok=True)
 content = '#pragma once\nstatic const char GITHUB_ROOTS[] = R"certs(\n' + '\n'.join(certs) + '\n)certs";\n'
 if not target.exists() or target.read_text() != content:

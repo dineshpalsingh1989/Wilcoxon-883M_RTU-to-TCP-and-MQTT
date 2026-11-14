@@ -11,6 +11,9 @@
     "883m"
   ],
   "license": "MIT",
+  "authors": [{"name": "Dineshpal Singh", "maintainer": true}],
+  "repository": {"type": "git", "url": "https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT.git"},
+  "homepage": "https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/tree/main/experiments/Wilcoxon883MRTU-beta",
   "frameworks": [
     "arduino"
   ],

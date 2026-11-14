@@ -1,0 +1,716 @@
+#include "core/modules.h"
+#if GATEWAY_ETHERNET
+#include <LittleFS.h>
+#include "web/network_page.h"
+#endif
+
+// --- SAFE CHUNKED SETTINGS PAGE ---
+void handleSettings() {
+    // 1. Tell the browser we are sending the page in parts (Unknown Length)
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN); 
+    server.send(200, "text/html", ""); // Start the connection
+
+    // 2. Send Part 1: The Header and CSS (Static)
+    // We break this up so it doesn't use much RAM
+    server.sendContent(R"rawliteral(
+<!DOCTYPE html><html><head><title>Device Settings</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;box-sizing:border-box}.container{width:100%;max-width:500px;background-color:white;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.08);overflow:hidden}.header{text-align:center;padding:20px;border-bottom:1px solid #e9ecef}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.settings-list{list-style:none;padding:0;margin:0}.settings-item{display:flex;align-items:center;padding:15px 20px;border-bottom:1px solid #e9ecef;text-decoration:none;color:inherit;transition:background-color .2s}.settings-item:hover{background-color:#f8f9fa}.settings-item:last-child{border-bottom:none}.icon{width:24px;height:24px;margin-right:20px;color:#007bff}.content{flex-grow:1;text-align:left}.content h3{margin:0;font-size:16px;font-weight:500;color:#343a40}.content p{margin:2px 0 0;font-size:14px;color:#6c757d;display:flex;align-items:center}.chevron{width:20px;height:20px;color:#ced4da}.status-dot{height:9px;width:9px;border-radius:50%;display:inline-block;margin-right:6px}.status-dot.connected{background-color:#2ecc71}.status-dot.disconnected{background-color:#e74c3c}.actions{padding:20px;background-color:#f8f9fa;border-top:1px solid #e9ecef}.btn{display:block;width:100%;padding:12px;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600;text-align:center;text-decoration:none;box-sizing:border-box;transition:background-color .2s,color .2s}.btn-danger{background-color:#e74c3c;color:white;margin-bottom:10px}.btn-danger:hover{background-color:#c0392b}.btn-secondary{background-color:transparent;color:#007bff}.btn-secondary:hover{background-color:#e9ecef}
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style></head><body><div class="container"><div class="header"><h2>Device Settings</h2></div><div class="settings-list">
+)rawliteral");
+
+    // 3. Send Part 2: Network Status (Dynamic). The IRIV IO Controller is wired, so its row says Network.
+    String wifiClass = gw::netConnected() ? "connected" : "disconnected";
+    String wifiText = gw::netDescription();
+    String netTitle = GATEWAY_ETHERNET ? "Network" : "Wi-Fi";
+    
+    String chunk1 = R"rawliteral(<a href="/wifi_settings" class="settings-item"><div class="icon"><i data-lucide="wifi"></i></div><div class="content"><h3>)rawliteral" + netTitle + R"rawliteral(</h3><p><span class="status-dot )rawliteral";
+    chunk1 += wifiClass + R"rawliteral("></span>)rawliteral" + wifiText + R"rawliteral(</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>)rawliteral";
+    server.sendContent(chunk1);
+
+    // 4. Send Part 3: MQTT Status (Dynamic)
+    String mqttClass = (mqttClient && mqttClient->connected()) ? "connected" : "disconnected";
+    String mqttText = (mqttEnabled) ? ((mqttClient && mqttClient->connected()) ? "Connected" : "Disconnected") : "Disabled";
+    
+    String chunk2 = R"rawliteral(<a href="/mqtt_settings" class="settings-item"><div class="icon"><i data-lucide="cloud"></i></div><div class="content"><h3>MQTT</h3><p><span class="status-dot )rawliteral";
+    chunk2 += mqttClass + R"rawliteral("></span>)rawliteral" + mqttText + R"rawliteral(</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>)rawliteral";
+    server.sendContent(chunk2);
+
+    // 5. Send Part 4: Modbus Status (Dynamic)
+    String mbClass = (modbusTcpEnabled) ? "connected" : "disconnected";
+    String mbText = (modbusTcpEnabled) ? "Enabled" : "Disabled";
+
+    String chunk3 = R"rawliteral(<a href="/rs485_settings" class="settings-item"><div class="icon"><i data-lucide="activity"></i></div><div class="content"><h3>Modbus RTU (RS485) Sensor</h3><p><span class="status-dot connected"></span>Ready</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/modbustcp_settings" class="settings-item"><div class="icon"><i data-lucide="server"></i></div><div class="content"><h3>Modbus TCP Server</h3><p><span class="status-dot )rawliteral";
+    chunk3 += mbClass + R"rawliteral("></span>)rawliteral" + mbText + R"rawliteral(</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>)rawliteral";
+    server.sendContent(chunk3);
+
+    // 6. Send Part 5: The Footer and Scripts (Static)
+    server.sendContent(R"rawliteral(
+<a href="/time_settings" class="settings-item"><div class="icon"><i data-lucide="clock"></i></div><div class="content"><h3>Time & Date</h3><p>Timezone & Manual Set</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/device_info" class="settings-item"><div class="icon" style="color:#6c757d"><i data-lucide="info"></i></div><div class="content"><h3>Device Info</h3><p>View model, serial, and firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/github_updates" class="settings-item"><div class="icon"><i data-lucide="download-cloud"></i></div><div class="content"><h3>GitHub Firmware Updates</h3><p>Check releases and download gateway firmware</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/io" class="settings-item"><div class="icon"><i data-lucide="toggle-right"></i></div><div class="content"><h3>IOC I/O</h3><p>Relay outputs, digital inputs, 4-20 mA / 0-10 V inputs</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+<a href="/libraries" class="settings-item"><div class="icon"><i data-lucide="flask-conical"></i></div><div class="content"><h3>Our Libraries</h3><p>Test the sensor, PLC, MQTT and storage libraries and see their errors</p></div><div class="chevron"><i data-lucide="chevron-right"></i></div></a>
+</div><div class="actions"><button class="btn btn-danger" onclick="rebootDevice()">Reboot Device</button><a href="/" class="btn btn-secondary">Back to Dashboard</a></div></div>
+<script>
+    if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+    function rebootDevice(){if(confirm("Are you sure you want to reboot the device?")){fetch("/reboot").then(()=>{alert("Device is rebooting...")})}}
+</script></body></html>)rawliteral");
+
+    // 7. Finish the transmission
+    server.sendContent(""); 
+}
+
+// --- SAFE CHUNKED WIFI SETTINGS ---
+void handleWifiSettings() {
+    // 1. Start the Chunked Response
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+
+    // 2. Send Header & CSS
+    server.sendContent(R"rawliteral(
+<!DOCTYPE html><html><head><title>Wi-Fi Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh}.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.form-group{margin-bottom:15px}label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}input[type=text],input[type=password]{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;transition:border-color .3s}input[type=text]:focus,input[type=password]:focus{outline:0;border-color:#007bff}.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;transition:background-color .3s}.btn-primary:hover{background-color:#0056b3}.btn-scan{background-color:#6c757d;margin-bottom:15px}.btn-scan:hover{background-color:#5a6268}.wifi-list-container{max-height:250px;overflow-y:auto;border:1px solid #e9ecef;border-radius:8px;padding:5px;background-color:#f8f9fa}#wifi-list{list-style:none;padding:0;margin:0}#wifi-list li{padding:12px 15px;cursor:pointer;border-bottom:1px solid #e9ecef;transition:background-color .2s;display:flex;justify-content:space-between;align-items:center}#wifi-list li:last-child{border-bottom:none}#wifi-list li:hover{background-color:#e9ecef}.wifi-ssid{font-size:16px;font-weight:500;flex-grow:1}.wifi-rssi{font-size:14px;color:#6c757d;font-weight:400}.status-bar{text-align:center;margin-top:20px;padding-top:20px;border-top:2px solid #e9ecef;font-size:14px;color:#6c757d;font-weight:500}.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:600;font-size:14px}.nav-link:hover{text-decoration:underline}
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style></head><body><div class="container"><div class="header"><h2>Wi-Fi Settings</h2></div>
+)rawliteral");
+
+    // 3. Send Dynamic Status Bar
+    String statusMsg = gw::netConnected() ? gw::netDescription() : String("AP Mode active");
+    String ipMsg = gw::netIP().toString();
+    
+    server.sendContent(R"rawliteral(<div class="status-bar">Current Status: )rawliteral" + statusMsg + R"rawliteral(<br>IP Address: )rawliteral" + ipMsg + R"rawliteral(</div>)rawliteral");
+
+    // 4. Send Form & Scripts
+    server.sendContent(R"rawliteral(
+<div class="form-section"><button class="btn-primary btn-scan" onclick="scanWifi()">Scan for Networks</button><div class="wifi-list-container"><ul id="wifi-list"></ul></div><form onsubmit="return saveWifi()"><div class="form-group"><label for="ssid">Network Name (SSID)</label><input type="text" id="ssid" name="ssid" required></div><div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass"></div><button type="submit" class="btn-primary">Save and Connect</button></form></div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>function scanWifi(){const t=document.getElementById("wifi-list"),s=Date.now();let f=!0;t.innerHTML="<li>Scanning... Wi-Fi may pause for a few seconds; this page keeps trying.</li>";const p=()=>fetch("/scanwifi"+(f?"?start=1":""),{cache:"no-store"}).then(r=>{if(f=!1,202===r.status)throw 0;if(!r.ok)throw 0;return r.json()}).then(e=>{t.innerHTML="",0===e.length?t.innerHTML="<li>No networks found.</li>":e.forEach(e=>{const n=document.createElement("li"),a=document.createElement("span"),b=document.createElement("span");a.className="wifi-ssid",a.textContent=e.ssid,b.className="wifi-rssi",b.textContent=e.rssi+" dBm",n.append(a,b),n.onclick=()=>{document.getElementById("ssid").value=e.ssid},t.appendChild(n)})}).catch(()=>{Date.now()-s<45e3?setTimeout(p,1500):t.innerHTML="<li>Scan did not finish. Reconnect to ILA_Sensor_AP and press Scan again.</li>"});p()}function saveWifi(){const t=document.getElementById("ssid").value,e=document.getElementById("pass").value;return fetch("/savewifi?ssid="+encodeURIComponent(t)+"&pass="+encodeURIComponent(e)),alert("Saving credentials... The device will reboot."),!1}</script></body></html>
+)rawliteral");
+
+    // 5. Close Stream
+    server.sendContent("");
+}
+
+#if GATEWAY_ETHERNET
+// Ethernet address mode: DHCP (default) or a static address saved in /prefs/eth-cfg.json.
+void handleNetworkSettings() { server.send_P(200, "text/html; charset=utf-8", NETWORK_PAGE); }
+
+gw::EthernetAddress loadEthernetAddress() {
+    gw::EthernetAddress address;
+    preferences.begin("eth-cfg", true);
+    const bool wanted = preferences.getBool("static", false);
+    const bool parsed = gw::parseIPv4(preferences.getString("ip"), address.ip, false) &&
+                        gw::parseIPv4(preferences.getString("mask"), address.mask, false) &&
+                        gw::parseIPv4(preferences.getString("gw"), address.gateway, true) &&
+                        gw::parseIPv4(preferences.getString("dns"), address.dns, true);
+    preferences.end();
+    String error;
+    address.useStatic = wanted && parsed && gw::ethernetCheckStatic(address, error);
+    if (wanted && !address.useStatic) logMessage("Saved static IP is invalid (" + (parsed ? error : String("unreadable address")) + "); using DHCP");
+    return address;
+}
+
+void handleNetworkApi() {
+    if (server.method() == HTTP_POST) {
+        StaticJsonDocument<256> body;
+        if (server.arg("plain").length() > 256 || deserializeJson(body, server.arg("plain"))) {
+            server.send(400, "text/plain", "Invalid network settings"); return;
+        }
+        const String mode = body["mode"] | "";
+        if (mode != "dhcp" && mode != "static") { server.send(400, "text/plain", "Mode must be dhcp or static"); return; }
+        gw::EthernetAddress address;
+        address.useStatic = mode == "static";
+        if (address.useStatic) {
+            String error;
+            if (!gw::parseIPv4(body["ip"] | "", address.ip, false)) { server.send(400, "text/plain", "Enter a valid IP address"); return; }
+            if (!gw::parseIPv4(body["mask"] | "", address.mask, false)) { server.send(400, "text/plain", "Enter a valid subnet mask"); return; }
+            if (!gw::parseIPv4(body["gateway"] | "", address.gateway, true)) { server.send(400, "text/plain", "Enter a valid gateway or leave it empty"); return; }
+            if (!gw::parseIPv4(body["dns"] | "", address.dns, true)) { server.send(400, "text/plain", "Enter a valid DNS server or leave it empty"); return; }
+            if (!gw::ethernetCheckStatic(address, error)) { server.send(400, "text/plain", error); return; }
+        }
+        StaticJsonDocument<256> config;
+        config["static"] = address.useStatic;
+        config["ip"] = address.useStatic ? address.ip.toString() : String();
+        config["mask"] = address.useStatic ? address.mask.toString() : String();
+        config["gw"] = address.useStatic && address.gateway != IPAddress(0, 0, 0, 0) ? address.gateway.toString() : String();
+        config["dns"] = address.useStatic && address.dns != IPAddress(0, 0, 0, 0) ? address.dns.toString() : String();
+        // Written whole and renamed, so a power cut keeps either the old or the new address.
+        if (!gw::fsLock()) { server.send(503, "text/plain", "Settings storage busy"); return; }
+        LittleFS.mkdir("/prefs");
+        File file = LittleFS.open("/prefs/eth-cfg.tmp", "w");
+        bool ok = file && serializeJson(config, file) == measureJson(config);
+        if (file) { file.flush(); ok = ok && !file.getWriteError(); file.close(); }
+        ok = ok && LittleFS.rename("/prefs/eth-cfg.tmp", "/prefs/eth-cfg.json");
+        gw::fsUnlock();
+        if (!ok) { server.send(500, "text/plain", "Settings write failed; gateway was not restarted"); return; }
+        logMessage(address.useStatic ? "Static IP " + address.ip.toString() + " saved; restarting" : String("DHCP selected; restarting"));
+        server.send(200, "text/plain", address.useStatic ? "Static IP saved. The gateway restarts now." : "DHCP selected. The gateway restarts now.");
+        delay(1000);
+        gw::restart();
+        return;
+    }
+    StaticJsonDocument<768> doc;
+    preferences.begin("eth-cfg", true);
+    doc["mode"] = preferences.getBool("static", false) ? "static" : "dhcp";
+    doc["ip"] = preferences.getString("ip");
+    doc["mask"] = preferences.getString("mask");
+    doc["gateway"] = preferences.getString("gw");
+    doc["dns"] = preferences.getString("dns");
+    preferences.end();
+    doc["fallback_ip"] = ETHERNET_FALLBACK_IP;
+    JsonObject current = doc.createNestedObject("current");
+    current["link"] = gw::netConnected();
+    current["description"] = gw::netDescription();
+    current["ip"] = gw::netIP().toString();
+    current["mask"] = gw::ethernetMask().toString();
+    current["gateway"] = gw::ethernetGateway().toString();
+    current["dns"] = gw::ethernetDns().toString();
+    current["mac"] = gw::ethernetMac();
+    current["hostname"] = ETHERNET_HOSTNAME;
+    String json; serializeJson(doc, json);
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json", json);
+}
+#endif
+
+void handleSaveWifi() { 
+#if GATEWAY_ETHERNET
+    server.send(404, "text/plain", "This gateway uses wired Ethernet; there are no Wi-Fi settings."); return;
+#endif
+    preferences.begin("wifi-creds", false); 
+    preferences.putString("ssid", server.arg("ssid")); 
+    preferences.putString("password", server.arg("pass")); 
+    preferences.end(); 
+    server.send(200, "text/plain", "Credentials saved. Device will reboot."); 
+    delay(1000); 
+    gw::restart();
+}
+
+// --- SAFE CHUNKED MQTT SETTINGS ---
+void handleMqttSettings() {
+    // 1. Start Stream
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+
+    // 2. Header & Styles
+    server.sendContent(R"rawliteral(
+<!DOCTYPE html><html><head><title>MQTT Settings</title><meta name="viewport" content="width=device-width, initial-scale=1">
+<script async src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js" onload="window.lucide&&lucide.createIcons()"></script>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;padding:20px 0;}
+.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1);}
+.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}
+.form-group{margin-bottom:15px}.form-group.inline{display:flex;align-items:center;justify-content:space-between;padding:10px 0; border-bottom: 1px solid #f0f0f0;}
+label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}
+input[type=text],input[type=password],input[type=number]{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px}
+.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600}
+.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none}
+select{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;background:white}
+.topic-note{font-size:13px;color:#536e7d;margin:6px 0 0}label small{font-weight:400;color:#536e7d}
+.switch{position:relative;display:inline-block;width:50px;height:28px}.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;z-index:1;cursor:pointer}.switch:focus-within{outline:3px solid #42a8bd;outline-offset:3px;border-radius:28px}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#ccc;transition:.4s;border-radius:28px}
+.slider:before{position:absolute;content:"";height:20px;width:20px;left:4px;bottom:4px;background-color:white;transition:.4s;border-radius:50%}
+input:checked+.slider{background-color:#28a745} input:checked+.slider:before{transform:translateX(22px)}
+#skip_validation_group { display: none; }
+.status-bar{text-align:center;margin-top:20px;padding:15px;border-radius:8px;font-size:14px;font-weight:500;background-color:#f8f9fa;color:#6c757d;}
+.info-box { background-color: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; border: 1px solid #ffeeba; margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+.info-box i { vertical-align: text-bottom; margin-right: 5px; }
+.serial-badge { font-family: monospace; font-weight: bold; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e3e5; margin-left: 5px; color: #333; font-size: 1.1em;}
+
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head><body><div class="container"><div class="header"><h2>MQTT Settings</h2></div>
+)rawliteral");
+
+    // 3. Dynamic Info Box (Serial Number)
+    server.sendContent(R"rawliteral(
+<div class="info-box">
+    <strong><i data-lucide="alert-triangle"></i> Security Requirement:</strong><br>
+    All MQTT commands sent to this device <u>MUST</u> include the correct <b>serial_number</b> field.<br>
+    <strong>Target Device Serial Number:</strong> <span class="serial-badge">)rawliteral" + htmlEscape(sensor_serial) + R"rawliteral(</span>
+</div>
+<form onsubmit="saveMqtt(); return false;">
+)rawliteral");
+
+    // 4. Form Controls (Toggles)
+    // We send these as static HTML; the Javascript at the bottom will check/uncheck them
+    server.sendContent(R"rawliteral(
+<div class="form-group inline"><label for="enabled" style="margin-bottom:0;">Enable MQTT Client</label><label class="switch"><input type="checkbox" id="enabled" name="enabled"><span class="slider"></span></label></div>
+<div class="form-group inline"><label for="tls" style="margin-bottom:0;">Use TLS/SSL Security <small style="font-weight:400;color:#8a5a00">(not available on this board)</small></label><label class="switch"><input type="checkbox" id="tls" name="tls" disabled aria-describedby="tls-note"><span class="slider"></span></label></div>
+<div class="form-group inline" id="skip_validation_group"><label for="skip_val" style="margin-bottom:0;">Skip Certificate Validation</label><label class="switch"><input type="checkbox" id="skip_val" name="skip_val"><span class="slider"></span></label></div>
+<div class="form-group inline"><label for="progress" style="margin-bottom:0;">Publish Progress Updates</label><label class="switch"><input type="checkbox" id="progress" name="progress"><span class="slider"></span></label></div>
+)rawliteral");
+
+    // 5. Form Inputs (Pre-filled with Variables)
+    // We break this into smaller chunks to allow variable insertion
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="server">Broker Address</label><input type="text" id="server" name="server" value=")rawliteral" + htmlEscape(mqtt_server_str) + R"rawliteral(" required></div>)rawliteral");
+    
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="port">Port</label><input type="number" id="port" name="port" value=")rawliteral" + String(mqtt_port_val) + R"rawliteral(" required></div>)rawliteral");
+    
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="user">Username</label><input type="text" id="user" name="user" value=")rawliteral" + htmlEscape(mqtt_user_str) + R"rawliteral("></div>)rawliteral");
+    
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="pass">Password</label><input type="password" id="pass" name="pass" value=")rawliteral" + htmlEscape(mqtt_pass_str) + R"rawliteral("></div>)rawliteral");
+    
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="topic">Base Topic</label><input type="text" id="topic" name="topic" value=")rawliteral" + htmlEscape(mqtt_topic_str) + R"rawliteral(" pattern="[^#+]+" title="A topic name such as 883M. # and + are only for subscribing." required></div>)rawliteral");
+
+    // Topics: Default keeps today's topics; Custom lets the user pick a topic for each message group.
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="topic_mode">Topics</label><select id="topic_mode" name="topic_mode"><option value="default">Default</option><option value="custom">Custom: choose a topic for each message</option></select>
+<p class="topic-note" id="topic-default-note">Metrics, waveform and spectrum go to the Base Topic. Health status goes to 883M/status and commands are read from 883M/command.</p></div>
+<div id="custom-topics" hidden>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_metrics">Metrics topic <small>(RMS, peak and temperature values)</small></label><input type="text" id="t_metrics" name="t_metrics" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + htmlEscape(mqtt_metrics_topic) + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_waveform">Waveform topic <small>(full waveform and preview)</small></label><input type="text" id="t_waveform" name="t_waveform" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + htmlEscape(mqtt_waveform_topic) + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_spectrum">Spectrum topic <small>(full spectrum and peaks)</small></label><input type="text" id="t_spectrum" name="t_spectrum" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + htmlEscape(mqtt_spectrum_topic) + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_status">Status topic <small>(health and XYZ peak summary)</small></label><input type="text" id="t_status" name="t_status" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + htmlEscape(mqtt_status_topic) + R"rawliteral("></div>)rawliteral");
+    server.sendContent(R"rawliteral(<div class="form-group"><label for="t_command">Command topic <small>(the gateway listens here)</small></label><input type="text" id="t_command" name="t_command" maxlength="128" pattern="[^#+]+" title="# and + are only for subscribing" value=")rawliteral" + htmlEscape(mqtt_command_topic) + R"rawliteral("></div></div>)rawliteral");
+
+    server.sendContent(R"rawliteral(
+<div class="form-group" id="ca-group"><label for="mqtt-ca">Broker CA certificate (PEM)</label>
+<textarea id="mqtt-ca" rows="6" maxlength="8192" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----" style="width:100%;box-sizing:border-box;font:13px monospace;resize:vertical;border:1px solid #adb8c0;border-radius:8px;padding:8px"></textarea>
+<p>Paste the broker's public root CA certificate to install or replace it. Leave blank to keep the stored CA. TLS verifies the broker hostname and requires correct device time.</p></div>
+<p id="skip-cert-note" hidden>TLS stays encrypted, but the broker's identity will not be checked. No CA certificate is required in this mode.</p>
+<p class="info-box" id="tls-note"><strong>MQTT over TLS (port 8883) cannot be used on the IRIV IO Controller.</strong> The broker closes TLS sessions about 2 seconds after they connect, so this board sends plain MQTT only. Use <b>port 1883</b> on a trusted network or through a local broker. Brokers that accept only TLS, such as HiveMQ Cloud, need an ESP32 board. A TLS setting saved earlier is ignored.</p>
+)rawliteral");
+
+    // 6. Footer & Scripts (Dynamic JS Injection for Checkboxes)
+    server.sendContent(R"rawliteral(
+<button type="submit" class="btn-primary">Save and Reboot</button></form>
+<div id="mqtt-save-result" role="status" aria-live="polite"></div>
+<div class="status-bar" id="mqtt-status">Loading status...</div>
+<a href="/settings" class="nav-link">&larr; Back to Settings</a></div>
+<script>
+if (typeof lucide !== 'undefined') { lucide.createIcons(); }
+const TOPIC_IDS = ['t_metrics', 't_waveform', 't_spectrum', 't_status', 't_command'];
+function updateTopicMode() {
+    const custom = document.getElementById('topic_mode').value === 'custom';
+    document.getElementById('custom-topics').hidden = !custom;
+    document.getElementById('topic-default-note').hidden = custom;
+    TOPIC_IDS.forEach(id => { document.getElementById(id).required = custom; });
+}
+async function saveMqtt(){
+    const status = document.getElementById('mqtt-save-result');
+    const button = document.querySelector('button[type="submit"]');
+    button.disabled = true;
+    // The gateway can be busy with a broker connection attempt for several seconds before it answers.
+    status.textContent = 'Saving... the gateway may take a few seconds to answer.';
+    const post = (url, body) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
+        return fetch(url, {method:'POST', body, signal:controller.signal}).finally(() => clearTimeout(timer));
+    };
+    try {
+        const pem = document.getElementById('mqtt-ca').value.trim();
+        if (pem && document.getElementById('tls').checked && !document.getElementById('skip_val').checked) {
+            const certResponse = await post('/mqtt_ca', new URLSearchParams({pem}));
+            if (!certResponse.ok) throw new Error(await certResponse.text());
+        }
+        const data = new URLSearchParams();
+        ['enabled','tls','progress'].forEach(id => data.set(id, document.getElementById(id).checked));
+        data.set('skip_val', document.getElementById('tls').checked && document.getElementById('skip_val').checked);
+        ['server','port','user','pass','topic','topic_mode',...TOPIC_IDS].forEach(id => data.set(id, document.getElementById(id).value));
+        const response = await post('/save_mqtt', data);
+        if (!response.ok) throw new Error(await response.text());
+        status.textContent = 'Settings saved. Gateway restarting... the status below shows when it is back.';
+        setTimeout(() => { button.disabled = false; }, 15000);
+        return;
+    } catch (error) {
+        status.textContent = 'Save failed: ' + (error.name === 'AbortError' ? 'no answer from the gateway in 30 seconds. Check the connection and try again.' : error.message);
+    }
+    button.disabled = false;
+}
+function updateTlsOptions() {
+    const tlsEnabled = document.getElementById('tls').checked;
+    const skip = document.getElementById('skip_val').checked;
+    document.getElementById('skip_validation_group').style.display = tlsEnabled ? 'flex' : 'none';
+    document.getElementById('ca-group').style.display = tlsEnabled && !skip ? 'block' : 'none';
+    document.getElementById('skip-cert-note').hidden = !tlsEnabled || !skip;
+    const portInput = document.getElementById('port');
+    if (tlsEnabled && (portInput.value == '1883' || portInput.value == '')) {
+        portInput.value = '8883';
+    } else if (!tlsEnabled && (portInput.value == '8883' || portInput.value == '')) {
+        portInput.value = '1883';
+    }
+}
+// Broker, port and topic are only required while the MQTT client is enabled.
+function updateRequiredFields() {
+    const enabled = document.getElementById('enabled').checked;
+    ['server', 'port', 'topic'].forEach(id => { document.getElementById(id).required = enabled; });
+}
+function updateMqttStatus() {
+    fetch('/mqtt_status').then(r => {if (!r.ok) throw new Error('offline'); return r.json();}).then(data => { document.getElementById('mqtt-status').textContent = data.status; }).catch(() => { document.getElementById('mqtt-status').textContent = 'Gateway unavailable or restarting'; });
+}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('enabled').checked = )rawliteral" + String(mqttEnabled ? "true" : "false") + R"rawliteral(;
+    document.getElementById('tls').checked = )rawliteral" + String(mqtt_use_tls ? "true" : "false") + R"rawliteral(;
+    document.getElementById('skip_val').checked = )rawliteral" + String(mqtt_skip_cert_validation ? "true" : "false") + R"rawliteral(;
+    document.getElementById('progress').checked = )rawliteral" + String(mqtt_publish_progress ? "true" : "false") + R"rawliteral(;
+    document.getElementById('tls').addEventListener('change', updateTlsOptions);
+    document.getElementById('skip_val').addEventListener('change', updateTlsOptions);
+    document.getElementById('enabled').addEventListener('change', updateRequiredFields);
+    document.getElementById('topic_mode').value = ')rawliteral" + String(mqtt_custom_topics ? "custom" : "default") + R"rawliteral(';
+    document.getElementById('topic_mode').addEventListener('change', updateTopicMode);
+    updateTopicMode();
+    updateTlsOptions();
+    updateRequiredFields();
+    updateMqttStatus();
+    setInterval(updateMqttStatus, 2000);
+});
+</script></body></html>
+)rawliteral");
+
+    // 7. Close Stream
+    server.sendContent("");
+}
+
+namespace {
+const char* const TOPIC_KEYS[] = {"t_metrics", "t_waveform", "t_spectrum", "t_status", "t_command"};
+const char* const TOPIC_NAMES[] = {"Metrics", "Waveform", "Spectrum", "Status", "Command"};
+
+// Checks the custom topics sent by the MQTT page. Returns "" when they can be saved.
+String customTopicsError() {
+    for (int i = 0; i < 5; i++) {
+        const String topic = server.arg(TOPIC_KEYS[i]);
+        // # and + are subscribe wildcards; a broker closes the connection when a client publishes to them.
+        if (!topic.length() || topic.length() > 128 || topic.indexOf('#') >= 0 || topic.indexOf('+') >= 0)
+            return String(TOPIC_NAMES[i]) + " topic: enter 1-128 characters without # or +";
+    }
+    // The gateway subscribes to the command topic, so data sent there would come straight back to it.
+    for (int i = 0; i < 4; i++)
+        if (server.arg(TOPIC_KEYS[i]) == server.arg("t_command"))
+            return String("Command topic must differ from the ") + TOPIC_NAMES[i] + " topic";
+    return "";
+}
+}
+
+void handleSaveMqtt() {
+    const bool customTopics = server.arg("topic_mode") == "custom";
+    if (customTopics) {
+        const String error = customTopicsError();
+        if (error.length()) { server.send(400, "text/plain", error); return; }
+    }
+#if GATEWAY_ETHERNET
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+    const bool enabled = server.arg("enabled") == "true";
+    const bool tls = server.arg("tls") == "true";
+    if (enabled && tls) {
+        server.send(400, "text/plain", "MQTT over TLS (port 8883) is not supported on the IRIV IO Controller. Turn TLS off and use port 1883."); return;
+    }
+    if (enabled && server.arg("port") == "8883") {
+        server.send(400, "text/plain", "Port 8883 is the TLS port, which this board cannot use. Plain MQTT normally uses port 1883."); return;
+    }
+    const bool skipValidation = tls && server.arg("skip_val") == "true";
+    const String host = server.arg("server");
+    const String topic = server.arg("topic");
+    const String portText = server.arg("port");
+    const long port = portText.toInt();
+    bool validPort = port >= 1 && port <= 65535 && portText.length() <= 5;
+    for (size_t i = 0; i < portText.length(); ++i) validPort &= isDigit(portText[i]);
+    if (enabled && (!host.length() || !topic.length() || !validPort || host.indexOf('/') >= 0 || host.indexOf(' ') >= 0)) {
+        server.send(400, "text/plain", "Enter a broker hostname, valid port and base topic"); return;
+    }
+    // # and + are subscribe wildcards; a broker closes the connection when a client publishes to them.
+    if (enabled && (topic.indexOf('#') >= 0 || topic.indexOf('+') >= 0)) {
+        server.send(400, "text/plain", "Base topic cannot contain # or + (they are only for subscribing). Use a name such as 883M"); return;
+    }
+    if (enabled && tls && !skipValidation && !mqttCertificateInstalled()) {
+        server.send(400, "text/plain", "Install the broker CA certificate before enabling TLS"); return;
+    }
+    DynamicJsonDocument config(2048); // heap: up to five 128-character custom topics
+    config["enabled"] = enabled;
+    config["tls"] = tls;
+    config["skip_val"] = skipValidation;
+    config["progress"] = server.arg("progress") == "true";
+    config["server"] = host;
+    config["port"] = validPort ? port : (tls ? 8883 : 1883);
+    config["user"] = server.arg("user");
+    config["pass"] = server.arg("pass");
+    config["topic"] = topic;
+    config["custom_topics"] = customTopics;
+    if (customTopics) for (const char* key : TOPIC_KEYS) config[key] = server.arg(key);
+    if (config.overflowed()) { server.send(400, "text/plain", "MQTT settings exceed storage capacity"); return; }
+    if (!gw::fsLock()) { server.send(503, "text/plain", "Settings storage busy"); return; }
+    LittleFS.mkdir("/prefs");
+    File file = LittleFS.open("/prefs/mqtt-cfg.tmp", "w");
+    bool ok = file && serializeJson(config, file) == measureJson(config);
+    if (file) { file.flush(); ok = ok && !file.getWriteError(); file.close(); }
+    ok = ok && LittleFS.rename("/prefs/mqtt-cfg.tmp", "/prefs/mqtt-cfg.json");
+    gw::fsUnlock();
+    if (!ok) { server.send(500, "text/plain", "Settings write failed; gateway was not restarted"); return; }
+#else
+    preferences.begin("mqtt-cfg", false);
+    preferences.putBool("enabled", (server.arg("enabled") == "true"));
+    preferences.putBool("tls", (server.arg("tls") == "true"));
+    preferences.putBool("skip_val", (server.arg("skip_val") == "true"));
+    preferences.putBool("progress", (server.arg("progress") == "true"));
+    preferences.putString("server", server.arg("server"));
+    preferences.putInt("port", server.arg("port").toInt());
+    preferences.putString("user", server.arg("user"));
+    preferences.putString("pass", server.arg("pass"));
+    preferences.putString("topic", server.arg("topic"));
+    preferences.putBool("custom_topics", customTopics);
+    if (customTopics) for (const char* key : TOPIC_KEYS) preferences.putString(key, server.arg(key));
+    preferences.end();
+#endif
+    server.send(200, "text/plain", "MQTT settings saved. Device will reboot.");
+    delay(1000);
+    gw::restart();
+}
+
+void handleRs485Settings() {
+    // Streamed in pieces: building the whole page as one String needs a large contiguous
+    // heap block, which the original ESP32 may not have.
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/html", "");
+    server.sendContent_P(R"rawliteral(
+<!DOCTYPE html><html><head><title>Modbus RS485 Settings</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;background-color:#f4f6f8;display:flex;justify-content:center;align-items:center;min-height:100vh}.container{width:100%;max-width:500px;padding:20px;box-sizing:border-box;background-color:white;border-radius:12px;box-shadow:0 8px 20px rgba(0,0,0,.1)}.header{text-align:center;padding-bottom:20px;border-bottom:2px solid #e9ecef;margin-bottom:20px}.header h2{margin:0;font-size:24px;font-weight:600;color:#2c3e50}.form-group{margin-bottom:15px}label{display:block;margin-bottom:8px;font-size:14px;font-weight:600}input[type=number],select{width:100%;padding:12px;box-sizing:border-box;border:1px solid #ced4da;border-radius:8px;font-size:16px;transition:border-color .3s}input[type=number]:focus,select:focus{outline:0;border-color:#007bff}.btn-primary{width:100%;padding:12px;background-color:#007bff;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px;font-weight:600;transition:background-color .3s}.btn-primary:hover{background-color:#0056b3}.status-bar{text-align:center;margin-top:20px;padding-top:20px;border-top:2px solid #e9ecef;font-size:14px;color:#6c757d;font-weight:500}.nav-link{display:block;text-align:center;margin-top:20px;color:#007bff;text-decoration:none;font-weight:600;font-size:14px}.nav-link:hover{text-decoration:underline}
+/* Shared palette and accessible controls, embedded for offline device use. */
+:root{color-scheme:light}body{background:#f2f5f7;color:#192f3d;line-height:1.5}
+.container{border:1px solid #dfe8ed;border-radius:16px;box-shadow:0 12px 40px #173c490b;overflow:hidden}
+.header{background:linear-gradient(115deg,#102c3b,#194655);color:white}
+.header h2{letter-spacing:-.5px;color:#f8fafc}.settings-item:hover{background:#eef7f5}
+.settings-item .icon{color:#147d78}.btn-primary,button[type=submit]{background-color:#147d78;color:white}
+input,select,button,.btn{font:inherit}input:not([type=checkbox]),select{min-height:44px;border-radius:8px}
+input[type=checkbox]{accent-color:#147d78}button,.btn{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #42a8bd;outline-offset:3px}
+@media(max-width:480px){.container{margin:16px auto;max-width:calc(100% - 24px)}.settings-item{padding:16px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style></head><body><div class="container"><div class="header"><h2>Modbus RS485 Settings</h2></div><form onsubmit="return saveRs485()"><div class="form-group"><label for="slave_id">Slave ID</label><input type="number" id="slave_id" name="slave_id" min="1" max="247" value=")rawliteral");
+    sendPageText(String(modbus_slave_id_val));
+    server.sendContent_P(R"rawliteral(" required></div><div class="form-group"><label for="baud_rate">Baud Rate</label><select id="baud_rate" name="baud_rate" required><option value="9600">9600</option><option value="19200">19200</option><option value="38400">38400</option><option value="57600">57600</option><option value="115200">115200</option></select></div><button type="submit" class="btn-primary">Save and Reboot</button></form><div class="status-bar" id="status-bar">Current settings are displayed above. Saving will reboot the device.</div><a href="/settings" class="nav-link">&larr; Back to Settings</a></div><script>
+function saveRs485(){
+    const slaveId=document.getElementById("slave_id").value;
+    const baudRate=document.getElementById("baud_rate").value;
+    const statusBar=document.getElementById("status-bar");
+    statusBar.innerHTML="Saving RS485 settings... The device will reboot to apply changes.";
+    fetch(`/save_rs485?slave_id=${slaveId}&baud_rate=${baudRate}`).then(r=>r.text().then(t=>{if(!r.ok)statusBar.textContent="Save failed: "+t;})).catch(()=>{});
+    return false;
+}
+window.onload=function(){document.getElementById("baud_rate").value=")rawliteral");
+    sendPageText(String(modbus_baud_rate_val));
+    server.sendContent_P(R"rawliteral("};</script></body></html>)rawliteral");
+    server.sendContent("");
+}
+
+void handleSaveRs485() {
+#if GATEWAY_ETHERNET
+    // Web pages are served during captures and MQTT sends on the IRIV; a reboot then would cut them off.
+    if (firmwareUpdateActive || currentDataState != DD_IDLE || isReadingWaveform || isReadingSpectrum || isPublishingCapture) {
+        server.send(409, "text/plain", "Device busy; retry after capture/update"); return;
+    }
+#endif
+    long slaveId = server.arg("slave_id").toInt();
+    long baud = server.arg("baud_rate").toInt();
+    if (slaveId < 1 || slaveId > 247 || baud < 1200 || baud > 921600) {
+        server.send(400, "text/plain", "Invalid slave ID or baud rate.");
+        return;
+    }
+    preferences.begin("rs485-cfg", false);
+    preferences.putUChar("slave_id", slaveId);
+    preferences.putLong("baud_rate", server.arg("baud_rate").toInt()); 
+    preferences.end();
+    server.send(200, "text/plain", "RS485 settings saved. Device will reboot.");
+    delay(1000);
+    gw::restart();
+}
+
+void handleSetIntervals() {
+    long interval = server.arg("interval").toInt();
+    if (interval < 10000) { server.send(400, "text/plain", "Interval must be >= 10000 ms."); return; }
+    if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        dataCaptureInterval = interval;
+        xSemaphoreGive(dataMutex);
+    }
+    preferences.begin("device-cfg", false);
+    preferences.putLong("wf_interval", interval);
+    preferences.end();
+    server.send(200, "text/plain", "Interval set.");
+}
+
+void handleGetIntervals() {
+    long interval = 0, metrics_interval = 0;
+    if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        interval = dataCaptureInterval;
+        metrics_interval = metricsReadInterval_ms;
+        xSemaphoreGive(dataMutex);
+    }
+    server.send(200, "application/json", "{\"interval\":" + String(interval) + ", \"metrics_interval\":" + String(metrics_interval) + "}");
+}
+
+// Scans run in the background so the access point keeps serving the page, which polls:
+// 202 while scanning, then 200 with the last result list. ?start=1 begins a fresh scan.
+void handleScanWifi() {
+#if GATEWAY_ETHERNET
+    server.send(200, "application/json", "[]"); return; // wired: nothing to scan
+#else
+    int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_FAILED || (server.hasArg("start") && n != WIFI_SCAN_RUNNING)) {
+        WiFi.scanDelete();
+        n = WiFi.scanNetworks(true);
+    }
+    if (n == WIFI_SCAN_RUNNING) { server.send(202, "application/json", "{\"scanning\":true}"); return; }
+    String json = "[";
+    if (n > 0) {
+        for (int i = 0; i < n; ++i) {
+            json += "{\"ssid\":\"" + WiFi.SSID(i) + "\",\"rssi\":" + WiFi.RSSI(i) + "}";
+            if (i < n - 1) json += ",";
+        }
+    }
+    json += "]";
+    server.send(200, "application/json", json);
+#endif
+}
+
+void handleGetMetricsLogData() {
+    DynamicJsonDocument doc(4096); 
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+        doc["is_recording"] = isMetricsRecording;
+        doc["log_count"] = metricsLogCount;
+        doc["max_log_size"] = METRICS_LOG_SIZE;
+        JsonArray log = doc.createNestedArray("log");
+        for (int i = 0; i < metricsLogCount; ++i) {
+            if (metricsLog[i].is_valid) {
+                JsonObject entry = log.createNestedObject();
+                entry["timestamp"] = metricsLog[i].timestamp;
+                JsonArray values = entry.createNestedArray("values");
+                for(int j=0; j < METRICS_SNAPSHOT_SIZE; ++j) {
+                    values.add(metricsLog[i].values[j]);
+                }
+            }
+        }
+        xSemaphoreGive(dataMutex);
+    }
+    String output;
+    serializeJson(doc, output);
+    server.send(200, "application/json", output);
+}
+
+void handleMetricsLogControl() {
+    String action = server.arg("action");
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if (action == "start") {
+            isMetricsRecording = true;
+            metricsLogIndex = 0;
+            metricsLogCount = 0;
+            for(int i=0; i<METRICS_LOG_SIZE; ++i) metricsLog[i].is_valid = false;
+        } else if (action == "stop") {
+            isMetricsRecording = false;
+        }
+        xSemaphoreGive(dataMutex);
+    }
+    server.send(200, "text/plain", "OK");
+}
+
+void handleDownloadMetricsCsv() {
+    String csv_header = "Timestamp,AccelRmsX,AccelRmsY,AccelRmsZ,AccelPeakX,AccelPeakY,AccelPeakZ,VeloRmsX,VeloRmsY,VeloRmsZ,VeloPeakX,VeloPeakY,VeloPeakZ,DisplRmsX,DisplRmsY,DisplRmsZ,DisplPeakX,DisplPeakY,DisplPeakZ,TruePeakX,TruePeakY,TruePeakZ,CrestFactorX,CrestFactorY,CrestFactorZ,StdDevX,StdDevY,StdDevZ,AccelRms2X,AccelRms2Y,AccelRms2Z,Temperature,AccelMetricRmsX,AccelMetricRmsY,AccelMetricRmsZ,AccelMetricPeakX,AccelMetricPeakY,AccelMetricPeakZ,AccelMetricRms2X,AccelMetricRms2Y,AccelMetricRms2Z,AccelMetricPeak2X,AccelMetricPeak2Y,AccelMetricPeak2Z,VeloWideRmsX,VeloWideRmsY,VeloWideRmsZ,VeloWidePeakX,VeloWidePeakY,VeloWidePeakZ,DisplLowRmsX,DisplLowRmsY,DisplLowRmsZ,DisplLowPeakX,DisplLowPeakY,DisplLowPeakZ\n";
+    String csv_content = "";
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+        for (int i = 0; i < metricsLogCount; i++) {
+            if (metricsLog[i].is_valid) {
+                csv_content += String(metricsLog[i].timestamp);
+                for (int j = 0; j < METRICS_SNAPSHOT_SIZE; j++) {
+                    csv_content += "," + String(metricsLog[i].values[j]);
+                }
+                csv_content += "\n";
+            }
+        }
+        xSemaphoreGive(dataMutex);
+    }
+    server.sendHeader("Content-Disposition", "attachment; filename=metrics_log.csv");
+    server.send(200, "text/csv", csv_header + csv_content);
+}
+
+void handleClearMetricsLog() {
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        metricsLogIndex = 0;
+        metricsLogCount = 0;
+        for(int i=0; i<METRICS_LOG_SIZE; ++i) metricsLog[i].is_valid = false;
+        xSemaphoreGive(dataMutex);
+    }
+    server.send(200, "text/plain", "Metrics log cleared.");
+}
+
+void handleClearDynamicData() {
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        newWaveformAvailable = false;
+        newSpectrumAvailable = false;
+        
+        if(modbusTcpEnabled) {
+            setModbusTCPRegister(HREG_WAVEFORM_READY_STATUS, 0);
+            setModbusTCPRegister(HREG_SPECTRUM_READY_STATUS, 0);
+        }
+
+        xSemaphoreGive(dataMutex);
+    }
+    server.send(200, "text/plain", "Cached data cleared.");
+}
+
+void handleReboot() {
+    server.send(200, "text/plain", "Rebooting...");
+    delay(1000);
+    gw::restart();
+}
+
+void handleNotFound() {
+    server.send(404, "text/plain", "Not found");
+}
+
+void handleMqttStatus() {
+    DynamicJsonDocument doc(256);
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        doc["status"] = mqttStatus;
+        xSemaphoreGive(dataMutex);
+    } else {
+        doc["status"] = "Status unavailable (mutex locked)";
+    }
+    String payload;
+    serializeJson(doc, payload);
+    server.send(200, "application/json", payload);
+}
+
+void handleSetMetricsInterval() {
+    long interval = server.arg("interval").toInt();
+    if (interval >= 1000) {
+        if(xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+            metricsReadInterval_ms = interval;
+            xSemaphoreGive(dataMutex);
+        }
+        preferences.begin("device-cfg", false);
+        preferences.putLong("m_interval", interval);
+        preferences.end();
+        server.send(200, "text/plain", "Metrics interval updated.");
+    } else {
+        server.send(400, "text/plain", "Interval too short.");
+    }
+}
+

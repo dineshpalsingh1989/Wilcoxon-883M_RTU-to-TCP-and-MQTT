@@ -1,23 +1,108 @@
 <div align="center">
 
-# Wilcoxon 883M Industrial IoT Gateway
+# Wilcoxon Sensor Gateways
 
-**Bring RS485 vibration data to your browser, PLC and MQTT broker.**
+### Wilcoxon 883M & Wilcoxon ILA210
 
-[![ESP32-S3, ESP32 and RP2350](https://img.shields.io/badge/ESP32--S3%20%7C%20ESP32%20%7C%20RP2350-Arduino-00979D)](#supported-boards)
-[![Modbus](https://img.shields.io/badge/Modbus-RTU%20%2B%20TCP-2563eb)](#modbus-tcp)
-[![MQTT](https://img.shields.io/badge/MQTT-TLS%20supported-7c3aed)](#mqtt)
+Vibration monitoring for your browser, PLC and MQTT broker.
+
+[![Web installer](https://img.shields.io/badge/Web_installer-Open-0b6bcb?style=for-the-badge)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+[![Downloads](https://img.shields.io/badge/Firmware-Downloads-198754?style=for-the-badge)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases)
+
+[![CI](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/actions/workflows/ci.yml/badge.svg)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/actions/workflows/ci.yml)
+[![Modbus RTU + TCP](https://img.shields.io/badge/Modbus-RTU_%2B_TCP-2563eb)](#modbus-tcp)
+[![MQTT](https://img.shields.io/badge/MQTT-Metrics_%26_alarms-7c3aed)](#mqtt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[![Install on your ESP32 from the browser](https://img.shields.io/badge/Install%20on%20your%20ESP32-from%20the%20browser-0b6bcb?style=for-the-badge)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
-
-[Install](#install-on-your-esp32-in-4-steps) · [Quick start](#quick-start) · [Dashboard preview](#dashboard-preview) · [Wiring](#hardware-and-wiring) · [MQTT](#mqtt) · [Firmware updates](#firmware-updates)
+[What's new](#whats-new-in-v4140) | [Watch the film](#watch-the-film) | [Choose your sensor](#choose-your-sensor) | [Install](#install-on-your-esp32-in-4-steps) | [Dashboard preview](#dashboard-preview) | [883M wiring](#hardware-and-wiring) | [ILA210 guide](ILA210/README.md)
 
 </div>
 
-![System overview: the Wilcoxon 883M sends Modbus RTU data through an ESP32 board or an IRIV IO Controller to a web dashboard, PLC or SCADA, and MQTT broker.](docs/images/system-overview.svg)
+## What's new in v4.14.0
 
-Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibration sensor** through an RS485-to-TTL interface. Monitor machine vibration and temperature, capture waveforms and FFT spectra, and share readings over Wi-Fi.
+![Cartoon wiring for the IRIV IOC with a Wilcoxon PCC420V 4–20 mA sensor and a separate 883M RS485 sensor, updated 13 November 2026](docs/images/iriv-pcc420-wiring.svg)
+
+The IRIV IO Controller firmware now lets you select a PCC420V RMS or peak model for AN0/AN1, or enter a manual 4–20 mA scale. Enabled inputs appear on the main dashboard with the scaled value, raw current and loop fault state. DI0–DI10 actions and DO0–DO3 measurement rules are configurable. See the [wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) and [IOC I/O settings](IRIV%20IOC/README.md#ioc-io). Physical PCC420V and IOC I/O operation still needs bench validation.
+
+[Download v4.14.0 firmware](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/tag/v4.14.0).
+
+## Earlier update: v4.13.0
+
+![What's new in v4.13.0: 1. each waveform and spectrum is one MQTT message; 2. spectrum peaks above 32.767 g fixed; 3. messages state their unit, time or frequency step and point count; 4. the waveform preview keeps impacts; 5. failed sends are reported; 6. capture IDs stay unique after a reboot.](docs/images/whats-new-v4.13.0.svg)
+
+883M firmware for the Adafruit Feather ESP32-S3, Cytron Maker ESP32 and IRIV IO Controller, tested on hardware:
+
+1. **One MQTT message per waveform and per spectrum.** Your back end receives all 13,334 waveform points, or all 6,145 spectrum bins, in one message instead of joining 98 pieces per axis. The gateway streams the message in 1 KB pieces, so it needs only about 3 KB of RAM. **Your broker must accept messages of up to about 110 KB.**
+2. **Spectrum peaks above 32.767 g are correct.** Spectrum registers are now read as unsigned, as the 883M manual specifies.
+3. **Messages label themselves:** `unit`, `sample_rate_hz` (waveform), `freq_resolution_hz` (spectrum) and `points`.
+4. **The waveform preview keeps impacts:** each of its 134 points is the largest sample in its block of 100.
+5. **Failed sends are reported:** the Monitoring page shows *MQTT send incomplete* and the gateway reconnects.
+6. **Capture IDs stay unique after a reboot** once the gateway has NTP time.
+
+Default topics and `type` names are unchanged, and `total_chunks` is now `1`, so back ends written for chunks keep working. Details: [Waveform and spectrum messages](#waveform-and-spectrum-messages). The IRIV's MQTT library is now [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) 0.2.0-alpha.1. Earlier changes: [releases page](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases).
+
+### Also new: choose your own MQTT topics
+
+![Choose your own MQTT topics: in Settings, MQTT, set Topics to Custom and type a topic for metrics, waveform, spectrum, status and command; the gateway then sends each kind of message to its own topic and listens for commands on the command topic.](docs/images/mqtt-custom-topics.svg)
+
+In **Settings → MQTT**, set **Topics** to **Custom** to send metrics, waveforms, spectra and health status to topics you choose, and to choose the command topic, where your own system sends commands such as `trigger_all` to the gateway. **Default** keeps today's topics, and the message contents do not change. Details: [MQTT](#mqtt).
+
+## Watch the film
+
+[![Watch the film (3:00): IRIV IO Controller + Wilcoxon 883M + Viking Analytics, with a DO0 alarm relay and DI1 acknowledge button](showcase/images/film-poster-play.jpg)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)
+
+**[▶ Open the film and the interactive page](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)**: a narrated 3D film, 3 min with captions, including a cutaway of the motor and pump, showing a Wilcoxon 883M on an IRIV IO Controller sending readings to Viking Analytics over MQTT. DO0 drives the alarm relay and DI1 acknowledges it. The page also has a hands-on alarm demo, the wiring table and the 883M specifications. [Download the MP4](showcase/IRIV-IOC-883M-vibration-tour.mp4).
+
+## Choose your sensor
+
+[**➜ Open the web installer**](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/)
+
+Choose your sensor first, then your board. Each sensor has its own firmware and wiring.
+
+| | Wilcoxon 883M | Wilcoxon ILA210 |
+| --- | --- | --- |
+| Monitor | X/Y/Z vibration, temperature, waveforms and sensor spectra | Vibration metrics, waveforms, sensor spectra and alarm outputs |
+| Connect | Web dashboard, Modbus TCP and MQTT | Web dashboard, Modbus TCP, MQTT and IOC I/O status |
+| Boards | Adafruit Feather ESP32-S3, Cytron Maker ESP32, IRIV IO Controller | ESP32-S3 DevKitC-1-N8, IRIV IO Controller |
+| Industrial I/O | See 883M integration notes below | Separate digital input, analog/4-20 mA and alarm-output pages on IRIV |
+| Start here | [883M setup](#install-on-your-esp32-in-4-steps) | [ILA210 setup and wiring](ILA210/README.md) |
+| Installer | [Select 883M](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/) | [Select ILA210](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) |
+
+### ILA210 public test release
+
+Every release includes ILA210 images for both supported boards; the links below always fetch the latest release. Software builds and simulated tests pass; physical ILA sensor/IOC acceptance remains pending. Confirm your sensor model, register manual and board wiring before connecting equipment. See [readiness and bench checks](ILA210/docs/ioc-readiness.md).
+
+| Your board | Easiest installation | Manual download |
+| --- | --- | --- |
+| ESP32-S3 DevKitC-1-N8 | [Browser installer: choose ILA210, then ESP32-S3](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/#ila210) | [Factory image (flash at 0x0)](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest/download/factory-ila210-esp32s3.bin) |
+| Cytron IRIV IO Controller | BOOT + RESET, then copy UF2 to the RP2350 drive | [Download ILA210 IRIV UF2](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest/download/firmware-ila210-cytron_iriv_io_controller.uf2) |
+
+[Release notes and all files](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) include checksums. Original ESP32/Maker ESP32 is supported by the 883M firmware only. Never interchange the two sensors' images.
+
+### What you can do
+
+- View live vibration and temperature, inspect captures and download CSV logs.
+- Connect a PLC through Modbus TCP or publish metrics and alarms to MQTT.
+- On ILA210 IRIV, configure push-buttons, analog thresholds, beacons and sounders on separate pages. MQTT reports commanded output states; it does not confirm a physical load operated.
+- Configure ILA210 sensor-loss timeout and output behavior independently of vibration thresholds.
+
+Open **Wilcoxon.code-workspace** for separate Explorer entries **Wilcoxon 883M** and **Wilcoxon ILA210**. Open a board folder to find its own `src/main.cpp`, web/HTML code, libraries and build scripts.
+
+---
+
+The setup and integration sections below describe the **883M firmware**. For ILA210, use its [dedicated README](ILA210/README.md).
+
+## Project folders
+
+Each supported board now owns a complete standalone project: `src/main.cpp`, its other firmware modules and HTML, `lib/`, `include/`, `scripts/`, `platformio.ini` and `profile.ini`. Open that board folder in PlatformIO, or use the sensor-root selector to keep existing CI commands.
+
+- `ESP32 Family/ESP32-S3/`
+- `ESP32 Family/Cytron Maker ESP32/`
+- `IRIV IOC/`
+
+See the [board project guide](docs/board-projects.md) for the complete layout and standalone/root build commands.
+
+Board projects are independent copies. Make future fixes in every applicable board; there is no hidden shared firmware implementation. External libraries are declared in each board configuration and downloaded by PlatformIO. The 883M Modbus library is included locally under each board's `lib/` folder.
 
 ## Install on your ESP32 in 4 steps
 
@@ -25,6 +110,7 @@ Firmware for an ESP32-S3 or ESP32 gateway connected to a **Wilcoxon 883M vibrati
 
 | You need | |
 | --- | --- |
+| Sensor | **Wilcoxon 883M**. On the installer, choose **Wilcoxon 883M**. For ILA210, select **Wilcoxon ILA210** and use its [separate guide](ILA210/README.md). |
 | Board | **Cytron Maker ESP32**, **Adafruit Feather ESP32-S3** or **Cytron IRIV IO Controller**, see [Supported boards](#supported-boards) |
 | Cable | USB-C **data** cable |
 | Computer | Chrome or Edge on Windows, macOS, Linux or ChromeOS |
@@ -58,11 +144,16 @@ Both ESP32 builds use the **same RS485 wiring**: GPIO18 (RX), GPIO17 (TX) and GP
 
 > **Supported from v4.11.0, tested on an IRIV IO Controller.** The IRIV build runs the same gateway: dashboard, Modbus TCP, MQTT and captures.
 >
+> **New in v4.12.0 (IRIV IO Controller, 883M and ILA210 firmware), tested on an IRIV IO Controller:**
+> - **Static IP address:** choose Automatic (DHCP) or Static IP under **Settings > Network** (883M) or **Settings > Ethernet** (ILA210). Holding **USER** for 5 seconds still reaches 192.168.4.1 if the static address is wrong.
+> - **Our own MQTT library:** MQTT now uses this project's [WilcoxonMqtt](IRIV%20IOC/lib/WilcoxonMqtt/README.md) instead of the third-party PubSubClient. Topics, messages and settings are unchanged. See [Built on our own libraries](#built-on-our-own-libraries).
+> - **Watchdog on:** the gateway restarts itself if it stops responding for 60 seconds.
+>
 > **MQTT over TLS (port 8883) is not supported on the IRIV.** Use plain MQTT on **port 1883**, on a trusted network or through a local broker. The gateway's MQTT page shows this, the TLS switch is disabled, and a TLS setting saved earlier is ignored. Brokers that only accept TLS (for example HiveMQ Cloud and EMQX Cloud Serverless) need an ESP32 board.
 
 The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port (automatic direction control, switchable 120 Ω termination) and **wired Ethernet**. It has no Wi-Fi, so the Wi-Fi pages become a **Network** page.
 
-![IRIV IO Controller front panel: the gateway uses RS485 A, B and G, the V+ and V− supply terminals, Ethernet, USB-C, the USER button and the USR LED; the digital inputs, digital outputs and analog inputs are not used yet.](docs/images/iriv-io-controller.svg)
+![IRIV IO Controller front panel: the gateway uses RS485 A, B and G, V+ and V− supply, Ethernet, USB-C, USER button, USR LED and configurable digital and analog I/O.](docs/images/iriv-io-controller.svg)
 
 | IRIV connection | RP2350A pin | Used by the gateway for |
 | --- | --- | --- |
@@ -72,16 +163,18 @@ The IRIV IO Controller is a DIN-rail controller with an **isolated RS485** port 
 | **USER** button | GP28 | Hold 5 s for the fixed address 192.168.4.1 |
 | **USR** LED | GP29 | Status: on when online, blinking during captures |
 | Buzzer (inside) | GP11 | Start-up beep and network-loss alarm |
-| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | **Not used yet** |
+| DI0–DI10, DO0–DO3, AN0–AN1 | GP0–GP10, GP12–GP15, GP26–GP27 | Configurable input actions, relay rules and scaled analog inputs, see [IOC I/O](IRIV%20IOC/README.md#ioc-io) |
 
-> **Coming soon: use the IRIV's own I/O.** The 11 isolated digital inputs, 4 isolated digital outputs and 2 analog inputs (0–10 V or 0–20 mA) are not used by the gateway yet. Planned: read them and switch the outputs from the dashboard, MQTT and Modbus TCP, for example to drive an alarm light from a vibration alarm. This is planned and not available in the current firmware.
+> **IRIV I/O.** DI0–DI10 can be assigned capture, acknowledge, alarm or DO override actions (defaults: DI0 capture, DI1 acknowledge). DO0–DO3 follow selectable 883M or analog rules, and AN0/AN1 read 4–20 mA or 0–10 V with PCC420V model presets or manual scaling. Enabled analog readings appear on the main dashboard; configure them under **Settings > IOC I/O**. See the [IOC I/O guide](IRIV%20IOC/README.md#ioc-io). These functions are not yet validated on hardware.
+
+The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) show the loop supply, AN input and AGND connection. The drawing is a functional guide; confirm the exact sensor connector and polarity before wiring.
 
 1. **Install:** on the web installer choose **IRIV IO Controller** and click **Download .uf2**. Connect the IRIV's USB-C (PROG) port, hold the **BOOT** pinhole button, press **RESET**, release **BOOT**, and copy the file to the **RP2350** drive that appears.
-2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1.
+2. **Connect:** plug in Ethernet. The gateway gets its address by DHCP and answers at **http://ila-gateway-883m.local**. If no DHCP server answers within 10 seconds, it uses **192.168.4.1** (set your laptop to 192.168.4.2, mask 255.255.255.0). Holding **USER** for 5 seconds also switches to 192.168.4.1. To use a fixed address instead, choose **Static IP address** under **Settings > Network** and enter the IP address, subnet mask and, optionally, gateway and DNS; the gateway restarts with that address, and holding **USER** still reaches 192.168.4.1 if the address is wrong.
 3. **Wire the sensor** to the IRIV's RS485 **A, B, G** terminals, see [the wiring guide](docs/wiring.md#cytron-iriv-io-controller).
 4. **Update:** upload `firmware-cytron_iriv_io_controller.bin` under **Settings > Device Diagnostics > Firmware Update (OTA)**, or copy a new `.uf2`. Both keep settings. **Settings > GitHub Firmware Updates** cannot install directly on this board yet.
 
-> **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](src/config/config.h) against your hardware and build from source.
+> **Other boards with the same chip are not supported.** The installer checks the chip, not the board name. So another ESP32-S3 board will be offered the Feather build, and another original-ESP32 board will be offered the Maker ESP32 build, which needs 8 MB flash. They may not start, or may drive the wrong pins. Use one of the two boards above, or check [`src/config/config.h`](ESP32%20Family/ESP32-S3/src/config/config.h) against your hardware and build from source.
 
 <p align="center"><a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/"><strong>➜ Open the web installer</strong></a></p>
 
@@ -130,7 +223,7 @@ Re-installing is always safe: the ESP32's built-in loader cannot be erased, so y
 
 `<board>` is `adafruit_feather_esp32s3` or `cytron_maker_esp32` ([Supported boards](#supported-boards)). The factory file is on each [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) and clears saved settings. The [installation guide](docs/installing-firmware.md) has step-by-step instructions for each way.
 
-## Built on our own Modbus library
+## Built on our own libraries
 
 > From **v4.10.0** the gateway uses this project's own **Wilcoxon883MRTU 0.1.0-beta.4** library for both sides of the gateway. The third-party `ModbusMaster` and `modbus-esp8266` libraries are no longer used. Register addresses, MQTT messages and web pages are unchanged. The library itself is still versioned as a beta while its API may change.
 
@@ -140,8 +233,22 @@ Re-installing is always safe: the ESP32's built-in loader cannot be erased, so y
 | --- | --- | --- |
 | `Wilcoxon883MRTU` | Reads the sensor over RS485: metrics, captures, device identity | `ModbusMaster` |
 | `Wilcoxon883MTCP` | Serves the gateway's registers to PLCs/SCADA over Wi-Fi | `modbus-esp8266` |
+| `WilcoxonMqtt` (from v4.12.0, IRIV IO Controller) | MQTT client: connects to the broker, publishes metrics, waveforms and alarms, receives commands | `PubSubClient` |
 
-The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
+**WilcoxonMqtt** is a small MQTT 3.1.1 client written for this project. It has the same functions as PubSubClient, so MQTT topics, messages and settings did not change. Compared with PubSubClient it sends large waveform messages straight from memory without copying them, puts a time limit on every network read and write, and closes a broken connection cleanly instead of confusing the broker. It is used by the 883M and ILA210 firmware on the IRIV IO Controller, also underneath TLS (W5500SecureMqtt). The ESP32 boards still use PubSubClient. Its tests run the real library code against a simulated connection and against a real broker; see the [WilcoxonMqtt guide](IRIV%20IOC/lib/WilcoxonMqtt/README.md).
+
+Libraries in the IRIV IO Controller firmware:
+
+| Library | Made by | Used for |
+| --- | --- | --- |
+| Wilcoxon883MRTU / Wilcoxon883MTCP | This project | 883M sensor over RS485 and the Modbus TCP server (883M firmware) |
+| WilcoxonMqtt | This project | MQTT |
+| W5500SecureMqtt | This project | MQTT over TLS (not used while TLS is off on the IRIV) |
+| IRIVIOCHardware | This project | Separate library; not built into the gateway firmware |
+| ArduinoJson | Benoît Blanchon (MIT) | Settings files, web page data and MQTT messages |
+| Arduino-Pico core | Earle Philhower (LGPL) | Base system: RP2350 start-up, W5500 Ethernet, TCP/IP (lwIP), web server, LittleFS storage, FreeRTOS |
+
+The Modbus library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
 
 ## What you can do
 
@@ -151,7 +258,7 @@ The library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883M
 | Sensor health | Connection status, failed reads, timeouts and age of the last successful reading |
 | Configurable alarms | Velocity RMS and temperature thresholds with a configurable delay |
 | Capture tools | Single-axis or XYZ captures, capture history and CSV export |
-| MQTT integration | Scalar metrics, chunked waveform/spectrum data, health status and remote commands |
+| MQTT integration | Scalar metrics, whole waveform and spectrum per message, health status and remote commands |
 | Modbus TCP server | Cached measurements and capture buffers for up to 8 PLC and SCADA clients |
 | Gateway management | Wi-Fi, RS485, MQTT and time settings, plus GitHub firmware installation |
 
@@ -230,7 +337,7 @@ Follow the [step-by-step wiring and troubleshooting guide](docs/wiring.md) befor
 | RS485-to-TTL UART module | Interface with ESP32-compatible 3.3 V logic levels |
 | Suitable DC supply | Sensor power; check the linked sensor manual for supply and wiring requirements |
 
-**Current firmware assignments** from [src/config/config.h](src/config/config.h):
+**Current firmware assignments** from [src/config/config.h](ESP32%20Family/ESP32-S3/src/config/config.h):
 
 | Connection / function | ESP32-S3 build | Cytron Maker ESP32 build | IRIV IO Controller build |
 | --- | --- | --- | --- |
@@ -258,11 +365,40 @@ python scripts/mqtt_check.py --host <broker> --port 8883 --tls --insecure --user
 
 | Topic | Direction | Content |
 | --- | --- | --- |
-| `883M` | Gateway → broker | Metrics, waveform chunks and spectrum chunks |
+| `883M` | Gateway → broker | Metrics, waveforms and spectra (one message each) |
 | `883M/status` | Gateway → broker | Health status, normally every five minutes |
 | `883M/command` | Broker → gateway | Commands addressed to the sensor serial number |
 
-Every command must include a **`serial_number` matching the connected sensor**.
+These are the **Default** topics. To send each kind of message to your own topic, open **Settings → MQTT**, set **Topics** to **Custom** and enter a topic for each group. The gateway restarts to apply them; the message contents do not change.
+
+| Custom field | Messages (`type`) | Default topic |
+| --- | --- | --- |
+| Metrics topic | `metrics` | Base Topic |
+| Waveform topic | `waveform_preview`, `waveform_chunk` | Base Topic |
+| Spectrum topic | `spectrum_chunk`, `spectrum_peaks` | Base Topic |
+| Status topic | `health_status`, `combined_spectrum_peaks` | `883M/status` |
+| Command topic | Commands from your system to the gateway (see below) | `883M/command` |
+
+Custom topics must not contain `#` or `+`, can be up to 128 characters, and the command topic must differ from the other four. On the IRIV IO Controller, `io_status` stays on `<Base Topic>/io`.
+
+### What the command topic is for
+
+The other topics carry data **from** the gateway. The command topic works the other way: the gateway **listens** on it, so your own system (back end, SCADA, Node-RED or a script) can control the gateway over MQTT without opening its web page. Use it to:
+
+- start a waveform and spectrum capture now, for one axis or X, Y and Z;
+- ask for the latest metrics now instead of waiting for the next reading;
+- change how often captures run automatically;
+- restart the gateway remotely.
+
+If you never send commands, leave the command topic as it is; the gateway still sends its data on schedule. Example with the Mosquitto command-line client:
+
+```sh
+mosquitto_pub -h <broker> -p 1883 -u <user> -P <password> -t 883M/command -m '{"serial_number":"<sensor serial>","command":"trigger_all"}'
+```
+
+With **Custom** topics, publish to the command topic you set instead of `883M/command`.
+
+Every command must include a **`serial_number` matching the connected sensor**; the gateway ignores commands for other serial numbers, so several gateways can share one command topic. The serial number is shown on the MQTT settings page.
 
 ```json
 {
@@ -282,9 +418,73 @@ Every command must include a **`serial_number` matching the connected sensor**.
 
 Set `interval_ms` to `2147483647` to use the firmware's disabled auto-capture interval. Captures are refused while another capture or firmware update is active.
 
-Waveform and spectrum messages use `type`, `axis`, `capture_id`, `chunk_index`, `total_chunks` and `data`. Reassemble chunks in index order for each capture and axis. Chunks carry up to **200 points**: 67 chunks for a 13,334-point waveform and 31 for a 6,145-point spectrum.
+### Waveform and spectrum messages
 
-For plots, waveform values represent acceleration in g; time depends on the sample interval. Spectrum values represent amplitude in g; frequency is the bin index multiplied by the firmware's frequency resolution (`13333.333 / 16384` Hz). Timestamps use configured local time and do not carry a UTC `Z` suffix.
+![Before: each axis capture was split into 98 small MQTT pieces that the back end had to collect. Now: the gateway counts the message size, then sends the whole waveform as one message in 1 KB pieces, using about 3 KB of RAM.](docs/images/mqtt-one-message.svg)
+
+From v4.13.0, each axis capture sends its **whole waveform in one MQTT message** and its **whole spectrum in one MQTT message**. Your back end does not need to collect or join pieces. The messages, in the order they are sent:
+
+| Order | `type` | Topic | Content | Typical size |
+| --- | --- | --- | --- | --- |
+| 1 | `waveform_preview` | `883M` | 134 points, one per 100 samples, for a quick plot | about 1 KB |
+| 2 | `waveform_chunk` | `883M` | Whole waveform: 13,334 points, 1 second | about 60–107 KB |
+| 3 | `spectrum_chunk` | `883M` | Whole spectrum: 6,145 bins, 0–5 kHz | about 15–45 KB |
+| 4 | `spectrum_peaks` | `883M` | Top 5 spectrum peaks (`freq_hz`, `amp_g`); single-axis captures only | under 1 KB |
+| 5 | `combined_spectrum_peaks` | `883M/status` | Top 5 peaks for X, Y and Z; sent once after the Z axis of an XYZ capture | under 1 KB |
+
+An XYZ capture (`trigger_all`, Modbus trigger value 1, a configured IRIV DI input or the automatic interval) repeats steps 1–3 for X, Y and Z, then sends step 5 instead of step 4. Messages are QoS 0 and not retained. The topics shown are the defaults; with **Custom** topics each message goes to the topic set for its group (see above).
+
+The `type` names and the `chunk_index` / `total_chunks` fields are kept from older firmware (v4.12.0 and earlier), which split each capture into 200-point chunks. Each message is now complete: `chunk_index` is always `0` and `total_chunks` is always `1`, so a back end written for chunks keeps working without changes.
+
+Fields in every `waveform_chunk` and `spectrum_chunk` message:
+
+| Field | Example | Meaning |
+| --- | --- | --- |
+| `model`, `serial_number` | `"Wilcoxon 883M"`, `"ENTER_DEVICE_SERIAL_HERE"` | Sensor that produced the data, as read from the sensor |
+| `timestamp` | `"2026-11-13T10:15:02"` | Gateway local time when the message was sent (no UTC `Z`), or `"No Time Sync"` |
+| `type` | `"waveform_chunk"` | `waveform_chunk` (waveform) or `spectrum_chunk` (spectrum) |
+| `unit` | `"g"` | Unit of every value in `data` |
+| `sample_rate_hz` | `13333.33` | Waveform only. Point `n` of `data` is at `n / sample_rate_hz` seconds |
+| `freq_resolution_hz` | `0.813802` | Spectrum only (`13333.333 / 16384`). Point `n` of `data` is at `n * freq_resolution_hz` Hz |
+| `axis` | `"X"` | `X`, `Y` or `Z` |
+| `capture_id` | `"1794118502-3600512"` | `<Unix seconds>-<gateway uptime ms>`; identifies the capture |
+| `chunk_index`, `total_chunks` | `0`, `1` | Always `0` and `1` (see above) |
+| `points` | `13334` | Number of values in `data`: 13,334 for a waveform, 6,145 for a spectrum |
+| `data` | `[0.012, -0.034, …]` | All values in g, exact to 0.001 g as read from the sensor |
+
+```json
+{
+  "model": "Wilcoxon 883M",
+  "serial_number": "ENTER_DEVICE_SERIAL_HERE",
+  "timestamp": "2026-11-13T10:15:02",
+  "type": "spectrum_chunk",
+  "unit": "g",
+  "freq_resolution_hz": 0.813802,
+  "axis": "X",
+  "capture_id": "1794118502-3600512",
+  "chunk_index": 0,
+  "total_chunks": 1,
+  "points": 6145,
+  "data": [0, 0.011, 0.002]
+}
+```
+
+The `data` array above is shortened; a real message holds all `points` values. The `waveform_preview` message has `model`, `serial_number`, `timestamp`, `type` and `data` only, with no `axis` or `capture_id`. Each preview point is the sample with the largest magnitude in its block of 100, so short impacts stay visible.
+
+In your back end, read one message and use it directly: `data` is the full waveform or spectrum, and `sample_rate_hz` or `freq_resolution_hz` gives the time or frequency axis. Check that `data` has `points` values.
+
+What to expect:
+
+- **Your broker must accept messages of up to about 110 KB.** The largest possible message is a waveform with every sample at the register limit, about 107 KB. Mosquitto and EMQX accept this by default, and so does AWS IoT Core (128 KB limit); check the limit on other brokers or cloud services.
+- One axis is about 75–150 KB in total, and an XYZ capture about 230–450 KB. The exact size depends on the vibration level, because values are sent as text.
+- A waveform should take under a second to send on a normal network (not yet measured on hardware). On the IRIV IO Controller, web pages and Modbus TCP wait until the message has been sent.
+- If a message cannot be sent completely (for example the connection drops), the gateway reconnects to the broker, logs the failure and continues with the capture. The Monitoring page shows **MQTT send incomplete - see log** for that axis instead of **MQTT publish attempted**. The broker discards a message that was cut off, so a subscriber never receives part of a waveform.
+- `capture_id` stays unique across reboots once NTP time has synced. Without time sync its first part is a small number and IDs can repeat after a reboot.
+- Spectrum values are read as unsigned 16-bit registers (883M manual), so they are never negative.
+
+How it fits in memory: the gateway does not build the whole message in RAM, because a JSON copy of one waveform would need about 300 KB. It first counts the message length, because MQTT sends the length before the data. It then formats the values and sends them in 1 KB pieces. This needs about 3 KB of extra RAM on every board.
+
+Timestamps use configured local time and do not carry a UTC `Z` suffix.
 
 ## Modbus TCP
 
@@ -311,7 +511,7 @@ The gateway serves cached data on the configured Modbus TCP port, normally **502
 | 90 | Waveform status: 0 = busy/not ready, 2 = X ready, 3 = Y ready, 4 = Z ready | — | — |
 | 91 | Spectrum status: same values as 90 | — | — |
 
-*Displacement RMS is not currently read from the sensor. See [the register cache implementation](src/modbus/modbus_tcp.cpp) and [register constants](src/config/config.h) for the complete mapping.*
+*Displacement RMS is not currently read from the sensor. See [the register cache implementation](ESP32%20Family/ESP32-S3/src/modbus/modbus_tcp.cpp) and [register constants](ESP32%20Family/ESP32-S3/src/config/config.h) for the complete mapping.*
 
 Server behaviour: function codes 03, 04, 06 and 16, up to **8 clients**, any unit ID, up to 125 registers per read. Registers 0–99 accept writes, but the next sensor update overwrites them. Waveform and spectrum registers are read-only and are copied from a finished capture, so a PLC never reads a buffer that is still downloading. A read that spans an unmapped gap (for example 95–105) returns an illegal-address exception. Modbus TCP has no authentication; keep port 502 on a trusted network.
 
@@ -333,9 +533,11 @@ See the [update guide](demo/README.md#github-firmware-installation) for release 
 
 ## Watchdog protection
 
-The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and MQTT chunk publishing. This is intended to recover from a subscribed task that stops servicing the watchdog.
+The background task configures the ESP32 task watchdog for 60 seconds with panic handling and explicitly subscribes itself. It feeds the watchdog in its main loop and during sensor block reads and while sending waveform and spectrum messages over MQTT. This is intended to recover from a subscribed task that stops servicing the watchdog.
 
-The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](src/tasks/tasks.cpp).
+The web task is not explicitly subscribed, and initialization/subscription return values are currently unchecked. Full task coverage and recovery must be verified on the actual board, including healthy long captures and firmware updates. Source: [task setup](ESP32%20Family/ESP32-S3/src/tasks/tasks.cpp).
+
+On the IRIV IO Controller (from v4.12.0) a top-priority supervisor task feeds the RP2350 hardware watchdog while the background task keeps checking in; if it stops for 60 seconds the gateway restarts.
 
 ## Operational notes
 
@@ -346,18 +548,21 @@ The web task is not explicitly subscribed, and initialization/subscription retur
 
 ## Project layout
 
+Inside each selected board folder:
+
 | Location | Contents |
 | --- | --- |
-| `src/config/`, `src/core/` | Pin/register definitions, shared state and monitoring |
-| `src/modbus/` | Sensor RTU communication and TCP register cache |
-| `experiments/Wilcoxon883MRTU-beta/` | Our Modbus RTU client and TCP server library, used by the firmware |
+| `src/main.cpp` | Firmware entry point |
+| `src/config/`, `src/core/` | Pin/register definitions, state and monitoring |
+| `src/modbus/`, `lib/Wilcoxon883MRTU/` | Board-owned sensor RTU/TCP implementation and local Modbus library |
 | `src/capture/`, `src/mqtt/` | Capture state machine, logs, publishers and commands |
-| `src/web/` | Dashboard, settings pages and HTTP routes |
+| `src/web/` | HTML, dashboard, settings pages and HTTP routes |
 | `src/ota/` | Firmware upload and GitHub release installation |
 | `src/hardware/`, `src/tasks/`, `src/utils/` | Hardware helpers, FreeRTOS tasks and utilities |
-| `demo/` | Hardware-free preview and browser checks |
-| `installer/` | Browser installer page published to GitHub Pages |
-| `scripts/` | Build configuration, web installer bundle and site helpers |
+| `scripts/`, `include/` | Board build helpers and project headers |
+| `platformio.ini`, `profile.ini` | Standalone dependencies and board settings |
+
+At the repository root, `demo/` contains simulated previews, `installer/` the public installer, and `scripts/` the compatibility/release helpers. `experiments/Wilcoxon883MRTU-beta/` remains a library development project; each board builds its local library copy.
 
 ## License
 

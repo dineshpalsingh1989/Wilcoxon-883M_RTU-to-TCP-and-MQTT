@@ -42,12 +42,27 @@ const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrom
       const response = await page.goto(base + route); assert.equal(response.status(), 200, route);
       assert(await page.locator('h1,h2').first().isVisible(), route);
     }
+    // MQTT topics: Default hides the per-message topics; Custom shows them and sends them on save (simulated).
+    await page.goto(base + '/mqtt_settings');
+    assert.equal(await page.locator('#custom-topics').isVisible(), false);
+    await page.locator('#topic_mode').selectOption('custom');
+    assert.equal(await page.locator('#t_waveform').isVisible(), true);
+    assert.equal(await page.locator('#t_command').inputValue(), '883M/command');
+    await page.locator('#t_waveform').fill('plant1/pump3/waveform');
+    let mqttSave;
+    await page.route('**/save_mqtt*', r => { mqttSave = new URL(r.request().url()); return r.fulfill({ status: 200, body: 'Saved (simulated)' }); });
+    await page.getByRole('button', { name: 'Save and Reboot' }).click();
+    await page.waitForURL('**/settings');
+    assert.equal(mqttSave.searchParams.get('topic_mode'), 'custom');
+    assert.equal(mqttSave.searchParams.get('t_waveform'), 'plant1/pump3/waveform');
+    assert.equal(mqttSave.searchParams.get('t_metrics'), '883M');
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     await page.goto(base + '/github_updates');
     await page.getByRole('button', { name: 'Check for release' }).click();
     await page.getByRole('button', { name: 'Simulate verified update' }).click();
     await page.waitForFunction(() => document.getElementById('update-status').textContent.includes('Demo update complete'), { timeout: 15000 });
     await page.screenshot({ path: 'demo/artifacts/github-update.png', fullPage: true });
     assert.deepEqual(errors, []);
-    console.log('PASS: desktop/mobile dashboard, charts, alarm save/trigger/offline/recovery, capture history, all settings pages, simulated verified update, no browser errors.');
+    console.log('PASS: desktop/mobile dashboard, charts, alarm save/trigger/offline/recovery, capture history, all settings pages, MQTT custom topics, simulated verified update, no browser errors.');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

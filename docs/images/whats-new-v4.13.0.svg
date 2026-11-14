@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="790" viewBox="0 0 1200 790" role="img" aria-labelledby="t d">
+<title id="t">What's new in v4.13.0</title>
+<desc id="d">Six cartoon panels. 1: each waveform and spectrum is one MQTT message, so the back end no longer joins 98 pieces. 2: spectrum bins above 32.767 g are now correct, for example 40.0 g instead of 25.5 g. 3: each message states its unit, sample rate or frequency step, and number of points. 4: the waveform preview keeps the biggest sample of each block, so impacts are not missed. 5: a send that fails part-way is reported as MQTT send incomplete. 6: capture IDs no longer repeat after a reboot once the gateway has NTP time.</desc>
+<defs>
+<linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0f172a"/><stop offset="1" stop-color="#16364a"/></linearGradient>
+<marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#94a3b8"/></marker>
+<rect id="panel" width="360" height="290" rx="16" fill="#16283e" stroke="#35516b" stroke-width="2"/>
+</defs>
+<rect width="1200" height="790" rx="20" fill="url(#bg)"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+<text x="48" y="52" fill="#38bdf8" font-size="15" letter-spacing="3">RELEASE v4.13.0 · 883M FIRMWARE</text>
+<text x="48" y="92" fill="#f8fafc" font-size="30" font-weight="700">What's new: waveforms over MQTT</text>
+<text x="48" y="120" fill="#a9c2d7" font-size="16">Adafruit Feather ESP32-S3, Cytron Maker ESP32 and IRIV IO Controller</text>
+
+<!-- 1: one message -->
+<g transform="translate(40 140)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#34d399"/><text x="32" y="40" fill="#064e3b" font-size="16" font-weight="700" text-anchor="middle">1</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">One message per waveform</text>
+<rect x="24" y="92" width="80" height="70" rx="14" fill="#2563eb"/>
+<circle cx="50" cy="118" r="6" fill="#fff"/><circle cx="78" cy="118" r="6" fill="#fff"/>
+<path d="M48 138 Q64 150 80 138" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<line x1="108" y1="127" x2="126" y2="127" stroke="#94a3b8" stroke-width="3" marker-end="url(#ar)"/>
+<rect x="132" y="100" width="96" height="56" rx="6" fill="#fbbf24" stroke="#b45309" stroke-width="2"/>
+<path d="M132 110 H228" stroke="#b45309" stroke-width="2"/>
+<text x="180" y="132" fill="#451a03" font-size="14" font-weight="700" text-anchor="middle">13,334</text>
+<text x="180" y="148" fill="#451a03" font-size="12" text-anchor="middle">points</text>
+<line x1="232" y1="127" x2="250" y2="127" stroke="#94a3b8" stroke-width="3" marker-end="url(#ar)"/>
+<rect x="256" y="92" width="84" height="66" rx="10" fill="#475569"/><rect x="263" y="99" width="70" height="52" rx="6" fill="#334155"/>
+<path d="M280 122 q6 -8 12 0 M304 122 q6 -8 12 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<path d="M282 134 Q298 146 314 134" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+<rect x="290" y="158" width="16" height="10" fill="#64748b"/>
+<text x="298" y="190" fill="#e2e8f0" font-size="12" text-anchor="middle">back end</text>
+<text x="64" y="190" fill="#e2e8f0" font-size="12" text-anchor="middle">gateway</text>
+<text x="24" y="240" fill="#a9c2d7" font-size="14">The whole waveform and spectrum each</text>
+<text x="24" y="262" fill="#a9c2d7" font-size="14">arrive in one message. No joining 98 pieces.</text>
+</g>
+
+<!-- 2: spectrum fix -->
+<g transform="translate(420 140)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#f87171"/><text x="32" y="40" fill="#450a0a" font-size="16" font-weight="700" text-anchor="middle">2</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Big spectrum peaks fixed</text>
+<line x1="40" y1="200" x2="320" y2="200" stroke="#64748b" stroke-width="2"/>
+<rect x="80" y="134" width="70" height="66" rx="4" fill="#64748b"/>
+<text x="115" y="126" fill="#cbd5e1" font-size="14" font-weight="700" text-anchor="middle">25.5 g</text>
+<rect x="210" y="96" width="70" height="104" rx="4" fill="#34d399"/>
+<text x="245" y="88" fill="#a7f3d0" font-size="14" font-weight="700" text-anchor="middle">40.0 g</text>
+<text x="115" y="219" fill="#f87171" font-size="13" text-anchor="middle">✗ before</text>
+<text x="245" y="219" fill="#34d399" font-size="13" text-anchor="middle">✓ now</text>
+<text x="180" y="70" fill="#94a3b8" font-size="12" text-anchor="middle">same sensor value (raw 40000)</text>
+<text x="24" y="246" fill="#a9c2d7" font-size="14">Bins above 32.767 g were wrong. They</text>
+<text x="24" y="268" fill="#a9c2d7" font-size="14">are now read as unsigned, as in the manual.</text>
+</g>
+
+<!-- 3: self-describing -->
+<g transform="translate(800 140)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#38bdf8"/><text x="32" y="40" fill="#082f49" font-size="16" font-weight="700" text-anchor="middle">3</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Messages label themselves</text>
+<rect x="30" y="100" width="120" height="86" rx="8" fill="#fbbf24" stroke="#b45309" stroke-width="2"/>
+<path d="M30 114 H150" stroke="#b45309" stroke-width="2"/>
+<text x="90" y="152" fill="#451a03" font-size="14" font-weight="700" text-anchor="middle">Waveform X</text>
+<path d="M150 118 C170 112 175 98 192 96" fill="none" stroke="#e2e8f0" stroke-width="2"/>
+<rect x="190" y="66" width="150" height="128" rx="10" fill="#ecfeff"/><circle cx="202" cy="96" r="4" fill="#16283e"/>
+<g font-size="12.5" fill="#0f172a"><text x="212" y="90">unit: g</text><text x="212" y="112">sample_rate_hz</text><text x="212" y="134">freq_resolution_hz</text><text x="212" y="156">points: 13334</text><text x="212" y="178">capture_id</text></g>
+<text x="24" y="240" fill="#a9c2d7" font-size="14">Each message says its unit, its time or</text>
+<text x="24" y="262" fill="#a9c2d7" font-size="14">frequency step, and how many points.</text>
+</g>
+
+<!-- 4: preview keeps impacts -->
+<g transform="translate(40 450)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#fbbf24"/><text x="32" y="40" fill="#451a03" font-size="16" font-weight="700" text-anchor="middle">4</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Preview keeps the impacts</text>
+<polyline points="30,150 45,144 60,156 75,146 90,153 105,145 120,155 135,147 150,152 165,148 175,150 182,80 189,180 196,138 205,152 220,145 235,155 250,146 265,153 280,147 295,154 310,146 330,151" fill="none" stroke="#7dd3fc" stroke-width="2.5" stroke-linejoin="round"/>
+<g fill="#94a3b8"><circle cx="45" cy="144" r="5"/><circle cx="120" cy="155" r="5"/><circle cx="250" cy="146" r="5"/><circle cx="310" cy="146" r="5"/></g>
+<circle cx="182" cy="80" r="8" fill="#34d399" stroke="#ecfdf5" stroke-width="2"/>
+<text x="196" y="78" fill="#a7f3d0" font-size="13">kept now</text>
+<text x="40" y="206" fill="#94a3b8" font-size="12">grey: the old every-100th samples missed it</text>
+<text x="24" y="240" fill="#a9c2d7" font-size="14">The 134-point preview keeps the biggest</text>
+<text x="24" y="262" fill="#a9c2d7" font-size="14">sample of each block of 100.</text>
+</g>
+
+<!-- 5: failed sends reported -->
+<g transform="translate(420 450)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#fb923c"/><text x="32" y="40" fill="#431407" font-size="16" font-weight="700" text-anchor="middle">5</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Failed sends are reported</text>
+<rect x="30" y="70" width="300" height="132" rx="10" fill="#e2e8f0"/>
+<rect x="30" y="70" width="300" height="26" rx="10" fill="#94a3b8"/><rect x="30" y="86" width="300" height="10" fill="#94a3b8"/>
+<text x="44" y="88" fill="#0f172a" font-size="13" font-weight="700">Monitoring · captures</text>
+<circle cx="48" cy="122" r="6" fill="#16a34a"/>
+<text x="62" y="127" fill="#0f172a" font-size="12.5">X · Complete · MQTT publish attempted</text>
+<path d="M48 147 l7 13 h-14z" fill="#f59e0b"/><text x="48" y="159" fill="#431407" font-size="10" font-weight="700" text-anchor="middle">!</text>
+<text x="62" y="159" fill="#0f172a" font-size="12.5" font-weight="700">Y · Complete · MQTT send incomplete</text>
+<circle cx="48" cy="183" r="6" fill="#16a34a"/>
+<text x="62" y="188" fill="#0f172a" font-size="12.5">Z · Complete · MQTT publish attempted</text>
+<text x="24" y="240" fill="#a9c2d7" font-size="14">A send cut off part-way reconnects and is</text>
+<text x="24" y="262" fill="#a9c2d7" font-size="14">logged. Brokers never pass on half data.</text>
+</g>
+
+<!-- 6: unique capture IDs -->
+<g transform="translate(800 450)">
+<use href="#panel"/>
+<circle cx="32" cy="34" r="16" fill="#a78bfa"/><text x="32" y="40" fill="#2e1065" font-size="16" font-weight="700" text-anchor="middle">6</text>
+<text x="58" y="41" fill="#f8fafc" font-size="18" font-weight="700">Capture IDs stay unique</text>
+<path d="M150 62 L180 96 L210 62" fill="none" stroke="#a78bfa" stroke-width="4"/>
+<rect x="40" y="94" width="280" height="104" rx="14" fill="#ede9fe"/>
+<rect x="166" y="86" width="28" height="14" rx="4" fill="#7c3aed"/>
+<text x="180" y="126" fill="#4c1d95" font-size="13" text-anchor="middle">capture_id</text>
+<text x="180" y="156" fill="#2e1065" font-size="19" font-weight="700" text-anchor="middle" font-family="Consolas,Menlo,monospace">1794118502-3600512</text>
+<text x="180" y="182" fill="#5b21b6" font-size="12" text-anchor="middle">Unix time - uptime ms</text>
+<text x="24" y="240" fill="#a9c2d7" font-size="14">IDs no longer repeat after a reboot,</text>
+<text x="24" y="262" fill="#a9c2d7" font-size="14">once the gateway has NTP time.</text>
+</g>
+
+<text x="600" y="772" fill="#a9c2d7" font-size="14" text-anchor="middle">Same topics and type names. Back ends written for chunks keep working: total_chunks is now 1.</text>
+</g>
+</svg>

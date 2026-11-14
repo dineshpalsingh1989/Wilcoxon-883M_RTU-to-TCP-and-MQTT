@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wilcoxon 883M Gateway Installer</title>
-<meta name="description" content="Install the Wilcoxon 883M gateway firmware on a Cytron Maker ESP32, Adafruit Feather ESP32-S3 or Cytron IRIV IO Controller.">
+<title>Wilcoxon Gateway Installer</title>
+<meta name="description" content="Install the Wilcoxon gateway firmware for the 883M sensor on a Cytron Maker ESP32, Adafruit Feather ESP32-S3 or Cytron IRIV IO Controller. Choose Wilcoxon 883M or Wilcoxon ILA210.">
 <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
 <style>
 :root {
@@ -35,12 +35,13 @@ a { color: var(--accent); }
 button.install { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 10px 20px; font: inherit; font-weight: 600; cursor: pointer; }
 button.install:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
 a.install { display: inline-block; background: var(--accent); color: var(--accent-text); border-radius: 8px; padding: 10px 20px; font-weight: 600; text-decoration: none; }
-a.install:focus-visible, .board:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+a.install:focus-visible, .board:focus-visible, .sensor:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
 .boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-.board { text-align: left; background: var(--card); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; font: inherit; cursor: pointer; }
-.board strong { display: block; font-size: 1.05rem; }
-.board span { display: block; color: var(--muted); font-size: .9rem; margin-top: 2px; }
-.board[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.board, .sensor, .board-choice { text-align: left; background: var(--card); color: var(--text); border: 2px solid var(--line); border-radius: 10px; padding: 14px 16px; font: inherit; cursor: pointer; }
+.board strong, .sensor strong, .board-choice strong { display: block; font-size: 1.05rem; }
+.board span, .sensor span, .board-choice span { display: block; color: var(--muted); font-size: .9rem; margin-top: 2px; }
+.board[aria-pressed="true"], .sensor[aria-pressed="true"], .board-choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tag { display: inline-block; font-size: .72rem; font-weight: 600; padding: 0 7px; border-radius: 99px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--text); margin: 0 0 0 6px; vertical-align: 2px; font-style: normal; }
 h3 { font-size: 1.02rem; margin: 22px 0 8px; }
 .channel h3 { margin: 0; }
 .small { color: var(--muted); font-size: .85rem; }
@@ -48,14 +49,167 @@ h3 { font-size: 1.02rem; margin: 22px 0 8px; }
 ol { padding-left: 22px; } li { margin: 6px 0; }
 code { font-size: .9em; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
+/* Animated guides: plain SVG + CSS, no libraries. Base styles show the finished state,
+   so with reduced motion every picture is still complete and readable. */
+.hero-anim { margin: 4px 0 8px; }
+.hero-anim svg { width: 100%; height: auto; display: block; }
+.anim text { font-family: inherit; }
+.anim .t { fill: var(--text); }
+.anim .m { fill: var(--muted); }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; padding: 0; }
+.step { margin: 0; background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 8px; }
+.step svg { width: 100%; height: auto; display: block; }
+.step figcaption { font-size: .88rem; margin: 6px 2px 2px; }
+.step .n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: var(--accent-text); font-size: .75rem; font-weight: 700; margin-right: 6px; }
+.bootfig { max-width: 380px; margin: 10px 0 16px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+.bootfig svg { width: 100%; height: auto; display: block; }
+.anim .rm-only { display: none; }
+.press, .prog { transform-box: fill-box; }
+
+.three .step:nth-child(1) { animation: hl3a 9s infinite; }
+.three .step:nth-child(2) { animation: hl3b 9s infinite; }
+.three .step:nth-child(3) { animation: hl3c 9s infinite; }
+@keyframes hl3a { 0%, 31% { border-color: var(--accent); } 34%, 100% { border-color: var(--line); } }
+@keyframes hl3b { 0%, 32% { border-color: var(--line); } 34%, 64% { border-color: var(--accent); } 67%, 100% { border-color: var(--line); } }
+@keyframes hl3c { 0%, 64% { border-color: var(--line); } 67%, 99% { border-color: var(--accent); } 100% { border-color: var(--line); } }
+.four .step:nth-child(1) { animation: hl4a 12s infinite; }
+.four .step:nth-child(2) { animation: hl4b 12s infinite; }
+.four .step:nth-child(3) { animation: hl4c 12s infinite; }
+.four .step:nth-child(4) { animation: hl4d 12s infinite; }
+@keyframes hl4a { 0%, 23% { border-color: var(--accent); } 26%, 100% { border-color: var(--line); } }
+@keyframes hl4b { 0%, 24% { border-color: var(--line); } 26%, 48% { border-color: var(--accent); } 51%, 100% { border-color: var(--line); } }
+@keyframes hl4c { 0%, 49% { border-color: var(--line); } 51%, 73% { border-color: var(--accent); } 76%, 100% { border-color: var(--line); } }
+@keyframes hl4d { 0%, 74% { border-color: var(--line); } 76%, 99% { border-color: var(--accent); } 100% { border-color: var(--line); } }
+
+.gled { animation: blink 1.2s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+
+/* ESP32: plug in, install, join Wi-Fi (9 s) */
+.plug { animation: plug 9s infinite; }
+@keyframes plug { 0% { transform: translateX(-28px); } 12%, 100% { transform: none; } }
+.eled { animation: eled 9s infinite; }
+@keyframes eled { 0%, 12% { fill: #475569; } 13%, 100% { fill: #22c55e; } }
+.press { transform-origin: center; animation: press 9s infinite; }
+@keyframes press { 0%, 36%, 40%, 100% { transform: none; } 38% { transform: scale(.88); } }
+.prog { transform-origin: left; animation: prog 9s infinite; }
+@keyframes prog { 0%, 40% { transform: scaleX(0); } 60%, 99% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+.done { animation: done 9s infinite; }
+@keyframes done { 0%, 60% { opacity: 0; } 62%, 99% { opacity: 1; } 100% { opacity: 0; } }
+.wifi { animation: wifi 9s infinite; }
+@keyframes wifi { 0%, 67% { opacity: .15; } 71%, 81%, 91%, 99% { opacity: 1; } 76%, 86% { opacity: .35; } 100% { opacity: .15; } }
+.phone { animation: phone 9s infinite; }
+@keyframes phone { 0%, 75% { opacity: 0; transform: translateY(8px); } 80%, 99% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* Download mode: hold BOOT, tap RESET, release BOOT (6 s) */
+.bboot { animation: bboot 6s infinite; }
+@keyframes bboot { 0%, 9% { fill: #e2e8f0; } 10%, 69% { fill: #f59e0b; } 70%, 100% { fill: #e2e8f0; } }
+.rboot { animation: rboot 6s infinite; }
+@keyframes rboot { 0%, 9% { opacity: 0; } 10%, 69% { opacity: 1; } 70%, 100% { opacity: 0; } }
+.breset { animation: breset 6s infinite; }
+@keyframes breset { 0%, 29% { fill: #e2e8f0; } 30%, 42% { fill: #f59e0b; } 43%, 100% { fill: #e2e8f0; } }
+.rreset { animation: rreset 6s infinite; }
+@keyframes rreset { 0%, 29% { opacity: 0; } 30%, 42% { opacity: 1; } 43%, 100% { opacity: 0; } }
+.c1 { animation: c1 6s infinite; } .c2 { animation: c2 6s infinite; } .c3 { animation: c3 6s infinite; }
+@keyframes c1 { 0%, 4% { opacity: 0; } 5%, 29% { opacity: 1; } 30%, 100% { opacity: 0; } }
+@keyframes c2 { 0%, 29% { opacity: 0; } 30%, 69% { opacity: 1; } 70%, 100% { opacity: 0; } }
+@keyframes c3 { 0%, 69% { opacity: 0; } 70%, 98% { opacity: 1; } 100% { opacity: 0; } }
+
+/* IRIV: USB, BOOT + RESET, copy .uf2, restart (12 s) */
+.iplug { animation: iplug 12s infinite; }
+@keyframes iplug { 0% { transform: translateX(-28px); } 10%, 100% { transform: none; } }
+.clip { animation: clip 12s infinite; }
+@keyframes clip { 0%, 26% { transform: translate(-24px, 20px); opacity: 0; } 30%, 46% { transform: none; opacity: 1; } 49%, 100% { opacity: 0; } }
+.rflash { animation: rflash 12s infinite; }
+@keyframes rflash { 0%, 34% { opacity: 0; } 36%, 41% { opacity: 1; } 43%, 100% { opacity: 0; } }
+.file { animation: file 12s infinite; }
+@keyframes file { 0%, 53% { transform: none; opacity: 1; } 66% { transform: translateX(84px); opacity: 1; } 70%, 100% { transform: translateX(84px); opacity: 0; } }
+.ethled { animation: ethled 12s infinite; }
+@keyframes ethled { 0%, 76% { fill: #475569; } 78%, 84%, 90%, 96% { fill: #22c55e; } 87%, 100% { fill: #475569; } }
+.ready { animation: ready 12s infinite; }
+@keyframes ready { 0%, 79% { opacity: 0; } 82%, 99% { opacity: 1; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim, .anim * { animation: none !important; }
+  .anim .flow, .anim .c1, .anim .c2, .anim .c3, .anim .rboot, .anim .rreset { display: none; }
+  .anim .rm-only { display: inline; }
+}
 </style>
 </head>
 <body>
 <main>
-  <h1>Wilcoxon 883M Gateway Installer</h1>
+  <h1>Wilcoxon Gateway Installer</h1>
   <p class="lead">Install the gateway firmware straight from this page. No software to install.</p>
+  <figure class="hero-anim anim">
+    <svg viewBox="0 0 640 210" role="img" aria-label="How it works: the sensor on a machine sends readings over RS485 to the gateway board, which serves a web dashboard, PLCs over Modbus TCP and an MQTT broker.">
+      <path id="hw-cable" d="M88 78 C 150 78 172 122 230 122" fill="none" stroke="#f59e0b" stroke-width="4" stroke-dasharray="7 5"/>
+      <g fill="none" stroke="#38bdf8" stroke-width="3">
+        <path id="hw-o1" d="M340 116 C 392 116 392 50 440 50"/>
+        <path id="hw-o2" d="M340 123 L 440 118"/>
+        <path id="hw-o3" d="M340 130 C 392 130 392 186 440 186"/>
+      </g>
+      <rect x="10" y="95" width="120" height="62" rx="12" fill="#64748b"/>
+      <g stroke="#475569" stroke-width="4"><line x1="30" y1="103" x2="30" y2="149"/><line x1="52" y1="103" x2="52" y2="149"/><line x1="74" y1="103" x2="74" y2="149"/><line x1="96" y1="103" x2="96" y2="149"/></g>
+      <rect x="130" y="118" width="22" height="16" rx="3" fill="#94a3b8"/>
+      <rect x="48" y="62" width="40" height="33" rx="8" fill="#2dd4bf"/>
+      <circle cx="60" cy="76" r="3.5" fill="#0f172a"/><circle cx="76" cy="76" r="3.5" fill="#0f172a"/>
+      <text class="t" x="68" y="52" font-size="17" font-weight="700" text-anchor="middle">883M</text>
+      <text class="m" x="70" y="186" font-size="17" text-anchor="middle">Machine</text>
+      <text class="m" x="168" y="160" font-size="16" text-anchor="middle">RS485</text>
+      <rect x="230" y="88" width="110" height="72" rx="14" fill="#2563eb"/>
+      <circle cx="266" cy="116" r="7" fill="#fff"/><circle cx="304" cy="116" r="7" fill="#fff"/>
+      <circle cx="267" cy="117" r="3" fill="#0f172a"/><circle cx="305" cy="117" r="3" fill="#0f172a"/>
+      <path d="M262 138 Q285 152 308 138" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+      <circle class="gled" cx="328" cy="99" r="5" fill="#22c55e"/>
+      <text class="t" x="285" y="186" font-size="18" font-weight="700" text-anchor="middle">Gateway</text>
+      <g font-size="17" text-anchor="middle">
+        <rect x="440" y="30" width="190" height="40" rx="20" fill="var(--card)" stroke="var(--line)" stroke-width="2"/><text class="t" x="535" y="56">Web dashboard</text>
+        <rect x="440" y="98" width="190" height="40" rx="20" fill="var(--card)" stroke="var(--line)" stroke-width="2"/><text class="t" x="535" y="124">PLC · Modbus TCP</text>
+        <rect x="440" y="166" width="190" height="40" rx="20" fill="var(--card)" stroke="var(--line)" stroke-width="2"/><text class="t" x="535" y="192">MQTT broker</text>
+      </g>
+      <g class="flow">
+        <circle r="5" fill="#f59e0b"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#hw-cable"/></animateMotion></circle>
+        <circle r="5" fill="#f59e0b"><animateMotion dur="2s" begin="1s" repeatCount="indefinite"><mpath href="#hw-cable"/></animateMotion></circle>
+        <circle r="5" fill="#38bdf8"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#hw-o1"/></animateMotion></circle>
+        <circle r="5" fill="#38bdf8"><animateMotion dur="1.6s" begin=".5s" repeatCount="indefinite"><mpath href="#hw-o2"/></animateMotion></circle>
+        <circle r="5" fill="#38bdf8"><animateMotion dur="1.6s" begin="1s" repeatCount="indefinite"><mpath href="#hw-o3"/></animateMotion></circle>
+      </g>
+    </svg>
+  </figure>
 
-  <h2>Choose your board</h2>
+  <h2>1. Choose your sensor</h2>
+  <div class="boards" role="group" aria-label="Sensor">
+    <button type="button" class="sensor" data-sensor="883m" aria-pressed="true">
+      <strong>Wilcoxon 883M</strong><span>Triaxial (X / Y / Z) vibration and temperature sensor, Modbus RTU.</span>
+    </button>
+    <button type="button" class="sensor" data-sensor="ila210" aria-pressed="false">
+      <strong>Wilcoxon ILA210</strong><span>Vibration gateway with separate IOC input, analog and alarm pages.</span>
+    </button>
+  </div>
+
+  <section id="ila210-section" hidden>
+    <h2>Wilcoxon ILA210</h2>
+    <p>Choose your board below. This firmware is separate from the 883M gateway.</p>
+    <p class="notice">Software builds and simulated tests passed; physical ILA sensor/IOC validation is pending. Confirm the exact sensor model and register manual before equipment use.</p>
+    <div class="boards" role="group" aria-label="ILA210 board">
+      <button type="button" class="ila-board board-choice" data-board="esp32" aria-pressed="true"><strong>ESP32-S3</strong><span>ESP32-S3 DevKitC-1-N8 wiring; Wi-Fi. Original ESP32 is unsupported.</span></button>
+      <button type="button" class="ila-board board-choice" data-board="ioc" aria-pressed="false"><strong>IRIV IO Controller</strong><span>RP2350, Ethernet and built-in RS485; install by copying UF2.</span></button>
+    </div>
+    <section id="ila-esp32-section"><h3>ESP32-S3 installation</h3>
+      <div id="ila-channels"><div class="card">Loading available versions...</div></div>
+      <p>Use Chrome or Edge on a computer and a USB data cable. Select Install, choose the port and reset the board afterwards. If needed, hold BOOT and tap RESET to enter download mode.</p>
+      <p>Only the ESP32-S3 chip is accepted. Chip detection cannot verify your board wiring: this is the ILA DevKitC build, not the 883M Feather build. Check the <a class="ila-wiring" href="#">ILA wiring guide</a>.</p>
+      <p>On first boot, connect to <code>ILA_Sensor_AP</code> (password <code>12345678</code>), open <a href="http://192.168.4.1">192.168.4.1</a> and save Wi-Fi settings.</p>
+    </section>
+    <section id="ila-ioc-section" hidden><h3>IRIV installation</h3>
+      <div id="ila-ioc-channels"><div class="card">Loading available versions...</div></div>
+      <ol><li>Connect the IRIV USB-C PROG port with a data cable.</li><li>Hold BOOT, press and release RESET, then release BOOT.</li><li>Copy the ILA210 <code>.uf2</code> onto the RP2350 drive.</li><li>Connect Ethernet and open the DHCP address listed by your router. Without DHCP, use <code>192.168.4.1</code> with the laptop at <code>192.168.4.2/24</code>.</li></ol>
+      <p>IRIV MQTT uses plain port 1883. Inputs, analog channels and spare outputs start disabled. Configure them on the separate IOC pages after verifying wiring.</p>
+    </section>
+    <p><a class="ila-guide" href="#">ILA setup, board pins and MQTT</a> ? <a class="ila-readiness" href="#">Readiness and pending hardware checks</a></p>
+  </section>
+
+  <div id="sensor-883m">
+  <h2>2. Choose your board</h2>
   <div class="boards" role="group" aria-label="Board">
     <button type="button" class="board" data-board="esp32" aria-pressed="true">
       <strong>ESP32 board</strong><span>Cytron Maker ESP32 or Adafruit Feather ESP32-S3. One-click install, Wi-Fi.</span>
@@ -68,6 +222,46 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
   <section id="esp32-section">
     <h2>ESP32 boards</h2>
     <p>The installer reads the chip on the connected board and installs the matching build automatically.</p>
+    <div class="steps three anim">
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="70" y="30" width="110" height="60" rx="8" fill="#1e3a8a"/>
+          <rect x="112" y="44" width="44" height="32" rx="3" fill="#94a3b8"/><text x="134" y="64" font-size="10" font-weight="700" fill="#1e293b" text-anchor="middle">ESP32</text>
+          <circle class="eled" cx="166" cy="40" r="4.5" fill="#22c55e"/>
+          <rect x="64" y="52" width="10" height="16" rx="3" fill="#cbd5e1"/>
+          <g class="plug"><path d="M-10 60 H24" stroke="#475569" stroke-width="6"/><rect x="22" y="53" width="42" height="14" rx="4" fill="#475569"/></g>
+          <text class="m" x="125" y="108" font-size="11" text-anchor="middle">USB-C data cable</text>
+        </svg>
+        <figcaption><span class="n">1</span>Plug in a USB-C data cable</figcaption>
+      </figure>
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="20" y="12" width="160" height="96" rx="8" fill="var(--bg)" stroke="var(--line)" stroke-width="2"/>
+          <rect x="20" y="12" width="160" height="14" rx="7" fill="var(--line)"/>
+          <circle cx="30" cy="19" r="2.5" fill="#f87171"/><circle cx="38" cy="19" r="2.5" fill="#fbbf24"/><circle cx="46" cy="19" r="2.5" fill="#34d399"/>
+          <g class="press"><rect x="62" y="36" width="76" height="24" rx="6" fill="var(--accent)"/><text x="100" y="52" font-size="12" font-weight="700" fill="var(--accent-text)" text-anchor="middle">Install</text></g>
+          <rect x="40" y="72" width="120" height="8" rx="4" fill="var(--line)"/>
+          <rect class="prog" x="40" y="72" width="120" height="8" rx="4" fill="#22c55e"/>
+          <text class="done" x="100" y="99" font-size="11" font-weight="700" fill="#16a34a" text-anchor="middle">✓ Installed</text>
+        </svg>
+        <figcaption><span class="n">2</span>Click Install and pick the port</figcaption>
+      </figure>
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="14" y="66" width="76" height="40" rx="6" fill="#1e3a8a"/><circle cx="80" cy="74" r="3.5" fill="#22c55e"/>
+          <g class="wifi" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round">
+            <path d="M38 50 a20 20 0 0 1 28 0"/><path d="M30 42 a32 32 0 0 1 44 0"/><circle cx="52" cy="58" r="3" fill="#38bdf8" stroke="none"/>
+          </g>
+          <g class="phone">
+            <rect x="120" y="14" width="62" height="96" rx="9" fill="#334155"/><rect x="125" y="24" width="52" height="74" rx="4" fill="#0f172a"/>
+            <text x="151" y="46" font-size="8" fill="#94a3b8" text-anchor="middle">Wi-Fi</text>
+            <text x="151" y="58" font-size="7.5" font-weight="700" fill="#e2e8f0" text-anchor="middle">ILA_Sensor_AP</text>
+            <text x="151" y="80" font-size="8.5" font-weight="700" fill="#38bdf8" text-anchor="middle">192.168.4.1</text>
+          </g>
+        </svg>
+        <figcaption><span class="n">3</span>Join <code>ILA_Sensor_AP</code>, open 192.168.4.1</figcaption>
+      </figure>
+    </div>
     <ul>
       <li><strong>Adafruit Feather ESP32-S3</strong> (ESP32-S3 chip)</li>
       <li><strong><a href="https://my.cytron.io/p-maker-esp32-bundle">Cytron Maker ESP32</a></strong> (original ESP32 chip, ESP32-WROOM-32E). Status is shown on the onboard GPIO2 LED, the buzzer is GPIO26 and the user button is GPIO4.</li>
@@ -84,6 +278,25 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <h3>2. Install</h3>
     <div id="channels"><div class="card">Loading available versions…</div></div>
     <p class="notice"><strong>Board not listed in the port window?</strong> Put it into download mode: hold <strong>BOOT</strong>, tap <strong>RESET</strong> (labelled <strong>EN</strong> on the Maker ESP32), release <strong>BOOT</strong>, then click Install again. After installing, press <strong>RESET</strong>/<strong>EN</strong> once to start the new firmware.</p>
+    <figure class="bootfig anim">
+      <svg viewBox="0 0 320 132" role="img" aria-label="Download mode: hold BOOT, tap RESET (EN on the Maker ESP32), then release BOOT.">
+        <rect x="20" y="14" width="280" height="72" rx="10" fill="#1e3a8a"/>
+        <rect x="12" y="40" width="12" height="20" rx="3" fill="#cbd5e1"/>
+        <rect x="58" y="32" width="40" height="34" rx="3" fill="#94a3b8"/>
+        <circle class="rboot" cx="137" cy="50" r="22" fill="none" stroke="#f59e0b" stroke-width="3"/>
+        <rect class="bboot" x="122" y="40" width="30" height="20" rx="5" fill="#e2e8f0"/>
+        <circle class="rreset" cx="227" cy="50" r="22" fill="none" stroke="#f59e0b" stroke-width="3"/>
+        <rect class="breset" x="212" y="40" width="30" height="20" rx="5" fill="#e2e8f0"/>
+        <text x="137" y="78" font-size="11" font-weight="700" fill="#e2e8f0" text-anchor="middle">BOOT</text>
+        <text x="227" y="78" font-size="11" font-weight="700" fill="#e2e8f0" text-anchor="middle">RESET / EN</text>
+        <g class="t" font-size="15" font-weight="700" text-anchor="middle">
+          <text class="c1" x="160" y="116">1. Hold BOOT</text>
+          <text class="c2" x="160" y="116">2. Tap RESET, keep holding BOOT</text>
+          <text class="c3" x="160" y="116">3. Release BOOT, then click Install</text>
+          <text class="rm-only" x="160" y="116">Hold BOOT · tap RESET · release BOOT</text>
+        </g>
+      </svg>
+    </figure>
 
     <h3>3. First-time setup</h3>
     <ol>
@@ -115,6 +328,50 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <div id="ioc-channels"><div class="card">Loading available versions…</div></div>
 
     <h3>2. Install</h3>
+    <div class="steps four anim">
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="60" y="18" width="110" height="86" rx="8" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/><rect x="68" y="22" width="94" height="12" rx="2" fill="#16a34a"/>
+          <text x="115" y="70" font-size="14" font-weight="700" fill="#334155" text-anchor="middle">IRIV</text>
+          <rect x="54" y="56" width="8" height="16" rx="2" fill="#475569"/>
+          <g class="iplug"><path d="M-10 64 H18" stroke="#475569" stroke-width="6"/><rect x="16" y="57" width="38" height="14" rx="4" fill="#475569"/></g>
+          <text class="m" x="115" y="117" font-size="10.5" text-anchor="middle">USB-C (PROG)</text>
+        </svg>
+        <figcaption><span class="n">1</span>Plug into USB-C (PROG)</figcaption>
+      </figure>
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="40" y="18" width="120" height="86" rx="8" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/><rect x="48" y="22" width="104" height="12" rx="2" fill="#16a34a"/>
+          <circle cx="78" cy="80" r="4" fill="#1e293b"/><circle cx="122" cy="80" r="4" fill="#1e293b"/>
+          <text x="78" y="98" font-size="9" font-weight="700" fill="#334155" text-anchor="middle">BOOT</text>
+          <text x="122" y="98" font-size="9" font-weight="700" fill="#334155" text-anchor="middle">RESET</text>
+          <circle class="rflash" cx="122" cy="80" r="11" fill="none" stroke="#f59e0b" stroke-width="3"/>
+          <path class="clip" d="M78 80 L52 112 M60 103 l-10 -8 l-6 8" fill="none" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <figcaption><span class="n">2</span>Hold BOOT, tap RESET, release BOOT</figcaption>
+      </figure>
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="110" y="34" width="76" height="54" rx="7" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+          <rect x="120" y="76" width="56" height="5" rx="2" fill="#94a3b8"/>
+          <text x="148" y="64" font-size="11" font-weight="700" fill="#334155" text-anchor="middle">RP2350</text>
+          <g class="file"><path d="M14 40 h26 l10 10 v40 h-36 z" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><path d="M40 40 v10 h10" fill="none" stroke="#b45309" stroke-width="2"/><text x="32" y="76" font-size="10" font-weight="700" fill="#92400e" text-anchor="middle">.uf2</text></g>
+          <text class="m" x="100" y="112" font-size="10.5" text-anchor="middle">drag onto the drive</text>
+        </svg>
+        <figcaption><span class="n">3</span>Copy the <code>.uf2</code> to the RP2350 drive</figcaption>
+      </figure>
+      <figure class="step">
+        <svg viewBox="0 0 200 120" aria-hidden="true">
+          <rect x="30" y="18" width="110" height="86" rx="8" fill="#cbd5e1" stroke="#94a3b8" stroke-width="2"/><rect x="38" y="22" width="94" height="12" rx="2" fill="#16a34a"/>
+          <text x="85" y="70" font-size="14" font-weight="700" fill="#334155" text-anchor="middle">IRIV</text>
+          <rect x="140" y="52" width="16" height="20" rx="2" fill="#334155"/><circle class="ethled" cx="148" cy="47" r="4" fill="#22c55e"/>
+          <path d="M156 62 H200" stroke="#38bdf8" stroke-width="4"/>
+          <text class="ready" x="100" y="116" font-size="10.5" font-weight="700" fill="#16a34a" text-anchor="middle">✓ Gateway running</text>
+        </svg>
+        <figcaption><span class="n">4</span>It restarts: connect Ethernet</figcaption>
+      </figure>
+    </div>
+
     <ol>
       <li>Connect the IRIV's <strong>USB-C (PROG)</strong> port to the computer with a data cable.</li>
       <li>With a paperclip, <strong>hold the BOOT pinhole button</strong>, press and release <strong>RESET</strong>, then release <strong>BOOT</strong>.</li>
@@ -132,13 +389,30 @@ footer { color: var(--muted); font-size: .85rem; margin-top: 36px; }
     <p class="notice"><strong>MQTT:</strong> the IRIV IO Controller supports plain MQTT on port <code>1883</code> only. MQTT over TLS (port <code>8883</code>) is not supported, so cloud brokers that require TLS need an ESP32 board.</p>
     <p class="notice">Updates: upload the new <code>firmware-cytron_iriv_io_controller.bin</code> under <strong>Settings &gt; Device Diagnostics &gt; Firmware Update</strong>, or copy the new <code>.uf2</code> as above. Both keep your settings. One-click updates from GitHub are not available on this board yet.</p>
   </section>
+  <p class="notice"><strong>MQTT waveforms:</strong> from v4.13.0, each waveform and each spectrum is sent as one complete MQTT message (up to about 110 KB), so your back end no longer joins pieces. Make sure your broker accepts messages of that size. <a class="mqtt-guide" href="#">How the messages look</a></p>
+  <p class="notice"><strong>MQTT topics:</strong> v4.13.0 also lets you choose your own topics. In <strong>Settings &gt; MQTT</strong>, set <strong>Topics</strong> to <strong>Custom</strong> to send metrics, waveforms, spectra and health status to topics you pick, and to set the command topic your system uses to control the gateway. <strong>Default</strong> keeps today's topics. <a class="mqtt-topics-guide" href="#">How topics and commands work</a></p>
+  </div>
 
   <footer>
     Source, release notes and manual install files: <a class="repo" href="#">GitHub repository</a>.
   </footer>
 </main>
 <script>
-// Board choice: a per-viewer convenience, so storage failures are ignored.
+// Sensor and board choice: per-viewer conveniences, so storage failures are ignored.
+const sensorButtons = document.querySelectorAll(".sensor");
+function showSensor(sensor) {
+  for (const b of sensorButtons) b.setAttribute("aria-pressed", String(b.dataset.sensor === sensor));
+  document.getElementById("sensor-883m").hidden = sensor !== "883m";
+  document.getElementById("ila210-section").hidden = sensor !== "ila210";
+}
+for (const b of sensorButtons) b.addEventListener("click", () => showSensor(b.dataset.sensor));
+if (["#ila210", "#ila200"].includes(location.hash)) showSensor("ila210");
+for (const button of document.querySelectorAll('.ila-board')) button.addEventListener('click', () => {
+  for (const other of document.querySelectorAll('.ila-board')) other.setAttribute('aria-pressed',String(other===button));
+  document.getElementById('ila-esp32-section').hidden=button.dataset.board!=='esp32';
+  document.getElementById('ila-ioc-section').hidden=button.dataset.board!=='ioc';
+});
+
 const boardButtons = document.querySelectorAll(".board");
 function showBoard(board) {
   for (const b of boardButtons) b.setAttribute("aria-pressed", String(b.dataset.board === board));
@@ -170,16 +444,23 @@ function channelHeader(card, c) {
 (async () => {
   const box = document.getElementById("channels");
   const iocBox = document.getElementById("ioc-channels");
+  const ilaBox=document.getElementById("ila-channels"), ilaIocBox=document.getElementById("ila-ioc-channels");
   try {
     const data = await (await fetch("channels.json", { cache: "no-store" })).json();
     const links = { repo: "", wiring: "/blob/main/docs/wiring.md", releases: "/releases",
-                    guide: "/blob/main/docs/installing-firmware.md" };
+                    guide: "/blob/main/docs/installing-firmware.md", "mqtt-guide": "#waveform-and-spectrum-messages", "mqtt-topics-guide": "#mqtt", "ila-guide": "/blob/main/ILA210/README.md",
+                    "ila-wiring": "/blob/main/ILA210/docs/wiring.md", "ila-readiness": "/blob/main/ILA210/docs/ioc-readiness.md" };
     for (const [cls, path] of Object.entries(links))
       for (const a of document.querySelectorAll("a." + cls)) a.href = data.repo + path;
     const none = '<div class="card">No installable release is published yet. Download firmware from the <a href="' + data.repo + '/releases">releases page</a>.</div>';
-    box.innerHTML = data.channels.length ? "" : none;
+    box.innerHTML = none;
     iocBox.textContent = "";
+    ilaBox.innerHTML=none; ilaIocBox.innerHTML=none;
     for (const c of data.channels) {
+      const isIla=c.sensor==='ila210';
+      const espTarget=isIla?ilaBox:box, iocTarget=isIla?ilaIocBox:iocBox;
+      if(c.manifest) {
+      if(!espTarget.querySelector('esp-web-install-button'))espTarget.textContent='';
       const card = document.createElement("div");
       card.className = "card channel";
       card.innerHTML =
@@ -192,7 +473,8 @@ function channelHeader(card, c) {
       channelHeader(card, c);
       card.querySelector("esp-web-install-button").setAttribute("manifest", c.manifest);
       card.querySelector("button").setAttribute("aria-label", "Install " + c.tag);
-      box.append(card);
+      espTarget.append(card);
+      }
 
       const uf2 = c.uf2 && c.uf2.cytron_iriv_io_controller;
       if (!uf2) continue;
@@ -204,7 +486,8 @@ function channelHeader(card, c) {
       download.href = uf2;
       download.textContent = "Download .uf2";
       download.setAttribute("aria-label", "Download " + c.tag + " for IRIV IO Controller");
-      iocBox.append(iocCard);
+      if(!iocTarget.querySelector("a.install"))iocTarget.textContent="";
+      iocTarget.append(iocCard);
     }
     if (!iocBox.children.length)
       iocBox.innerHTML = '<div class="card">No release with IRIV IO Controller firmware is published yet. Check the <a href="' + data.repo + '/releases">releases page</a>.</div>';
@@ -212,6 +495,7 @@ function channelHeader(card, c) {
     const failed = '<div class="card">Could not load the release list. Refresh the page, or download firmware from the GitHub releases page.</div>';
     box.innerHTML = failed;
     iocBox.innerHTML = failed;
+    ilaBox.innerHTML = failed; ilaIocBox.innerHTML = failed;
   }
 })();
 </script>

@@ -25,7 +25,7 @@ Power the ESP32 through its supported USB/power input. Use the sensor's specifie
 ## Before the first read
 
 1. Verify the sensor supply voltage and connector assignments against the manual.
-2. Verify GPIO numbers against [the firmware definitions](../src/config/config.h), rather than relying on board header position.
+2. Verify GPIO numbers against [the firmware definitions](../ESP32%20Family/ESP32-S3/src/config/config.h), rather than relying on board header position.
 3. Check the transceiver's supply and output logic levels. DE and /RE must support the shared direction-control connection.
 4. Use a twisted pair for A/B. Fit termination at the physical bus ends according to the equipment instructions and account for termination/bias resistors already fitted to modules.
 5. In Settings, match the sensor slave ID and serial settings. Start with one sensor on a short bench cable.
@@ -58,3 +58,17 @@ The IRIV IO Controller has an **isolated RS485 transceiver built in**, with auto
 - **Sensor power:** power the 883M as its manual specifies. Only share the IRIV's supply if the sensor's supply range allows it.
 - **Network:** connect the **ETH** port to your network. See [IRIV IO Controller](../README.md#iriv-io-controller) for addresses.
 - **Front LEDs:** **485** flashes with RS485 traffic. **USR** (GP29) is the gateway status LED: on when the network is up, blinking during captures and recordings, off when offline or after a sensor error.
+
+### PCC420V 4–20 mA sensor on AN0 or AN1
+
+![Functional cartoon wiring of the 883M and PCC420V on the IRIV IOC, updated 13 November 2026](images/iriv-pcc420-wiring.svg)
+
+The [PCC420V datasheet](https://wilcoxon.com/wp-content/uploads/2021/08/PCC420V-spec-99350A.2.pdf) specifies a two-wire loop powered by 12–30 V DC. The [Cytron analog-input guide](https://sg.cytron.io/tutorial/analog-inputs-on-iriv-io-controller) identifies AN0/AN1 as current inputs when their underside AN-IN MODE switches are set to **Current**. Connect the chosen channel in series with the loop:
+
+| From | To |
+| --- | --- |
+| Loop supply positive | PCC420V loop positive |
+| PCC420V loop negative | IRIV AN0 or AN1 |
+| IRIV AGND | Loop supply return |
+
+Use the pin assignment for the exact PCC420V connector variant in its datasheet; do not infer it from cable color. At 24 V, the IOC's nominal 248 Ω current input drops about 5 V at 20 mA, leaving about 19 V at the sensor, within its specified terminal voltage. Verify the voltage and polarity with a meter before connecting the IOC. The analog inputs share ground with the IOC and are not isolated. In **Settings > IOC I/O**, select the same AN channel and the sensor's VR (RMS) or VP (peak) full-scale model. The 883M remains on the separate RS485 terminals.

@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>883M Vibration Monitor</title>
+<meta name="description" content="A Wilcoxon 883M vibration sensor on an IRIV IO Controller running the Wilcoxon gateway firmware: readings to Viking Analytics over MQTT, a latched alarm relay on DO0 and an acknowledge button on DI1.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #1d1d1f; --muted: #6e6e73; --line: #d2d2d7; --soft: #f5f5f7; --accent: #f56300; --blue: #0071e3; --red: #e5383b; --green: #1a9e45; --bg: #fff; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 Inter, -apple-system, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--blue); text-decoration: none; } a:hover { text-decoration: underline; }
+  button { font: inherit; }
+  nav { position: sticky; top: 0; z-index: 10; background: rgba(255,255,255,.75); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,.08); }
+  nav .in { max-width: 1080px; margin: 0 auto; padding: 0 22px; height: 52px; display: flex; align-items: center; gap: 24px; }
+  nav b { font-size: 18px; letter-spacing: -.3px; margin-right: auto; }
+  nav a { color: var(--ink); font-size: 13px; }
+  nav .links { display: flex; gap: 22px; }
+  @media (max-width: 720px) { nav .links { display: none; } }
+  section { padding: 96px 22px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .grey { background: var(--soft); }
+  .center { text-align: center; }
+  .eyebrow { color: var(--accent); font-weight: 600; font-size: 19px; margin: 0 0 8px; }
+  h1, h2 { font-weight: 800; letter-spacing: -.035em; line-height: 1.05; margin: 0; }
+  h1 { font-size: clamp(44px, 8vw, 88px); } h2 { font-size: clamp(34px, 5.5vw, 58px); }
+  h3 { margin: 0 0 8px; font-size: 21px; letter-spacing: -.01em; }
+  .lede { font-size: clamp(18px, 2.3vw, 24px); color: var(--muted); font-weight: 500; margin: 16px auto 0; max-width: 760px; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; background: var(--soft); padding: 1px 6px; border-radius: 6px; }
+
+  /* hero flow */
+  .flow { display: flex; align-items: stretch; justify-content: center; margin: 48px auto 0; flex-wrap: wrap; }
+  .node { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; min-width: 170px; text-align: left; }
+  .node small { display: block; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .node b { font-size: 19px; }
+  .node span { display: block; color: var(--muted); font-size: 14px; }
+  .node .thumb { display: block; width: 120px; height: 90px; object-fit: contain; margin: -6px 0 6px; }
+  .node .thumb.ioc { width: 150px; object-fit: cover; }
+  .link { display: grid; place-items: center; padding: 0 10px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .link::after { content: "→"; display: block; font-size: 22px; color: var(--blue); }
+  .hero .node:nth-of-type(1) { border-color: #8e44ad; } .hero .node:nth-of-type(2) { border-color: var(--accent); } .hero .node:nth-of-type(3) { border-color: var(--blue); }
+  .act { margin-top: 18px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+  .act span { background: #fff; border: 1px solid var(--line); border-radius: 99px; padding: 6px 14px; }
+  @media (max-width: 760px) { .link { width: 100%; padding: 6px 0; } .link::after { content: "↓"; } .node { width: 100%; } }
+
+  /* film */
+  .player { margin: 44px auto 0; max-width: 1200px; }
+  .screen { position: relative; border-radius: 26px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 30px 80px -30px rgba(0,0,0,.25); }
+  .screen video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #fff; }
+  .screen video::cue { background: rgba(11,18,32,.92); color: #fff; font-size: clamp(13px, 2vw, 28px); }
+  .film-status { color: var(--muted); font-size: 14px; margin: 16px 0 0; }
+  .bar { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; padding: 0 6px; flex-wrap: wrap; }
+  .dl { border-radius: 99px; background: var(--ink); color: #fff; padding: 10px 18px; font-size: 14px; font-weight: 600; }
+  .bar a.dl:hover { color: #fff; text-decoration: none; background: #444; }
+  .files { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .film-next { margin: 24px 0; padding: 22px; background: var(--soft); border-radius: 18px; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; }
+  .film-next a { font-weight: 600; }
+  .film-next.finished { box-shadow: 0 0 0 2px var(--accent); }
+  .transcript { text-align: left; margin: 20px 6px; border-top: 1px solid var(--line); padding-top: 16px; }
+  .transcript summary { font-weight: 600; cursor: pointer; }
+  .transcript p { display: flex; align-items: baseline; gap: 16px; font-size: 15px; line-height: 1.7; }
+  .transcript button { flex: none; font: inherit; color: var(--blue); background: var(--soft); border: 0; border-radius: 6px; cursor: pointer; padding: 2px 8px; }
+  .chapters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; padding: 0 6px; justify-content: center; }
+  .chapters button { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 6px 13px; font-size: 13px; color: var(--ink); cursor: pointer; }
+  .chapters button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  /* try it */
+  .try { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; margin-top: 40px; text-align: left; }
+  @media (max-width: 860px) { .try { grid-template-columns: 1fr; } }
+  .card { background: #fff; border-radius: 24px; padding: 26px; }
+  .reading { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .reading output { font-size: 64px; font-weight: 800; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+  .zone { font-weight: 700; padding: 3px 12px; border-radius: 99px; background: var(--soft); }
+  .zone.c { background: #fff4d6; color: #8a5a00; } .zone.d { background: #ffe1e0; color: #a3221b; }
+  input[type=range] { width: 100%; accent-color: var(--accent); margin: 14px 0 4px; }
+  .scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  .cabinet { display: grid; grid-template-columns: auto 1fr; gap: 18px 20px; align-items: center; }
+  .lamp { width: 74px; height: 74px; border-radius: 50%; background: #d9dbe0; transition: background .2s; }
+  .lamp.on { background: var(--red); animation: flash .5s steps(2) infinite; box-shadow: 0 0 0 10px rgba(229,56,59,.18); }
+  @keyframes flash { 50% { background: #7a1d18; } }
+  @media (prefers-reduced-motion: reduce) { .lamp.on { animation: none; } html { scroll-behavior: auto; } }
+  .ack { width: 74px; height: 74px; border-radius: 50%; border: 8px solid #d0d4dc; background: var(--blue); color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; }
+  .ack:active { transform: translateY(2px); background: #0a5fb0; }
+  .state { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+  .state.ALARM { color: var(--red); } .state.ACKNOWLEDGED, .state.LATCHED { color: #a36b00; } .state.NORMAL { color: var(--green); }
+  #log { margin-top: 14px; display: grid; gap: 6px; min-height: 120px; }
+  #log p { margin: 0; display: flex; justify-content: space-between; gap: 10px; background: var(--soft); border-radius: 10px; padding: 7px 12px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  #log p.io { background: #fff4d6; }
+  #log .idle { font-family: inherit; color: var(--muted); background: none; padding: 0; }
+
+  /* wiring, setup, sensor */
+  table { width: 100%; border-collapse: collapse; margin-top: 32px; font-size: 15px; background: #fff; border-radius: 18px; overflow: hidden; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid #ececf0; vertical-align: top; }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; background: #fafafa; }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  .tag { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; background: var(--c); }
+  .tablewrap { overflow-x: auto; }
+  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 36px; }
+  .steps .card { background: #fff; }
+  .steps .n { color: var(--accent); font-weight: 800; font-size: 15px; }
+  .steps ul { margin: 8px 0 0; padding-left: 18px; color: #3a3a3f; font-size: 15px; }
+  .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 36px; }
+  .photos figure { margin: 0; background: #fff; border: 1px solid #ececf0; border-radius: 22px; overflow: hidden; }
+  .photos img { display: block; width: 100%; height: auto; }
+  .photos figcaption { padding: 12px 18px 16px; font-size: 14px; color: var(--muted); }
+  .specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr)); gap: 14px; margin-top: 16px; }
+  .specs .card { background: var(--soft); }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14.5px; }
+  dt { color: var(--muted); } dd { margin: 0; font-weight: 600; }
+  @media (max-width: 640px) { .photos { grid-template-columns: 1fr; } }
+  .note { margin-top: 24px; background: #fff8ec; border-radius: 16px; padding: 16px 20px; font-size: 15px; }
+  .note li { margin: 4px 0; }
+  .live { margin-top: 40px; text-align: left; background: #fff; border: 1px solid #ececf0; border-radius: 28px; padding: 22px; box-shadow: 0 30px 80px -40px rgba(0,0,0,.2); }
+  .livehead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .livepill { font-weight: 700; font-size: 14px; padding: 6px 14px; border-radius: 99px; background: var(--soft); color: var(--muted); }
+  .livepill.ok { background: #e3f6e8; color: #0f7a35; } .livepill.ok::before { content: "● "; }
+  .livepill.wait { background: #fff4d6; color: #8a5a00; } .livepill.bad { background: #ffe1e0; color: #a3221b; }
+  .livemeta { font-size: 14px; color: var(--muted); }
+  .livegrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  @media (max-width: 760px) { .livegrid { grid-template-columns: 1fr 1fr; } }
+  .lcard { background: var(--soft); border-radius: 18px; padding: 16px 18px; }
+  .lcard small { display: block; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .lcard b { font-size: 34px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .lcard i { font-style: normal; font-size: 15px; color: var(--muted); font-weight: 600; }
+  .liverow { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 860px) { .liverow { grid-template-columns: 1fr; } }
+  #live-chart { display: block; width: 100%; height: 200px; margin-top: 10px; }
+  .cabrow { display: flex; gap: 18px; align-items: center; margin-top: 10px; }
+  .cab .lamp { flex: none; width: 56px; height: 56px; }
+  .io { font-weight: 700; } .io.on { color: var(--red); }
+  .liveform { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px 12px; margin-top: 18px; align-items: end; }
+  @media (max-width: 860px) { .liveform { grid-template-columns: 1fr 1fr; } }
+  .liveform label { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .liveform input { font: inherit; font-size: 15px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; min-width: 0; color: var(--ink); }
+  .liveact { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
+  .liveact .dl { border: 0; cursor: pointer; }
+  .ghost { border: 1px solid var(--line); background: #fff; border-radius: 99px; padding: 10px 16px; cursor: pointer; }
+  .ghost:hover { border-color: var(--ink); }
+  .livenote { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+  footer { padding: 34px 22px 60px; font-size: 13px; color: var(--muted); border-top: 1px solid #ececf0; }
+  footer .wrap > div { margin: 6px 0; }
+  button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+  /* Product story: the hardware is the visual anchor, with a usable path on phones. */
+  section[id] { scroll-margin-top: 76px; }
+  nav { background: rgba(255,255,255,.94); }
+  nav .in { max-width: 1240px; height: 66px; }
+  nav b { font-size: 16px; white-space: nowrap; }
+  nav .links { gap: 5px; }
+  nav .links a { padding: 8px 11px; border-radius: 9px; font-weight: 600; color: #3c4654; }
+  nav .links a:hover { color: #0c273c; background: #eef3f7; text-decoration: none; }
+  .hero { position: relative; overflow: hidden; padding: 80px 22px 72px; background: radial-gradient(circle at 82% 16%, #243f51 0, #111f2b 38%, #0b151f 72%); color: #fff; }
+  .hero::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .16; background-image: linear-gradient(#a6c5d3 1px, transparent 1px), linear-gradient(90deg,#a6c5d3 1px,transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(90deg,transparent 18%,#000 100%); }
+  .hero .wrap { position: relative; max-width: 1240px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0,.94fr) minmax(0,1.06fr); gap: clamp(32px,5vw,80px); align-items: center; text-align: left; }
+  .hero .eyebrow { color: #ffaf78; font-size: 14px; letter-spacing: .12em; text-transform: uppercase; }
+  .hero h1 { max-width: 760px; font-size: clamp(48px,6.2vw,88px); text-wrap: balance; }
+  .hero .lede { max-width: 610px; margin: 24px 0 0; color: #c9d5df; font-size: clamp(17px,1.7vw,21px); line-height: 1.6; font-weight: 400; }
+  .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+  .hero-ctas a { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: 11px 20px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+  .hero-ctas .primary { color: #111b24; background: #ffb174; }
+  .hero-ctas .primary:hover { color: #111b24; background: #ffc491; text-decoration: none; }
+  .hero-ctas .secondary { color: #fff; border: 1px solid #698094; }
+  .hero-ctas .secondary:hover { color: #fff; background: #253a4a; text-decoration: none; }
+  .hero-proof { margin: 18px 0 0; font-size: 13px; color: #9db1bf; }
+  .hero-visual { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: end; min-height: 420px; padding: 30px; border: 1px solid #496174; border-radius: 28px; background: linear-gradient(155deg,#2a4051,#172936 60%,#10212e); box-shadow: 0 30px 70px rgba(0,0,0,.26); }
+  .hero-visual::before { content: ''; position: absolute; width: 190px; height: 190px; right: 10%; top: 12%; border: 1px solid rgba(135,208,227,.28); border-radius: 50%; box-shadow: 0 0 0 35px rgba(135,208,227,.05),0 0 0 80px rgba(135,208,227,.035); pointer-events: none; }
+  .hero-product { position: relative; z-index: 1; margin: 0; min-width: 0; border: 1px solid #e0e5e9; border-radius: 20px; background: #f5f6f7; overflow: hidden; box-shadow: 0 18px 30px rgba(0,0,0,.2); }
+  .hero-product.sensor-product { transform: translateY(-16px); }
+  .hero-product img { display: block; width: 100%; height: auto; aspect-ratio: 1.12; object-fit: contain; mix-blend-mode: multiply; }
+  .hero-product.controller-product img { aspect-ratio: 1.12; }
+  .hero-product figcaption { padding: 12px 15px 15px; border-top: 1px solid #e1e5e8; color: #344558; font-size: 12px; line-height: 1.4; }
+  .hero-product figcaption strong { display: block; color: #0c2335; font-size: 14px; }
+  .hero .flow { margin-top: 40px; align-items: center; gap: 10px; }
+  .hero .node { flex: 1 1 180px; max-width: 240px; min-width: 0; border: 1px solid #546a79; background: rgba(255,255,255,.08); color: #fff; }
+  .hero .node small,.hero .node span { color: #bed0da; }
+  .hero .node .thumb { width: 105px; height: 68px; padding: 4px; border-radius: 8px; background: #fff; }
+  .hero .node .thumb.ioc { width: 130px; }
+  .hero .link { color: #c4d0d9; }
+  .hero .link::after { color: #ffad70; }
+  .hero .act span { border-color: #5d7180; background: rgba(255,255,255,.08); color: #e2ebef; }
+  .screen { background: #101a22; }
+  .chapters button,.transcript button { min-height: 44px; }
+  .dl,.ghost { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .wire-overview { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; margin-top: 34px; }
+  .wire-step { min-width: 0; padding: 23px; border: 1px solid #dce3e7; border-radius: 20px; background: #f8fafb; }
+  .wire-step small { display: block; margin-bottom: 13px; color: #9a460d; font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+  .wire-step strong { display: block; margin-bottom: 8px; color: #12293b; font-size: 20px; line-height: 1.25; }
+  .wire-step span { color: #4c6070; font-size: 14px; line-height: 1.55; }
+  .wire-step code { display: inline-block; margin: 3px 3px 0 0; background: #e6edf1; color: #102839; }
+  .wire-note { margin: 13px 0 0; color: #536575; font-size: 14px; }
+  .card,.lcard,.node,.hero-product { transition: transform .22s ease,box-shadow .22s ease; }
+  .card:hover,.lcard:hover { transform: translateY(-2px); }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } .hero-visual { min-height: 0; max-width: 660px; width: 100%; margin: 0 auto; } }
+  @media (max-width: 760px) { .wire-overview { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { nav .in { height: auto; padding: 12px 16px 6px; display: block; } nav .links { display: flex; overflow-x: auto; gap: 2px; margin-top: 6px; scrollbar-width: none; mask-image: linear-gradient(90deg,#000 0%,#000 91%,transparent 100%); } nav .links::-webkit-scrollbar { display: none; } nav .links a { flex: none; min-height: 44px; display: inline-flex; align-items: center; } .hero { padding: 52px 20px 54px; } .hero .flow { gap: 8px; } .hero .node { max-width: none; flex-basis: 100%; } .hero .link { width: 100%; padding: 0; } .hero-visual { padding: 16px; gap: 8px; border-radius: 22px; } .hero-product figcaption { padding: 9px; font-size: 11px; } .hero-product figcaption strong { font-size: 12px; } }
+  @media (max-width: 640px) { .liveform { grid-template-columns: 1fr; } .livegrid { gap: 8px; } .lcard { padding: 12px; } .lcard b { font-size: clamp(24px,7vw,34px); } }
+  @media (prefers-reduced-motion: reduce) { .card,.lcard,.node,.hero-product { transition: none; } .card:hover,.lcard:hover { transform: none; } }
+</style>
+</head>
+<body>
+<nav><div class="in">
+  <b>883M vibration monitor</b>
+  <span class="links"><a href="#film">Film</a><a href="#live">Live</a><a href="#try">Try the alarm</a><a href="#connect">Wiring</a><a href="#setup">Setup</a><a href="#sensor">883M</a></span>
+</div></nav>
+
+<section class="hero center grey" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Machine condition monitoring</p>
+        <h1>Vibration in.<br>Alarm out.</h1>
+        <p class="lede">See a Wilcoxon 883M on a motor, an IRIV IO Controller reading it over RS485, and a local alarm that someone can acknowledge. Follow the data into Viking Analytics over MQTT.</p>
+        <div class="hero-ctas"><a class="primary" href="#film">Watch the narrated film →</a><a class="secondary" href="#try">Try the alarm demo</a></div>
+        <p class="hero-proof">Real product references · narrated 3D demonstration · interactive wiring</p>
+      </div>
+      <div class="hero-visual" aria-label="The Wilcoxon 883M sensor and IRIV IO Controller used in this demonstration">
+        <figure class="hero-product sensor-product"><img src="images/883m-square.jpg" width="900" height="900" alt="Wilcoxon 883M sensor with side M8 connector"><figcaption><strong>Wilcoxon 883M</strong>Vibration and temperature</figcaption></figure>
+        <figure class="hero-product controller-product"><img src="images/iriv-ioc.webp" width="1600" height="1600" alt="IRIV IO Controller MQTT Gateway with orange terminal blocks"><figcaption><strong>IRIV IO Controller</strong>RS485 to MQTT and alarm I/O</figcaption></figure>
+      </div>
+    </div>
+    <div class="flow">
+      <div class="node"><img class="thumb" src="images/883m.jpg" width="1200" height="900" alt=""><small>Sense</small><b>Wilcoxon 883M</b><span>3-axis vibration + temperature</span></div>
+      <div class="link">RS485 · Modbus</div>
+      <div class="node"><img class="thumb ioc" src="images/iriv-ioc.webp" width="1600" height="1600" alt=""><small>Bridge</small><b>IRIV IO Controller</b><span>Gateway firmware · dashboard</span></div>
+      <div class="link">MQTT</div>
+      <div class="node"><small>Analyse</small><b>Viking Analytics</b><span>MultiViz baselines + symptoms</span></div>
+    </div>
+    <div class="act"><span>DO0 → 24 V relay → beacon + buzzer</span><span>DI1 ← acknowledge push button</span></div>
+  </div>
+</section>
+
+<section class="center" id="film">
+  <div class="wrap">
+    <p class="eyebrow">The film</p>
+    <h2>How it works.</h2>
+    <p class="lede">Follow the sensor, the wiring, the firmware setup, MultiViz and one complete alarm event.</p>
+  </div>
+  <div class="player">
+    <div class="screen" id="screen">
+      <video id="tour-video" controls playsinline preload="metadata" poster="images/tour-poster.jpg" aria-label="Vibration monitor narrated film">
+        <source src="IRIV-IOC-883M-vibration-tour.mp4" type="video/mp4">
+        <track kind="captions" srclang="en" label="English" src="IRIV-IOC-883M-vibration-tour.vtt" default>
+        <a href="IRIV-IOC-883M-vibration-tour.mp4">Download the narrated film</a>
+      </video>
+    </div>
+    <p class="film-status" id="film-status">English narration · short captions · 1080p.</p>
+    <div class="bar">
+      <a class="dl" href="IRIV-IOC-883M-vibration-tour.mp4" download>Download narrated MP4</a>
+      <a class="files" href="IRIV-IOC-883M-vibration-tour.vtt" download>Download captions (.vtt)</a>
+    </div>
+    <div class="film-next" id="film-next"><a href="#connect">See the wiring →</a><a href="#try">Try the alarm</a></div>
+    <details class="transcript"><summary>Read the narration transcript</summary><div id="tour-transcript"></div></details>
+    <div class="chapters" id="chapters"></div>
+  </div>
+</section>
+
+<section class="center" id="live">
+  <div class="wrap">
+    <p class="eyebrow">Live</p>
+    <h2>Watch your machine live.</h2>
+    <p class="lede">Connect to the MQTT broker the gateway publishes to and this panel shows its real readings, relay and buttons as they arrive. It only listens and never sends commands.</p>
+    <div class="live">
+      <div class="livehead"><span class="livepill off" id="live-status" role="status">Not connected</span><span class="livemeta">Sensor <b id="live-serial">--</b> · last reading <b id="live-time">--</b> · uptime <b id="live-uptime">--</b></span></div>
+      <div class="livegrid">
+        <div class="lcard"><small>Velocity RMS · X</small><b><span id="live-x">--</span> <i>mm/s</i></b></div>
+        <div class="lcard"><small>Velocity RMS · Y</small><b><span id="live-y">--</span> <i>mm/s</i></b></div>
+        <div class="lcard"><small>Velocity RMS · Z</small><b><span id="live-z">--</span> <i>mm/s</i></b></div>
+        <div class="lcard"><small>Temperature</small><b><span id="live-temp">--</span> <i>°C</i></b></div>
+      </div>
+      <div class="liverow">
+        <div class="lcard chart"><small>Velocity RMS trend, 10 Hz – 1 kHz · <span style="color:#0a8a8f">X</span> <span style="color:#0071e3">Y</span> <span style="color:#8e44ad">Z</span> · mm/s</small><canvas id="live-chart" role="img" aria-label="Trend of the latest X, Y and Z velocity RMS readings"></canvas></div>
+        <div class="lcard cab"><small>Cabinet</small>
+          <div class="cabrow"><div class="lamp" id="live-beacon" aria-hidden="true"></div><dl>
+            <dt>Alarm</dt><dd id="live-alarm" class="io">--</dd><dt>DO0 relay</dt><dd id="live-do0" class="io">--</dd>
+            <dt>DI1 acknowledge</dt><dd id="live-di1" class="io">--</dd><dt>DI0 capture</dt><dd id="live-di0" class="io">--</dd>
+            <dt>Sensor</dt><dd id="live-fault" class="io">--</dd><dt>Latch</dt><dd id="live-latch">--</dd></dl></div></div>
+      </div>
+      <form class="liveform" id="live-form" autocomplete="off">
+        <label>Broker WebSocket URL<input id="live-url" type="url" placeholder="wss://broker.example.com:8084/mqtt" required></label>
+        <label>Username<input id="live-user" type="text" placeholder="read-only user"></label>
+        <label>Password<input id="live-pass" type="password"></label>
+        <label>Base topic<input id="live-topic" type="text" value="883M"></label>
+        <div class="liveact"><button class="dl" id="live-go" type="submit">Connect</button><button class="ghost" id="live-sample" type="button">Preview with sample data</button></div>
+      </form>
+      <p class="livenote">The browser needs the broker's WebSocket port (on this https page, <code>wss://</code>), not port 1883. Use a login that can only <em>subscribe</em> to the base topic. The password is never saved.</p>
+    </div>
+  </div>
+</section>
+
+<section class="grey center" id="try">
+  <div class="wrap">
+    <p class="eyebrow">Try the alarm</p>
+    <h2>Push the motor. Acknowledge it.</h2>
+    <p class="lede">Drag the velocity past 4.5 mm/s. DO0 turns on and stays latched. It drops only once the alarm is acknowledged on DI1 <em>and</em> the reading is back under the limit, in either order. This is the same logic the firmware runs.</p>
+    <div class="try">
+      <div class="card">
+        <h3>883M · velocity RMS, X axis</h3>
+        <div class="reading"><output id="vel-out">2.0</output><span>mm/s</span><span class="zone" id="zone">Zone B · fine</span></div>
+        <input type="range" id="vel" min="0" max="8" step="0.1" value="2" aria-label="Velocity RMS in millimetres per second">
+        <div class="scale"><span>0</span><span>2.8 warning</span><span>4.5 alarm</span><span>8 mm/s</span></div>
+        <h3 style="margin-top:22px">Published to MQTT <span id="count" style="color:var(--muted);font-weight:500;font-size:15px"></span></h3>
+        <div id="log" aria-live="polite"><p class="idle">Move the slider to publish a reading.</p></div>
+      </div>
+      <div class="card">
+        <h3>Cabinet</h3>
+        <div class="cabinet">
+          <div class="lamp" id="lamp" role="img" aria-label="Beacon off"></div>
+          <div><div class="state NORMAL" id="state">NORMAL</div><div id="relay" style="color:var(--muted)">DO0 off · relay open · beacon off</div></div>
+          <button class="ack" id="ack" aria-label="Acknowledge push button on DI1">ACK</button>
+          <div><b>DI1 · acknowledge push button</b><div style="color:var(--muted)">The USER button and the dashboard can acknowledge too.</div></div>
+        </div>
+        <p style="color:var(--muted);font-size:14px;margin:18px 0 0">The firmware also applies the delay and hysteresis you set. Both are zero here.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="connect">
+  <div class="wrap">
+    <p class="eyebrow">Wiring</p>
+    <h2>From motor to action.</h2>
+    <p class="lede" style="margin-left:0">Three paths make the system work: sensor readings, network data, and a local alarm circuit.</p>
+    <div class="wire-overview" aria-label="Simplified signal path">
+      <div class="wire-step"><small>01 · Sense</small><strong>883M → IOC</strong><span>Power and Modbus RTU run from the motor-mounted sensor to the controller. Match the cable pins to <code>V+</code><code>V−</code><code>A</code><code>B</code><code>G</code>.</span></div>
+      <div class="wire-step"><small>02 · Publish</small><strong>IOC → MQTT</strong><span>The controller sends measurements through Ethernet to the broker. Viking Analytics receives the sensor data there.</span></div>
+      <div class="wire-step"><small>03 · Respond</small><strong>DO0 → relay → beacon</strong><span>DO0 switches a relay for the local alarm. The acknowledge push button returns to <code>DI1</code>.</span></div>
+    </div>
+    <p class="wire-note">Simplified view for orientation. Use the terminal-by-terminal table and the device documentation when wiring hardware.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>From</th><th>To</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><i class="tag" style="--c:#e5383b"></i>24 V PSU +</td><td>IOC V+, 883M pin 1 (power)</td><td>IOC takes 10–30 V DC, the 883M 6–24 V DC. Keep the rail at 24.0 V, not above.</td></tr>
+        <tr><td><i class="tag" style="--c:#e5383b"></i>24 V PSU −</td><td>IOC V−, 883M pin 2 (ground)</td><td>Common 0 V.</td></tr>
+        <tr><td><i class="tag" style="--c:#0a8a8f"></i>883M pin 3 (signal +)</td><td>IOC RS485 A</td><td>Use 4-conductor shielded cable with an M8 4-pin plug, keeping signal + and − on one twisted pair.</td></tr>
+        <tr><td><i class="tag" style="--c:#0a8a8f"></i>883M pin 4 (signal −)</td><td>IOC RS485 B</td><td>If there are no replies, swap A and B first.</td></tr>
+        <tr><td><i class="tag" style="--c:#0a8a8f"></i>883M ground (0 V)</td><td>IOC RS485 G</td><td>Gives the isolated port its reference. Termination switch: 120 Ω ON (the IOC ends the bus).</td></tr>
+        <tr><td><i class="tag" style="--c:#86868b"></i>Cable shield</td><td>Cabinet earth, one end only</td><td>The 883M ties the shield to its housing (pin 5).</td></tr>
+        <tr><td><i class="tag" style="--c:#f56300"></i>24 V +</td><td>IOC DO0 (first terminal)</td><td>DO0 is a solid-state output on its own pair of terminals, rated 50 V / 500 mA.</td></tr>
+        <tr><td><i class="tag" style="--c:#f56300"></i>IOC DO0 (second terminal)</td><td>Relay coil A1; A2 to 0 V</td><td>Use a 24 V DC relay and fit a flyback diode across the coil.</td></tr>
+        <tr><td><i class="tag" style="--c:#f56300"></i>Relay NO contact</td><td>Beacon + buzzer</td><td>The relay contact carries the beacon's current, not the IOC output.</td></tr>
+        <tr><td><i class="tag" style="--c:#1a9e45"></i>24 V + → push button (NO)</td><td>IOC DI1</td><td>Wire S/S0..4 to 0 V so DI1 sees +24 V when pressed. A rising edge acknowledges.</td></tr>
+        <tr><td><i class="tag" style="--c:#1a9e45"></i>Optional button</td><td>IOC DI0</td><td>A rising edge starts an X/Y/Z waveform capture.</td></tr>
+        <tr><td><i class="tag" style="--c:#0071e3"></i>IOC Ethernet</td><td>Site network → MQTT broker → Viking Analytics</td><td>Plain MQTT on port 1883. See the TLS note below.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="grey" id="setup">
+  <div class="wrap">
+    <p class="eyebrow">Setup</p>
+    <h2>Install, connect, set the alarm.</h2>
+    <div class="steps">
+      <div class="card"><div class="n">01 · Firmware</div><h3>Web installer</h3><ul>
+        <li>On the <a href="https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/">web installer</a>, choose 883M, then IRIV IO Controller, and download the <code>.uf2</code> file.</li>
+        <li>Plug in USB-C, hold BOOT, press RESET, release BOOT, then copy the file to the RP2350 drive.</li>
+        <li>Wire the sensor to RS485 A, B and G.</li></ul></div>
+      <div class="card"><div class="n">02 · MQTT</div><h3>To Viking Analytics</h3><ul>
+        <li>In the gateway's web dashboard, enter the broker host, port 1883, and the user and password from Viking Analytics.</li>
+        <li>Base topic <code>883M</code>: metrics, waveforms and spectra. Status goes to <code>883M/status</code> and I/O to <code>883M/io</code>.</li>
+        <li>MultiViz learns a baseline per sensor, so there are no thresholds to set there.</li></ul></div>
+      <div class="card"><div class="n">03 · Alarm</div><h3>Dashboard + IOC I/O</h3><ul>
+        <li>Set the velocity RMS and temperature limits, and the delay, in the dashboard.</li>
+        <li>Under Settings › IOC I/O, DO0 follows the dashboard alarm, latched (this is the default). DO1 follows sensor faults.</li>
+        <li>DI1 acknowledges and DI0 starts a capture.</li></ul></div>
+    </div>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Topic</th><th>Direction</th><th>Content</th></tr></thead>
+      <tbody>
+        <tr><td><code>883M</code></td><td>Gateway → broker</td><td>Metrics, and each waveform and spectrum as one complete message (up to about 110 KB)</td></tr>
+        <tr><td><code>883M/status</code></td><td>Gateway → broker</td><td>Health status, normally every five minutes</td></tr>
+        <tr><td><code>883M/io</code></td><td>Gateway → broker</td><td><code>io_status</code>: inputs, outputs, latched and acknowledged, on every change and at least once a minute</td></tr>
+        <tr><td><code>883M/command</code></td><td>Broker → gateway</td><td>Commands such as <code>trigger_all</code> and <code>get_metrics</code>, with the sensor serial number</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note"><b>Good to know</b><ul>
+      <li>On the IRIV IO Controller, MQTT runs over plain port 1883 only, with no TLS. If the Viking broker needs TLS, forward through a local broker.</li>
+      <li>IOC I/O (DO0–DO3, DI0–DI10, AN0/AN1) is in beta and not yet validated on hardware. Test the alarm chain before relying on it.</li>
+      <li>One IRIV IO Controller reads one 883M.</li>
+      <li>4.5 mm/s is a starting point: the ISO 10816-3 alarm line for a medium machine on a rigid foundation, with 2.8 mm/s as the warning line. Set it for your machine.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section id="sensor">
+  <div class="wrap">
+    <p class="eyebrow">Wilcoxon 883M</p>
+    <h2>The sensor on the motor.</h2>
+    <p><a href="https://wilcoxon.com/wp-content/uploads/2025/08/883M-spec-99473A4.pdf" target="_blank" rel="noopener">Read the official Wilcoxon 883M datasheet (PDF) ↗</a></p>
+    <div class="wire-overview">
+      <div class="wire-step"><small>Measures</small><strong>Three axes + temperature</strong><span>Track vibration in X, Y and Z at the mounting point.</span></div>
+      <div class="wire-step"><small>Reports</small><strong>Metrics, waveform, spectrum</strong><span>Read acceleration, velocity and displacement, or inspect the signal over time and frequency.</span></div>
+      <div class="wire-step"><small>Helps explain</small><strong>Changes in machine condition</strong><span>Compare readings with the machine’s operating conditions and history before diagnosing a fault.</span></div>
+    </div>
+    <p class="lede" style="margin-left:0">A digital triaxial MEMS accelerometer with a temperature sensor. It works out the vibration numbers itself and serves them over Modbus RTU, so the IOC only has to read registers.</p>
+    <div class="photos">
+      <figure><img src="images/883m.jpg" width="1200" height="900" alt="Wilcoxon 883M sensor: black aluminium top, stainless base, M8 connector on the side" loading="lazy"><figcaption>Aluminium top, stainless base, M8 connector and an RGB status LED.</figcaption></figure>
+      <figure><img src="images/883m-axes.jpg" width="1200" height="900" alt="Wilcoxon 883M side view with X, Y and Z axis markings, on the magnet mount adapter" loading="lazy"><figcaption>The X, Y, Z axes are marked on the side. Shown on the MD883 magnet adapter.</figcaption></figure>
+    </div>
+    <div class="specs">
+      <div class="card"><h3>Dynamic</h3><dl>
+        <dt>Acceleration range</dt><dd>±16 g peak</dd><dt>Resolution</dt><dd>0.488 mg</dd>
+        <dt>Frequency response (±3 dB)</dt><dd>2 Hz – 5 kHz</dd><dt>Resonance</dt><dd>6.9 kHz</dd></dl></div>
+      <div class="card"><h3>Communication</h3><dl>
+        <dt>Interface</dt><dd>RS485</dd><dt>Protocol</dt><dd>Modbus RTU</dd>
+        <dt>Recommended baud</dt><dd>9,600 or 115,200 bps</dd><dt>Max. baud</dt><dd>921,600 bps</dd>
+        <dt>Functions</dt><dd>03 / 04 read · 06 / 10 write · 2B device ID</dd><dt>Max. per request</dt><dd>125 registers</dd></dl></div>
+      <div class="card"><h3>Other outputs</h3><dl>
+        <dt>Temperature</dt><dd>−20 to +70 °C</dd><dt>True peak</dt><dd>Sampled at 13.333 kHz</dd>
+        <dt>Spectrum</dt><dd>0 – 5 kHz, 6,145 lines</dd><dt>Time waveform</dt><dd>13,333 samples, 1 s</dd>
+        <dt>Also</dt><dd>Crest factor, standard deviation</dd></dl></div>
+      <div class="card"><h3>Electrical &amp; build</h3><dl>
+        <dt>Power</dt><dd>6 – 24 V DC</dd><dt>Indicator</dt><dd>1 RGB LED</dd>
+        <dt>Size · weight</dt><dd>35 mm dia. × 26 mm · 75 g</dd><dt>Case</dt><dd>6061 aluminium top, 303 stainless base</dd>
+        <dt>Sealing</dt><dd>IP67 · 5–95 % RH</dd><dt>Storage</dt><dd>−20 to +80 °C</dd></dl></div>
+    </div>
+
+    <h3 style="margin-top:40px">Calculated metrics, for each of X, Y and Z</h3>
+    <div class="tablewrap"><table style="margin-top:14px">
+      <thead><tr><th>Metric</th><th>RMS bands</th><th>Peak bands</th></tr></thead>
+      <tbody>
+        <tr><td>Acceleration</td><td>2 Hz – 1 kHz · 10 Hz – 5 kHz</td><td>2 Hz – 1 kHz · 10 Hz – 5 kHz</td></tr>
+        <tr><td>Velocity</td><td>10 Hz – 1 kHz · 10 Hz – 5 kHz</td><td>10 Hz – 1 kHz · 10 Hz – 5 kHz</td></tr>
+        <tr><td>Displacement</td><td>2 Hz – 1 kHz · 10 Hz – 1 kHz</td><td>2 Hz – 1 kHz · 10 Hz – 1 kHz</td></tr>
+      </tbody>
+    </table></div>
+    <p style="color:var(--muted);font-size:15px">The bands follow ISO 10816-3 and ISO 20816-3.</p>
+
+    <div class="specs" style="margin-top:28px">
+      <div class="card"><h3>M8 connector pins</h3><dl>
+        <dt>Pin 1</dt><dd>Power, 6–24 V DC</dd><dt>Pin 2</dt><dd>Ground</dd><dt>Pin 3</dt><dd>Signal + (RS485)</dd><dt>Pin 4</dt><dd>Signal − (RS485)</dd><dt>Pin 5</dt><dd>Shield (housing)</dd></dl></div>
+      <div class="card"><h3>Mounting</h3><dl>
+        <dt>Adhesive</dt><dd>On the flat base</dd><dt>Screw</dt><dd>SF883 screw pad adapter</dd><dt>Magnet</dt><dd>MD883 magnet adapter</dd>
+        <dt>Why an adapter</dt><dd>Fixes the axis orientation and the cable exit</dd></dl></div>
+      <div class="card"><h3>Made for</h3><dl>
+        <dt>Rotating</dt><dd>Motors, fans, pumps, compressors</dd><dt>Drive train</dt><dd>Gearboxes, couplings, bearings</dd><dt>Plant</dt><dd>CNC, conveyors, HVAC, cranes</dd></dl></div>
+    </div>
+    <div class="note">Wire colours depend on the M8 cable you use (Wilcoxon sells the RM8 cable), so match them to the pin numbers above.</div>
+  </div>
+</section>
+
+<footer><div class="wrap">
+  <div>Firmware, wiring guide and releases: <a href="https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT">Wilcoxon-883M_RTU-to-TCP-and-MQTT on GitHub</a>.</div>
+  <div>Sources: <a href="https://wilcoxon.com/883m/" target="_blank" rel="noopener">Wilcoxon 883M specifications</a>, the gateway firmware and README, <a href="https://sg.cytron.io/cytron-industry/p-iriv-io-controller-mqtt-ir4.0-industrial-i-o-controller-with-mqtt-ready" target="_blank" rel="noopener">Cytron IRIV IOC MQTT documentation</a> and <a href="https://www.vikinganalytics.se/" target="_blank" rel="noopener">vikinganalytics.se</a>. Sensor photos: Wilcoxon Sensing Technologies, via Instrumart. IRIV IO Controller photo: Cytron Technologies. The film and the alarm demo are simulations; the values shown are illustrative.</div>
+</div></footer>
+
+<script src="narration.js"></script>
+<script src="player.js"></script>
+<script src="live.js"></script>
+<link rel="stylesheet" href="experience.css">
+<script src="experience.js"></script>
+<script>
+/* ---------- try the alarm: the firmware's Latch (IRIV IOC/src/io/iriv_io.cpp), condition = velocity over the limit ---------- */
+const ALARM_AT = 4.5, WARN_AT = 2.8;   // mm/s RMS
+function latch(l, active, ack) {
+  l = { ...l };
+  if (active && !l.previous) l.acknowledged = false;
+  if (active) l.latched = true;
+  if (ack) l.acknowledged = true;
+  if (!active && l.acknowledged) l.latched = false;
+  if (!l.latched) l.acknowledged = false;
+  l.previous = active;
+  return l;
+}
+{ // self-check: trip; ack while high keeps it on; clear drops it. Clear first: stays latched until ack.
+  let l = { latched: false, acknowledged: false, previous: false };
+  const seq = [[0, 0, 0], [1, 0, 1], [1, 1, 1], [1, 0, 1], [0, 0, 0], [1, 0, 1], [0, 0, 1], [0, 0, 1], [0, 1, 0], [1, 1, 1], [1, 0, 1], [0, 0, 0]];
+  seq.forEach(([a, k, want], i) => { l = latch(l, !!a, !!k); console.assert(+l.latched === want, 'latch step ' + i); });
+}
+const $ = id => document.getElementById(id);
+let st = { latched: false, acknowledged: false, previous: false }, v = 2, sent = 0;
+function publish(topic, value) {
+  const log = $('log'); log.querySelector('.idle')?.remove();
+  const p = document.createElement('p'); if (topic !== '883M') p.className = 'io';
+  p.innerHTML = `<span>↑ ${topic}</span><b>${value}</b>`;
+  log.prepend(p); while (log.children.length > 8) log.lastChild.remove();
+  $('count').textContent = ++sent + (sent === 1 ? ' message' : ' messages');
+}
+function step(ack) {
+  const was = st.latched; st = latch(st, v > ALARM_AT, ack);
+  if (ack) publish('883M/io', 'DI1 ack');
+  if (st.latched !== was) publish('883M/io', st.latched ? 'DO0 on' : 'DO0 off');
+  const high = v > ALARM_AT, state = !st.latched ? 'NORMAL' : st.acknowledged ? 'ACKNOWLEDGED' : high ? 'ALARM' : 'LATCHED';
+  $('state').className = 'state ' + state; $('state').textContent = state;
+  $('lamp').classList.toggle('on', st.latched); $('lamp').setAttribute('aria-label', st.latched ? 'Beacon flashing' : 'Beacon off');
+  $('relay').textContent = { NORMAL: 'DO0 off · relay open · beacon off', ALARM: 'DO0 on · relay closed · beacon and buzzer on',
+    ACKNOWLEDGED: 'DO0 on · acknowledged, so it drops once the reading is under 4.5 mm/s', LATCHED: 'DO0 on · reading has cleared · press ACK to drop it' }[state];
+}
+const zoneOf = x => x > ALARM_AT ? ['d', 'Zone D · alarm'] : x > WARN_AT ? ['c', 'Zone C · warning'] : ['', x > 1.4 ? 'Zone B · fine' : 'Zone A · new machine'];
+$('vel').addEventListener('input', e => { const x = +e.target.value, [c, t] = zoneOf(x); $('vel-out').textContent = x.toFixed(1); $('zone').className = 'zone ' + c; $('zone').textContent = t; });
+$('vel').addEventListener('change', e => { v = +e.target.value; publish('883M', 'metrics · X ' + v.toFixed(2)); step(false); });
+$('ack').addEventListener('click', () => step(true));
+</script>
+</body>
+</html>
