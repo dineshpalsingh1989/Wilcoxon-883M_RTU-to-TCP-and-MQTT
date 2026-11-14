@@ -22,7 +22,7 @@ globalThis.fetch = async (url, options) => {
   assert.equal(url, 'https://api.github.com/repos/example/private-records/issues');
   assert.equal(options.headers.Authorization, 'Bearer test-token');
   saved = JSON.parse(options.body);
-  return new Response(JSON.stringify({number:12}), {status:201});
+  return new Response(JSON.stringify({number:12,html_url:'https://github.com/example/private-records/issues/12'}), {status:201});
 };
 try {
   assert.equal((await worker.fetch(post('wrong'), env)).status, 401);
@@ -30,7 +30,9 @@ try {
   assert.equal((await worker.fetch(post('test-install-key', {...record, mac_address:'invalid'}), env)).status, 400);
   const response = await worker.fetch(post('test-install-key'), env);
   assert.equal(response.status, 201);
-  assert.equal((await response.json()).issue_number, 12);
+  const result=await response.json();
+  assert.equal(result.issue_number, 12);
+  assert.equal(result.issue_url, 'https://github.com/example/private-records/issues/12');
   assert(saved.body.includes('"sensor_serial": null'));
   assert(!saved.body.includes('test-install-key'));
   console.log('PASS: private registry accepts valid records and rejects invalid key, origin and MAC.');

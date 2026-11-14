@@ -76,7 +76,7 @@ export default {
     });
     if (!github.ok) return reply(502, 'GitHub did not save the record', origin, env);
     const issue = await github.json();
-    return new Response(JSON.stringify({saved:true, issue_number:issue.number}), {
+    return new Response(JSON.stringify({saved:true, issue_number:issue.number, issue_url:issue.html_url}), {
       status:201, headers:{'Content-Type':'application/json', ...cors(origin, env)},
     });
   },

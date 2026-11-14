@@ -198,7 +198,7 @@ The [PCC420V wiring steps](docs/wiring.md#pcc420v-420-ma-sensor-on-an0-or-an1) s
 
 After saving, the gateway restarts and joins your network. Open its new IP address to see the dashboard, then [wire the sensor](#hardware-and-wiring).
 
-After flashing, the installer can read a USB startup report and download a JSON record with the board ID, MAC address, firmware version and available 883M identity. Private GitHub registration requires the separate [installation registry setup](docs/install-registry.md).
+After flashing, the installer can read a USB startup report and download a JSON record with the board ID, MAC address, firmware version and available 883M identity. Once the [private installation registry](docs/install-registry.md) is configured and its key entered, the record is saved to GitHub automatically when detected.
 
 ### If the install does not work
 

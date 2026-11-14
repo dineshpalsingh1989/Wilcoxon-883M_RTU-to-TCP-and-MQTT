@@ -13,7 +13,7 @@ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.
   await page.route('https://registry.example/installations',async route=>{
     savedRecord=JSON.parse(route.request().postData());
     assert.equal(route.request().headers()['x-install-key'],'test-key');
-    await route.fulfill({status:201,contentType:'application/json',body:'{"saved":true}'});
+    await route.fulfill({status:201,contentType:'application/json',body:'{"saved":true,"issue_url":"https://github.com/example/private-records/issues/12"}'});
   });
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'serial', {value: {requestPort: async () => ({
@@ -33,15 +33,15 @@ const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url.
   assert.equal(await page.locator('#channels esp-web-install-button').getAttribute('manifest'),'stable/manifest.json');
   assert(await page.locator('#serial-console').isVisible());
   assert(await page.getByText('Check your board and wiring before flashing').isVisible());
+  await page.locator('#registry-key').fill('test-key');
+  await page.locator('#registry-key').blur();
   await page.getByRole('button',{name:'Connect to USB'}).click();
   await page.waitForFunction(() => document.querySelector('#serial-output').textContent.includes('ESP32 ready'));
   await page.waitForFunction(() => !document.querySelector('#receipt-download').disabled);
   assert((await page.locator('#device-summary').textContent()).includes('AA:BB:CC:DD:EE:FF'));
-  await page.locator('#registry-key').fill('test-key');
-  await page.locator('#registry-save').click();
-  await page.waitForFunction(() => document.querySelector('#registry-status').textContent.includes('Saved to the private GitHub'));
+  await page.waitForFunction(() => document.querySelector('#registry-status').textContent.includes('Saved automatically'));
   assert.equal(savedRecord.sensor_serial,'883M123');
-  assert((await page.locator('#registry-status').textContent()).includes('Saved to the private GitHub'));
+  assert.equal(await page.locator('#registry-link a').getAttribute('href'),'https://github.com/example/private-records/issues/12');
   await page.getByRole('button',{name:'Clear logs'}).click();
   assert.equal(await page.locator('#serial-output').textContent(),'');
   await page.getByRole('button',{name:/Wilcoxon ILA210/}).click();
