@@ -248,7 +248,7 @@ Libraries in the IRIV IO Controller firmware:
 | ArduinoJson | Benoît Blanchon (MIT) | Settings files, web page data and MQTT messages |
 | Arduino-Pico core | Earle Philhower (LGPL) | Base system: RP2350 start-up, W5500 Ethernet, TCP/IP (lwIP), web server, LittleFS storage, FreeRTOS |
 
-The Modbus library lives in [experiments/Wilcoxon883MRTU-beta](experiments/Wilcoxon883MRTU-beta/README.md) and is compiled into the firmware from this repository, so a gateway firmware update always brings the matching library version. **Settings > Device Diagnostics** shows which version is installed. The library can also be used on its own in Arduino or PlatformIO sketches; see its [installation guide](experiments/Wilcoxon883MRTU-beta/README.md). The [library migration guide](docs/modbus-library.md) covers compatibility, memory use, the beta release process and the bench tests still needed.
+The gateway compiles its own copy of the Modbus library, so a gateway firmware update brings the matching version. **Settings > Device Diagnostics** shows which version is installed. For your own Arduino or PlatformIO sketches, use the separate [Wilcoxon883MRTU library](https://github.com/dineshpalsingh1989/Wilcoxon883MRTU), now accepted into Arduino Library Manager. Its current release is a beta pending real sensor and PLC validation. Installing the library alone does not change gateway firmware. The [library migration guide](docs/modbus-library.md) covers compatibility, memory use and remaining bench tests.
 
 ## What you can do
 
@@ -289,7 +289,7 @@ Most users only need the [web installer](#install-on-your-esp32-in-4-steps).
 | --- | --- | --- |
 | Gateway firmware, new board | First install or recovery | [Web installer](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/), or `factory-<board>.bin` at `0x0` from the [releases](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases) |
 | Gateway firmware, update | A gateway that already runs this firmware | **Settings > GitHub Firmware Updates**, or `firmware-<board>.bin` on the [latest release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases/latest) |
-| Wilcoxon883MRTU library | Using the Modbus RTU/TCP library in your own sketch | `Wilcoxon883MRTU-<version>.zip` on the newest `wilcoxon883mrtu-v*` [release](https://github.com/dineshpalsingh1989/Wilcoxon-883M_RTU-to-TCP-and-MQTT/releases); in Arduino IDE use **Sketch > Include Library > Add .ZIP Library** |
+| Wilcoxon883MRTU library | Using Modbus RTU/TCP in your own sketch | Search **Wilcoxon883MRTU** in Arduino IDE's Library Manager, or use the [beta source ZIP](https://github.com/dineshpalsingh1989/Wilcoxon883MRTU/releases/tag/v0.1.0-beta.4) until its listing appears |
 
 ### Try it without hardware
 
