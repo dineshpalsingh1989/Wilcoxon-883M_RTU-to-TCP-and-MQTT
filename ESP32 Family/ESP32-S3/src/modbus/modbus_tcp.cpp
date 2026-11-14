@@ -11,6 +11,68 @@ Wilcoxon883MTCP plcServer(plcRegisters);
 
 bool lockData(void*) { return xSemaphoreTake(dataMutex, pdMS_TO_TICKS(50)) == pdTRUE; }
 void unlockData(void*) { xSemaphoreGive(dataMutex); }
+
+void handlePlcRegisterWrite(uint16_t address, uint16_t count, void*) {
+    const uint32_t endAddress = uint32_t(address) + count;
+    const bool writesWaveformTrigger =
+        address <= HREG_TRIGGER_WAVEFORM && HREG_TRIGGER_WAVEFORM < endAddress;
+    const bool writesSpectrumTrigger =
+        address <= HREG_TRIGGER_SPECTRUM && HREG_TRIGGER_SPECTRUM < endAddress;
+    if (!writesWaveformTrigger && !writesSpectrumTrigger) return;
+
+    if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        logMessage("[Modbus TCP] Could not process PLC capture trigger: data is busy.");
+        return;
+    }
+
+    const uint16_t waveformRequest = writesWaveformTrigger ? liveRegisters[HREG_TRIGGER_WAVEFORM] : 0;
+    const uint16_t spectrumRequest = writesSpectrumTrigger ? liveRegisters[HREG_TRIGGER_SPECTRUM] : 0;
+    if (writesWaveformTrigger) liveRegisters[HREG_TRIGGER_WAVEFORM] = 0;
+    if (writesSpectrumTrigger) liveRegisters[HREG_TRIGGER_SPECTRUM] = 0;
+
+    String result;
+    if (waveformRequest == 0 && spectrumRequest == 0) {
+        // Zero is a no-op and can be used by a PLC to clear the trigger register.
+    } else if (waveformRequest != 0 && spectrumRequest != 0) {
+        result = "[Modbus TCP] Ignored PLC capture request: write only one trigger register at a time.";
+    } else {
+        const uint16_t request = waveformRequest != 0 ? waveformRequest : spectrumRequest;
+        Axis axis = AXIS_NONE;
+        bool xyzCycle = false;
+        switch (request) {
+            case 1: axis = AXIS_X; xyzCycle = true; break;
+            case 2: axis = AXIS_X; break;
+            case 3: axis = AXIS_Y; break;
+            case 4: axis = AXIS_Z; break;
+            default: result = "[Modbus TCP] Ignored PLC capture request: trigger value must be 1, 2, 3 or 4."; break;
+        }
+
+        if (axis != AXIS_NONE) {
+            const bool busy = firmwareUpdateActive || currentDataState != DD_IDLE ||
+                              isReadingWaveform || isReadingSpectrum;
+            if (busy) {
+                result = "[Modbus TCP] Ignored PLC capture request: device is busy.";
+            } else {
+                requestedAxis = axis;
+                requestedCapture = CAPTURE_BOTH;
+                currentDataState = DD_REQUEST_DATA;
+                isAutoCaptureCycleActive = xyzCycle;
+                if (xyzCycle) {
+                    autoCaptureAxisIndex = 0;
+                    xyzPeakDataCache.clear();
+                }
+                liveRegisters[HREG_WAVEFORM_READY_STATUS] = 0;
+                liveRegisters[HREG_SPECTRUM_READY_STATUS] = 0;
+                result = String("[Modbus TCP] PLC started ") +
+                         (xyzCycle ? "XYZ" : (axis == AXIS_X ? "X" : (axis == AXIS_Y ? "Y" : "Z"))) +
+                         " capture.";
+            }
+        }
+    }
+
+    xSemaphoreGive(dataMutex);
+    if (!result.isEmpty()) logMessage(result);
+}
 }
 
 bool allocateModbusTCPBuffers() {
@@ -27,6 +89,7 @@ bool beginModbusTCPServer(uint16_t port) {
                   plcRegisters.addHolding(HREG_WAVEFORM_START, waveformRegisters, WAVEFORM_TOTAL_POINTS) &&
                   plcRegisters.addHolding(HREG_SPECTRUM_START, spectrumRegisters, SPECTRUM_TOTAL_POINTS);
     plcRegisters.setLock(lockData, unlockData);
+    plcRegisters.onWrite(handlePlcRegisterWrite);
     // Same capacity and unit-ID handling as the previous server: 8 clients, any unit ID.
     return mapped && plcServer.begin(port, Wilcoxon883MTCP::MaxClients, 0);
 }
