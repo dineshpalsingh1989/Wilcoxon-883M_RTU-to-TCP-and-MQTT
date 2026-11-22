@@ -40,8 +40,12 @@ const demoIo = () => ({ ready: true, inputs: Array(11).fill(false), outputs: [fa
     { source: 'off', source_id: 0, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: false, condition: false, acknowledged: false },
     { source: 'off', source_id: 0, metric_index: 0, axis_id: 3, direction_id: 0, threshold_value: 0, hysteresis_value: 0, delay_value: 0, latch: false, condition: false, acknowledged: false }],
   alarm: false, sensor_fault: false, capture_accepted: 0, capture_rejected: 0,
-  analog: [{ name: 'Simulated PCC420V', unit: 'mm/s', mode: '4-20mA', model: 7, minimum: 0, maximum: 20, input: 12, value: 10, fault: false, adc: 1923 },
-    { name: 'AN1', unit: '', mode: 'off', model: 0, minimum: 0, maximum: 100 }] });
+  analog: [demoPcc420('Simulated motor', 7, 4.2), demoPcc420('Simulated pump', 16, 7.5)] });
+// Simulated PCC420V loops: model 7 = VR-20mm (RMS), 16 = VP-20mm (peak), both 0-20 mm/s over 4-20 mA.
+function demoPcc420(name, model, base) {
+  const value = noisy(base), input = 4 + 16 * value / 20;
+  return { name, unit: 'mm/s', mode: '4-20mA', model, minimum: 0, maximum: 20, input, value, fault: false, adc: Math.round(input * 160) };
+}
 const noisy = base => base * (1 + (Math.random() - 0.5) * 0.1);
 
 function metrics() {

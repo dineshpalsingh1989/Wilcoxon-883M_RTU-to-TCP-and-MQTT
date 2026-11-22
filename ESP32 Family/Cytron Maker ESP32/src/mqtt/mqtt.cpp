@@ -9,6 +9,7 @@ void publishDeviceHealth() {
     doc["model"] = sensor_model; 
     doc["serial_number"] = sensor_serial; 
     doc["vendor_url"] = sensor_vendor_url; 
+    doc["sensor_firmware"] = sensor_fw_version; // 883M MajorMinorRevision from device identification
     doc["timestamp"] = getTimestamp();
     doc["type"] = "health_status";
     if (xSemaphoreTake(dataMutex, pdMS_TO_TICKS(100)) == pdTRUE) {

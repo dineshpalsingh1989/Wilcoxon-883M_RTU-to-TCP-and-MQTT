@@ -51,7 +51,7 @@ In **Settings → MQTT**, set **Topics** to **Custom** to send metrics, waveform
 
 [![Watch the film (3:00): IRIV IO Controller + Wilcoxon 883M + Viking Analytics, with a DO0 alarm relay and DI1 acknowledge button](showcase/images/film-poster-play.jpg)](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)
 
-**[▶ Open the film and the interactive page](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)**: a narrated 3D film, 3 min with captions, including a cutaway of the motor and pump, showing a Wilcoxon 883M on an IRIV IO Controller sending readings to Viking Analytics over MQTT. DO0 drives the alarm relay and DI1 acknowledges it. The page also has a hands-on alarm demo, the wiring table and the 883M specifications. [Download the MP4](showcase/IRIV-IOC-883M-vibration-tour.mp4).
+**[▶ Open the film and the interactive page](https://dineshpalsingh1989.github.io/Wilcoxon-883M_RTU-to-TCP-and-MQTT/showcase/)**: a narrated 3D film, under 4 min with captions, including a cutaway of the motor and pump, showing a Wilcoxon 883M on an IRIV IO Controller sending readings to Viking Analytics over MQTT. It also shows two optional PCC420V 4–20 mA sensors on AN0 and AN1. DO0 drives the alarm relay and DI1 acknowledges it. The page also has a hands-on alarm demo, the wiring table and the 883M specifications. [Download the MP4](showcase/IRIV-IOC-883M-vibration-tour.mp4).
 
 ## Choose your sensor
 
@@ -378,7 +378,7 @@ These are the **Default** topics. To send each kind of message to your own topic
 | Metrics topic | `metrics` | Base Topic |
 | Waveform topic | `waveform_preview`, `waveform_chunk` | Base Topic |
 | Spectrum topic | `spectrum_chunk`, `spectrum_peaks` | Base Topic |
-| Status topic | `health_status`, `combined_spectrum_peaks` | `883M/status` |
+| Status topic | `health_status` (includes the 883M `sensor_firmware` version), `combined_spectrum_peaks` | `883M/status` |
 | Command topic | Commands from your system to the gateway (see below) | `883M/command` |
 
 Custom topics must not contain `#` or `+`, can be up to 128 characters, and the command topic must differ from the other four. On the IRIV IO Controller, `io_status` stays on `<Base Topic>/io`.

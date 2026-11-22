@@ -13,8 +13,11 @@ const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrom
     page.on('pageerror', e => errors.push(e.message));
     await page.goto(base + '/');
     await page.locator('#analog-overview:visible').waitFor();
-    assert.match(await page.locator('#analog-card-0').innerText(), /10\.00 mm\/s/);
-    assert.match(await page.locator('#analog-card-0').innerText(), /12\.00 mA/);
+    // Both simulated PCC420V channels: scaled velocity and raw loop current (values drift each poll).
+    for (const [i, model] of [[0, 'PCC420VR-20mm'], [1, 'PCC420VP-20mm']]) {
+      const text = await page.locator('#analog-card-' + i).innerText();
+      assert.match(text, new RegExp(model)); assert.match(text, /\d+\.\d\d mm\/s/); assert.match(text, /Raw input: \d+\.\d\d mA/);
+    }
     fs.mkdirSync('demo/artifacts', { recursive: true });
     await page.screenshot({ path: 'demo/artifacts/ioc-dashboard-desktop.png', fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
@@ -28,6 +31,7 @@ const executablePath = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrom
     await page.screenshot({ path: 'demo/artifacts/ioc-io-desktop.png', fullPage: true });
     assert.equal(await page.locator('#an0_model').inputValue(), '7');
     assert.equal(await page.locator('#an0_max').inputValue(), '20');
+    assert.equal(await page.locator('#an1_model').inputValue(), '16');
     await page.locator('#an0_model').selectOption('2');
     assert.equal(await page.locator('#an0_max').inputValue(), '25.4');
     assert.equal(await page.locator('#an0_unit').inputValue(), 'mm/s');
