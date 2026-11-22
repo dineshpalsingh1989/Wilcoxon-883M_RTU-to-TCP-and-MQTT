@@ -162,6 +162,8 @@ void handleRoot() {
     server.sendContent_P(R"rawliteral(</div>
             <div class="subtitle">Serial: )rawliteral");
     sendPageText(sensor_serial);
+    server.sendContent_P(R"rawliteral( &middot; Sensor firmware: )rawliteral");
+    sendPageText(sensor_fw_version);
     server.sendContent_P(R"rawliteral(</div>
         </div>
         <div class="time-container"><div class="time" id="clock">--:--:--</div></div>

@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const values = {
-  sensor_model: 'Wilcoxon 883M', sensor_serial: 'DEMO-883M-001',
+  sensor_model: 'Wilcoxon 883M', sensor_serial: 'DEMO-883M-001', sensor_fw_version: 'Demo sensor',
   wifiClass: 'connected', wifiText: 'Connected to Demo Wi-Fi', netTitle: 'Wi-Fi',
   mqttClass: 'connected', mqttText: 'Connected', mbClass: 'connected', mbText: 'Enabled',
   statusMsg: 'Connected to Demo Wi-Fi', ipMsg: '127.0.0.1',

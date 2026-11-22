@@ -187,7 +187,7 @@ def main():
     for name, count in sorted(counts.items()):
         print(f"  {count:5d}  {name}")
     if last_health:
-        keys = ("serial_number", "uptime", "free_heap_memory", "reset_reason", "wifi_signal_rssi")
+        keys = ("serial_number", "sensor_firmware", "uptime", "free_heap_memory", "reset_reason", "wifi_signal_rssi")
         print("  Last health: " + ", ".join(f"{k}={last_health.get(k)}" for k in keys))
     if args.command and not command_sent:
         print("  Command not sent: no sensor serial seen. Pass --serial.")
