@@ -1,7 +1,7 @@
 // Chapters, transcript and end-card for the narrated MP4. Needs only narration.js, so the page also works without the film renderer.
 (() => {
   const video = document.getElementById('tour-video'), chapters = document.getElementById('chapters'), next = document.getElementById('film-next');
-  const LABEL = { intro: 'Intro', overview: 'Three parts', chain: 'How it flows', sensor: 'The sensor', rs485: 'RS485', power: 'Power', setup: 'Setup', viking: 'Viking Analytics', do: 'DO0 relay', di: 'DI1 acknowledge', alarm: 'See it work', rule: 'The alarm rule', outro: 'Sense. Analyse. Act.' };
+  const LABEL = { intro: 'Intro', overview: 'Three parts', cutaway: 'Cutaway', chain: 'How it flows', sensor: 'The sensor', rs485: 'RS485', power: 'Power', pcc420: 'PCC420V 4–20 mA', loop: '4–20 mA loop', analog: 'Analog readings', setup: 'Setup', viking: 'Viking Analytics', do: 'DO0 relay', di: 'DI1 acknowledge', alarm: 'See it work', rule: 'The alarm rule', outro: 'Sense. Analyse. Act.' };
   const S = NARRATION.scenes, fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const playAt = t => { video.currentTime = t; video.play().catch(() => {}); };
   const at = t => { let i = S.length - 1; while (i > 0 && S[i].start > t) i--; return i; };

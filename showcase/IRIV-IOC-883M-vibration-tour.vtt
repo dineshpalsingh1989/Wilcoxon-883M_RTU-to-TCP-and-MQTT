@@ -161,130 +161,198 @@ A 24 V supply powers the controller,
 and the sensor shares the same rail.
 
 41
-00:01:45.083 --> 00:01:47.682
-Install the firmware from the web installer.
+00:01:45.083 --> 00:01:47.246
+The controller also has two
 
 42
-00:01:47.682 --> 00:01:49.926
-Then set the MQTT broker and the alarm
+00:01:47.246 --> 00:01:49.409
+analog inputs, AN0 and AN1.
 
 43
-00:01:49.926 --> 00:01:52.584
-limits in the controller's own web dashboard.
+00:01:49.409 --> 00:01:52.613
+Each can read a Wilcoxon PCC420V, a loop
 
 44
-00:01:53.817 --> 00:01:56.224
-MultiViz learns a baseline for each sensor,
+00:01:52.613 --> 00:01:56.378
+powered vibration sensor with a 4–20 mA output.
 
 45
-00:01:56.224 --> 00:01:58.184
-so there are no thresholds to tune.
+00:01:56.378 --> 00:01:58.621
+Here, one sits on the motor,
 
 46
-00:01:58.184 --> 00:02:00.760
-When the pattern shifts, it names the symptom,
+00:01:58.621 --> 00:02:00.223
+and one on the pump.
 
 47
-00:02:00.760 --> 00:02:03.336
-and ranks which machine needs attention first.
+00:02:01.450 --> 00:02:04.441
+Set each input's mode switch to Current.
 
 48
-00:02:04.550 --> 00:02:05.512
-Now the alarm.
+00:02:04.441 --> 00:02:06.535
+The loop runs from a 12–30 V
 
 49
-00:02:05.512 --> 00:02:08.261
-Output zero follows the dashboard alarm,
+00:02:06.535 --> 00:02:09.452
+supply, through the sensor, into AN0 or
 
 50
-00:02:08.261 --> 00:02:09.842
-and drives a 24 V relay
+00:02:09.452 --> 00:02:12.368
+AN1, and back from analog ground, AGND.
 
 51
-00:02:09.842 --> 00:02:11.491
-for a beacon and buzzer.
+00:02:12.368 --> 00:02:15.659
+Take the sensor's pinout from its datasheet.
 
 52
-00:02:12.717 --> 00:02:14.165
-A push button on input
+00:02:16.883 --> 00:02:20.097
+Choose each sensor's model in the I/O settings.
 
 53
-00:02:14.165 --> 00:02:15.942
-one acknowledges the alarm.
+00:02:20.097 --> 00:02:22.148
+Four milliamps reads zero, and
 
 54
-00:02:15.942 --> 00:02:17.982
-Input zero can start a capture.
+00:02:22.148 --> 00:02:24.472
+twenty milliamps reads full scale.
 
 55
-00:02:19.233 --> 00:02:20.850
-Vibration on the motor climbs
+00:02:24.472 --> 00:02:27.343
+Both readings appear on the dashboard, and
 
 56
-00:02:20.850 --> 00:02:22.020
-past the alarm limit.
+00:02:27.343 --> 00:02:29.258
+go out over MQTT and Modbus.
 
 57
-00:02:23.033 --> 00:02:26.117
-After the delay, the controller trips the alarm.
+00:02:29.258 --> 00:02:31.377
+A broken loop shows as a fault.
 
 58
-00:02:26.117 --> 00:02:27.980
-Output zero closes the relay,
+00:02:32.583 --> 00:02:35.182
+Install the firmware from the web installer.
 
 59
-00:02:27.980 --> 00:02:29.458
-and the beacon flashes.
+00:02:35.182 --> 00:02:37.426
+Then set the MQTT broker and the alarm
 
 60
-00:02:30.233 --> 00:02:32.383
-The operator presses acknowledge.
+00:02:37.426 --> 00:02:40.084
+limits in the controller's own web dashboard.
 
 61
-00:02:32.383 --> 00:02:34.338
-While vibration is still high,
+00:02:41.317 --> 00:02:43.724
+MultiViz learns a baseline for each sensor,
 
 62
-00:02:34.338 --> 00:02:35.575
-the relay stays on.
+00:02:43.724 --> 00:02:45.684
+so there are no thresholds to tune.
 
 63
-00:02:36.233 --> 00:02:38.027
-Once it clears, the relay drops,
+00:02:45.684 --> 00:02:48.260
+When the pattern shifts, it names the symptom,
 
 64
-00:02:38.027 --> 00:02:39.653
-and the alarm is ready again.
+00:02:48.260 --> 00:02:50.836
+and ranks which machine needs attention first.
 
 65
-00:02:41.183 --> 00:02:43.088
-The rule runs on the controller.
+00:02:52.050 --> 00:02:53.012
+Now the alarm.
 
 66
-00:02:43.088 --> 00:02:45.350
-Trip on velocity or temperature, after
+00:02:53.012 --> 00:02:55.761
+Output zero follows the dashboard alarm,
 
 67
-00:02:45.350 --> 00:02:47.076
-a delay, and latch the relay.
+00:02:55.761 --> 00:02:57.342
+and drives a 24 V relay
 
 68
-00:02:47.076 --> 00:02:48.922
-It drops only when the alarm is
+00:02:57.342 --> 00:02:58.991
+for a beacon and buzzer.
 
 69
-00:02:48.922 --> 00:02:51.422
-acknowledged, and the reading has cleared.
+00:03:00.217 --> 00:03:01.665
+A push button on input
 
 70
-00:02:52.650 --> 00:02:54.103
-Sense, analyse, act.
+00:03:01.665 --> 00:03:03.442
+one acknowledges the alarm.
 
 71
-00:02:54.103 --> 00:02:56.574
-One sensor, one controller, and an
+00:03:03.442 --> 00:03:05.482
+Input zero can start a capture.
 
 72
-00:02:56.574 --> 00:02:58.972
+00:03:06.733 --> 00:03:08.350
+Vibration on the motor climbs
+
+73
+00:03:08.350 --> 00:03:09.520
+past the alarm limit.
+
+74
+00:03:10.533 --> 00:03:13.617
+After the delay, the controller trips the alarm.
+
+75
+00:03:13.617 --> 00:03:15.480
+Output zero closes the relay,
+
+76
+00:03:15.480 --> 00:03:16.958
+and the beacon flashes.
+
+77
+00:03:17.733 --> 00:03:19.883
+The operator presses acknowledge.
+
+78
+00:03:19.883 --> 00:03:21.838
+While vibration is still high,
+
+79
+00:03:21.838 --> 00:03:23.075
+the relay stays on.
+
+80
+00:03:23.733 --> 00:03:25.527
+Once it clears, the relay drops,
+
+81
+00:03:25.527 --> 00:03:27.153
+and the alarm is ready again.
+
+82
+00:03:28.683 --> 00:03:30.588
+The rule runs on the controller.
+
+83
+00:03:30.588 --> 00:03:32.850
+Trip on velocity or temperature, after
+
+84
+00:03:32.850 --> 00:03:34.576
+a delay, and latch the relay.
+
+85
+00:03:34.576 --> 00:03:36.422
+It drops only when the alarm is
+
+86
+00:03:36.422 --> 00:03:38.922
+acknowledged, and the reading has cleared.
+
+87
+00:03:40.150 --> 00:03:41.597
+Sense, analyse, act.
+
+88
+00:03:41.597 --> 00:03:44.129
+One controller, its sensors, and an
+
+89
+00:03:44.129 --> 00:03:46.517
 alarm that someone has to answer.
 
